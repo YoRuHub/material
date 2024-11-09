@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<!-- Created with Inkscape (http://www.inkscape.org/) -->
+
+<svg
+   width="24"
+   height="24"
+   viewBox="0 0 24 24"
+   version="1.1"
+   id="svg1"
+   xmlns="http://www.w3.org/2000/svg"
+   xmlns:svg="http://www.w3.org/2000/svg">
+  <defs
+     id="defs1" />
+  <g
+     id="layer1"
+     style="display:inline">
+    <g
+       id="g1"
+       style="stroke:none">
+      <path
+         id="path29"
+         style="display:inline;opacity:1;fill:#006400;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;stroke-dasharray:none;paint-order:stroke fill markers"
+         d="M 11,5.5 11.5,7 v 5 L 10.507812,10.498047 10,10.5 c 0,0 1.5,0.999999 1.5,4.5 h 1 v -1 c 0,0 1.000001,-1.999996 1.5,-2.5 h -0.5 c 0,0 9.12e-4,0.500001 -0.992188,1.5 L 12.5,12 V 9 C 12.5,8.000001 14,6.5 14,6.5 h -0.5 c -0.5,0.5 -1,1 -1,1 V 7 L 12,6.5 11.5,5.5 Z" />
+      <path
+         d="m 2,5 v 0 c 0,4 6,5.506692 8,5.5 l 0.508037,-0.0017 C 9.5,9 5,6.5 5,6.5 8,7 10,9.0143384 11,10.5 11,5.5804685 4,5 2,5 Z"
+         style="display:inline;fill:#4caf50;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         id="path120" />
+      <path
+         d="m 8,1 v 0 c 0,2.5 1.8002076,4.5 3,4.5 h 0.5 C 11.5,5 9.5,3 9.5,3 c 1,0.5 1.5,1 2,2 C 11.5,3 9,1.5 8,1 Z"
+         style="display:inline;fill:#4caf50;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         id="path120-0" />
+      <path
+         d="m 19,2.5000008 v 0 C 19,5.499285 14,6.499285 14,6.499285 h -0.5 c 0.5,-1 3.214285,-2.7361262 3.214285,-2.7361262 C 14.5,4.499285 13.571429,5.6571798 13,6.499285 c 0,-3.5 5,-4 6,-3.9992842 z"
+         style="display:inline;fill:#4caf50;stroke:none;stroke-width:0.999998;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         id="path120-5" />
+      <path
+         d="m 22,6.002679 v 0 C 20,10 16,11.499995 14,11.499995 H 13.5 C 14,10 18,8 18,8 14.428571,8.7818934 13.857143,10.343442 13,11.500979 13,6.5814475 20,6 22,6.002679 Z"
+         style="display:inline;fill:#4caf50;stroke:none;stroke-width:1;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         id="path120-3" />
+      <path
+         d="M 12,13.999953 A 6.25,6.25 0 0 0 6.1875,17.998 6.2499995,6.2499995 0 0 0 6.1836,18.0039 5,5 0 0 0 6,18 5,5 0 0 0 1,23 h 21.999999 a 6,6 0 0 0 -5.654297,-5.988281 6.2499995,6.2499995 0 0 0 -0.0039,-0.0059 A 6.25,6.25 0 0 0 12,14 Z"
+         style="display:inline;fill:#8b4513;stroke:none;stroke-linecap:round;stroke-linejoin:round;paint-order:stroke fill markers"
+         id="path5" />
+    </g>
+  </g>
+</svg>
