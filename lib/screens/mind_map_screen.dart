@@ -1,374 +1,429 @@
 import 'dart:math';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' show Vector3;
+import 'package:vector_math/vector_math.dart' as vector_math;
 
-class MindMapScreen extends StatefulWidget {
-  const MindMapScreen({super.key});
+class Node {
+  vector_math.Vector2 position;
+  vector_math.Vector2 velocity;
+  Color color;
+  double radius;
+  bool isActive;
+  Node? parent; // 親ノード
+  List<Node> children; // 子ノードのリスト
 
-  @override
-  State<MindMapScreen> createState() => _MindMapScreenState();
+  Node(this.position, this.velocity, this.color, this.radius,
+      {this.isActive = false, this.parent, List<Node>? children})
+      : children = children ?? []; // children が null の場合は空のリスト
 }
 
-class _MindMapScreenState extends State<MindMapScreen>
-    with SingleTickerProviderStateMixin {
-  Vector3 _cameraPosition = Vector3(0, 0, -500); // 初期カメラ位置を調整
-  Vector3 _cameraRotation = Vector3(0, 0, 0);
-  double _zoomLevel = 1.0;
-  Offset _lastPosition = Offset.zero;
-  bool _isDragging = false;
+class NodeAnimation extends StatefulWidget {
+  @override
+  _NodeAnimationState createState() => _NodeAnimationState();
+}
 
-  // アニメーション用のコントローラー
-  late AnimationController _animationController;
-  Vector3 _velocityVector = Vector3(0, 0, 0);
+class _NodeAnimationState extends State<NodeAnimation>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _signalAnimation;
+  late List<Node> nodes;
+  Node? _draggedNode; // 現在ドラッグされているノード
+  Node? _activeNode; // 現在アクティブなノード
+  late Offset _dragStartOffset; // ドラッグ開始位置
+  final double minDistance = 100.0; // ノード間の最小距離
+  final double repulsionStrength = 0.0001; // 反発力の強さ
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    nodes = [];
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
-    )..addListener(_updatePosition);
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
     super.dispose();
-  }
-
-  void _updatePosition() {
-    if (!_isDragging && _velocityVector.length > 0.1) {
-      setState(() {
-        _cameraPosition += _velocityVector;
-        _velocityVector *= 0.95; // 減衰
-      });
-    }
-  }
-
-  void _handleMouseDown(PointerDownEvent event) {
-    _isDragging = true;
-    _lastPosition = event.position;
-    _animationController.stop();
-  }
-
-  void _handleMouseMove(PointerMoveEvent event) {
-    if (!_isDragging) return;
-
-    final delta = event.position - _lastPosition;
-    // マウスの移動量に基づいて移動速度を調整
-    final moveSpeed = 0.5 * _zoomLevel;
-
-    setState(() {
-      _cameraPosition += Vector3(
-        -delta.dx * moveSpeed,
-        -delta.dy * moveSpeed,
-        0,
-      );
-
-      // 回転も追加（オプション）
-      _cameraRotation += Vector3(
-        -delta.dy * 0.001,
-        -delta.dx * 0.001,
-        0,
-      );
-
-      // 速度ベクトルを更新
-      _velocityVector = Vector3(
-        -delta.dx * moveSpeed * 0.1,
-        -delta.dy * moveSpeed * 0.1,
-        0,
-      );
-    });
-
-    _lastPosition = event.position;
-  }
-
-  void _handleMouseUp(PointerUpEvent event) {
-    _isDragging = false;
-    _animationController.reset();
-    _animationController.forward();
-  }
-
-  void _handleMouseWheel(PointerScrollEvent event) {
-    final zoomDelta = event.scrollDelta.dy * 0.001;
-    setState(() {
-      _zoomLevel = (_zoomLevel * (1 - zoomDelta)).clamp(0.1, 5.0);
-      _cameraPosition += Vector3(0, 0, event.scrollDelta.dy);
-    });
   }
 
   @override
   Widget build(BuildContext context) {
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight =
+        MediaQuery.of(context).size.height - AppBar().preferredSize.height;
+
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Interactive 3D Space'),
+        title: Text("Node Animation"),
       ),
-      body: Stack(
-        children: [
-          Listener(
-            onPointerDown: _handleMouseDown,
-            onPointerMove: _handleMouseMove,
-            onPointerUp: _handleMouseUp,
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                _handleMouseWheel(event);
-              }
-            },
-            child: CustomPaint(
-              painter: EnhancedStarFieldPainter(
-                cameraPosition: _cameraPosition,
-                cameraRotation: _cameraRotation,
-                zoomLevel: _zoomLevel,
-              ),
-              size: Size.infinite,
-            ),
-          ),
-          // HUD表示
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '航行データ',
-                    style: TextStyle(
-                      color: Colors.cyan,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '位置:\n'
-                    'X: ${_cameraPosition.x.toStringAsFixed(1)}\n'
-                    'Y: ${_cameraPosition.y.toStringAsFixed(1)}\n'
-                    'Z: ${_cameraPosition.z.toStringAsFixed(1)}\n'
-                    '回転: ${(_cameraRotation.y * 180 / pi).toStringAsFixed(1)}°\n'
-                    'ズーム: ${_zoomLevel.toStringAsFixed(2)}x',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Expanded(
+              child: GestureDetector(
+                onPanStart: _onPanStart,
+                onPanUpdate: _onPanUpdate,
+                onPanEnd: _onPanEnd,
+                onTapUp: _onTapUp, // クリック時のイベント
+                child: AnimatedBuilder(
+                  animation: _controller,
+                  builder: (context, child) {
+                    _updatePhysics(screenWidth, screenHeight);
+                    return CustomPaint(
+                      size: Size(screenWidth, screenHeight),
+                      painter: NodePainter(nodes, _signalAnimation.value),
+                    );
+                  },
+                ),
               ),
             ),
-          ),
-          // 操作ガイド
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '操作方法',
-                    style: TextStyle(
-                      color: Colors.cyan,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'ドラッグ: 空間移動\n'
-                    'マウスホイール: ズーム\n'
-                    'ドラッグ解放: 慣性移動',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
+            ElevatedButton(
+              onPressed: _addNode,
+              child: Text("Add Node"),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
+
+  // ノードを追加する関数（アクティブノードがあるときに子ノードを追加）
+  void _addNode() {
+    setState(() {
+      if (_activeNode != null) {
+        // 親ノードがアクティブな場合、子ノードを追加
+        Node childNode = Node(
+          vector_math.Vector2(
+              Random().nextDouble() * 200, Random().nextDouble() * 200),
+          vector_math.Vector2(
+            Random().nextDouble() * 2 - 1, // ランダムなX方向の速度
+            Random().nextDouble() * 2 - 1, // ランダムなY方向の速度
+          ),
+          Colors.primaries[Random().nextInt(Colors.primaries.length)],
+          10.0,
+        );
+        _activeNode!.children.add(childNode);
+        childNode.parent = _activeNode;
+        nodes.add(childNode);
+      } else {
+        // アクティブノードがない場合、通常のノードを追加
+        nodes.add(Node(
+          vector_math.Vector2(
+              Random().nextDouble() * 200, Random().nextDouble() * 200),
+          vector_math.Vector2(
+            Random().nextDouble() * 2 - 1, // ランダムなX方向の速度
+            Random().nextDouble() * 2 - 1, // ランダムなY方向の速度
+          ),
+          Colors.primaries[Random().nextInt(Colors.primaries.length)],
+          10.0,
+        ));
+      }
+    });
+  }
+
+  // ドラッグ開始時の処理
+  void _onPanStart(DragStartDetails details) {
+    _checkForNodeSelection(details.localPosition);
+    if (_draggedNode != null) {
+      _dragStartOffset = details.localPosition -
+          Offset(_draggedNode!.position.x, _draggedNode!.position.y);
+    }
+  }
+
+  // ドラッグ中の位置更新
+
+  void _onPanUpdate(DragUpdateDetails details) {
+    if (_draggedNode != null) {
+      setState(() {
+        // 親ノードと子ノードを一緒に動かす
+        _moveNodeAndChildren(
+          _draggedNode!,
+          details.localPosition,
+          isParent: true, // 親ノードを動かすフラグを設定
+        );
+      });
+    }
+  }
+
+  // ドラッグ終了時の処理
+  void _onPanEnd(DragEndDetails details) {
+    setState(() {
+      _draggedNode = null; // ドラッグが終了したのでノードの選択を解除
+    });
+  }
+
+  // クリック時の処理
+  void _onTapUp(TapUpDetails details) {
+    _checkForNodeSelection(details.localPosition);
+    if (_activeNode == null) {
+      setState(() {
+        // ノード以外をクリックした場合、アクティブ状態を解除
+        _activeNode?.isActive = false;
+      });
+    }
+  }
+
+  // ノード選択を判断して、選ばれているノードを記録する
+  void _checkForNodeSelection(Offset localPosition) {
+    bool clickedOnNode = false;
+
+    for (var node in nodes) {
+      double dx = node.position.x - localPosition.dx;
+      double dy = node.position.y - localPosition.dy;
+      double distance = sqrt(dx * dx + dy * dy);
+
+      if (distance < node.radius) {
+        setState(() {
+          // すでにアクティブなノードがあれば非アクティブ化
+          _activeNode?.isActive = false;
+          // クリックしたノードをアクティブ化
+          node.isActive = true;
+          _activeNode = node; // アクティブなノードを設定
+          _draggedNode = node; // クリックしたノードをドラッグ対象に設定
+        });
+        clickedOnNode = true;
+        break;
+      }
+    }
+
+    if (!clickedOnNode) {
+      // ノード以外をクリックした場合、アクティブ状態を解除
+      setState(() {
+        _activeNode?.isActive = false;
+        _activeNode = null;
+      });
+    }
+  }
+
+// ノードとその親子ノードを移動させる
+// ノードとその子ノードを動かす関数
+  void _moveNodeAndChildren(Node node, Offset localPosition,
+      {bool isParent = false}) {
+    final dx = localPosition.dx - _dragStartOffset.dx;
+    final dy = localPosition.dy - _dragStartOffset.dy;
+
+    // NaNチェック: NaNが含まれていないか確認
+    if (dx.isNaN || dy.isNaN) {
+      return; // NaNが含まれていた場合は処理を行わない
+    }
+
+    // 親ノードの場合は、位置を更新
+    if (isParent) {
+      node.position = vector_math.Vector2(dx, dy);
+    }
+
+    // 子ノードが親ノードに近づく処理（親が動いている場合）
+    for (var child in node.children) {
+      _moveNodeAndChildren(child, localPosition, isParent: false);
+
+      // 子ノードが移動した場合、親ノードもそれに従って動かす
+      if (child.position != localPosition) {
+        _moveParentWithChild(child, node);
+      }
+
+      // 親ノードに近づく処理
+      _attractChildToParent(child, node);
+    }
+  }
+
+// 子ノードを移動させたときに親ノードを動かす処理
+  void _moveParentWithChild(Node child, Node parent) {
+    // 親ノードと子ノードの相対位置を計算
+    vector_math.Vector2 direction = child.position - parent.position;
+
+    // 親ノードが動くべき方向と距離を計算
+    double moveDistance = direction.length;
+
+    // 親ノードを子ノードの動きに従わせる（親ノードが動きます）
+    if (moveDistance > 1) {
+      vector_math.Vector2 moveDirection = direction.normalized();
+      parent.position += moveDirection * moveDistance * 0.1; // 親ノードを少しずつ動かす
+    }
+  }
+
+// 親ノードと子ノードがゆっくり近づくようにするための関数
+  void _attractChildToParent(Node child, Node parent) {
+    // 親ノードと子ノードの位置ベクトルを取得
+    vector_math.Vector2 direction = parent.position - child.position;
+    double distance = direction.length;
+
+    // 親と子ノードがある程度近づいていない場合のみ調整
+    if (distance > 20) {
+      // 近づく距離の閾値
+      // 親ノードに引き寄せられる力を加える
+      vector_math.Vector2 attraction =
+          direction.normalized() * 0.01; // 引き寄せ力を設定
+      child.velocity += attraction;
+    }
+  }
+
+  // 物理演算の更新
+  void _updatePhysics(double screenWidth, double screenHeight) {
+    for (int i = 0; i < nodes.length; i++) {
+      var node = nodes[i];
+      if (_draggedNode != null && _draggedNode == node) {
+        continue; // ドラッグ中のノードは物理演算を行わない
+      }
+
+      _checkBoundaryCollision(node, screenWidth, screenHeight);
+      for (int j = i + 1; j < nodes.length; j++) {
+        var otherNode = nodes[j];
+        _checkNodeRepulsion(node, otherNode);
+      }
+
+      // 親子ノード間の距離をゆっくりと調整
+      _adjustParentChildDistance(node);
+
+      node.position += node.velocity;
+      node.velocity *= 0.98; // 摩擦で減速
+    }
+  }
+
+  // 画面の端との衝突
+  void _checkBoundaryCollision(
+      Node node, double screenWidth, double screenHeight) {
+    if (node.position.x < node.radius ||
+        node.position.x > screenWidth - node.radius) {
+      node.velocity.x *= -1;
+    }
+    if (node.position.y < node.radius ||
+        node.position.y > screenHeight - node.radius) {
+      node.velocity.y *= -1;
+    }
+  }
+
+  // ノード間の反発力
+  void _checkNodeRepulsion(Node node, Node otherNode) {
+    vector_math.Vector2 direction = node.position - otherNode.position;
+    double distance = direction.length;
+    if (distance < minDistance) {
+      vector_math.Vector2 repulsion =
+          direction.normalized() * (repulsionStrength / (distance * distance));
+      node.velocity += repulsion;
+      otherNode.velocity -= repulsion;
+    }
+  }
+
+  // 親子ノード間の距離調整
+  void _adjustParentChildDistance(Node node) {
+    if (node.parent != null) {
+      var parentPosition = node.parent!.position;
+      var direction = node.position - parentPosition;
+      var distance = direction.length;
+      if (distance > 200) {
+        // 距離が200以上になった場合に調整
+        node.velocity -= direction.normalized() * 0.01;
+      }
+    }
+  }
 }
 
-class EnhancedStarFieldPainter extends CustomPainter {
-  final Vector3 cameraPosition;
-  final Vector3 cameraRotation;
-  final double zoomLevel;
-  final List<Star> stars;
-  final List<Star> nebulas;
-  static const int starCount = 1000;
-  static const int nebulaCount = 5;
+class NodePainter extends CustomPainter {
+  final List<Node> nodes;
+  final double signalProgress;
 
-  EnhancedStarFieldPainter({
-    required this.cameraPosition,
-    required this.cameraRotation,
-    required this.zoomLevel,
-  })  : stars = [],
-        nebulas = [] {
-    final random = Random();
-
-    // 星雲の生成
-    for (int i = 0; i < nebulaCount; i++) {
-      nebulas.add(Star(
-        position: Vector3(
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 2000,
-        ),
-        brightness: random.nextDouble() * 0.5 + 0.5,
-        color: HSLColor.fromAHSL(
-          1.0,
-          random.nextDouble() * 360,
-          0.8,
-          0.6,
-        ).toColor(),
-        size: random.nextDouble() * 300 + 200,
-      ));
-    }
-
-    // 恒星の生成
-    for (int i = 0; i < starCount; i++) {
-      final temp = random.nextDouble();
-      final color = _getStarColor(temp);
-      stars.add(Star(
-        position: Vector3(
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 2000,
-        ),
-        brightness: random.nextDouble() * 0.5 + 0.5,
-        color: color,
-        size: random.nextDouble() * 3 + 1,
-      ));
-    }
-  }
-
-  Color _getStarColor(double temperature) {
-    if (temperature < 0.2) return Colors.red[300]!;
-    if (temperature < 0.4) return Colors.orange[300]!;
-    if (temperature < 0.6) return Colors.white;
-    if (temperature < 0.8) return Colors.blue[200]!;
-    return Colors.blue[100]!;
-  }
-
-  Vector3 _rotatePoint(Vector3 point) {
-    final dx = point.x;
-    final dy = point.y;
-    final dz = point.z;
-
-    // Y軸回転
-    final rotY = cameraRotation.y;
-    final cosY = cos(rotY);
-    final sinY = sin(rotY);
-
-    final x = dx * cosY - dz * sinY;
-    final z = dx * sinY + dz * cosY;
-
-    return Vector3(x, dy, z);
-  }
+  NodePainter(this.nodes, this.signalProgress);
 
   @override
   void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
+    // 親子間のライン描画
+    final Paint linePaint = Paint()
+      ..style = PaintingStyle.stroke
+      ..color = Colors.white
+      ..strokeWidth = 1;
 
-    // 星雲の描画
-    for (final nebula in nebulas) {
-      final relativePos = nebula.position - cameraPosition;
-      final rotatedPos = _rotatePoint(relativePos);
-      final scale = 2000 / (2000 + rotatedPos.z.abs());
+    for (var node in nodes) {
+      if (node.parent != null) {
+        final offset1 =
+            Offset(node.parent!.position.x, node.parent!.position.y);
+        final offset2 = Offset(node.position.x, node.position.y);
 
-      final screenX = centerX + rotatedPos.x * scale * zoomLevel;
-      final screenY = centerY + rotatedPos.y * scale * zoomLevel;
-
-      if (_isInScreen(screenX, screenY, size)) {
-        final paint = Paint()
-          ..color = nebula.color.withOpacity(0.1 * scale)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 50);
-
-        canvas.drawCircle(
-          Offset(screenX, screenY),
-          nebula.size * scale * zoomLevel,
-          paint,
+        // 信号として光が線上を移動
+        Offset signalOffset = Offset(
+          offset1.dx + (offset2.dx - offset1.dx) * signalProgress,
+          offset1.dy + (offset2.dy - offset1.dy) * signalProgress,
         );
+
+        // 線を描画
+        canvas.drawLine(offset1, offset2, linePaint);
+        // 信号の動きをオレンジの円で表現
+        canvas.drawCircle(signalOffset, 3, linePaint..color = Colors.orange);
       }
     }
 
-    // 恒星の描画
-    for (final star in stars) {
-      final relativePos = star.position - cameraPosition;
-      final rotatedPos = _rotatePoint(relativePos);
-      final scale = 2000 / (2000 + rotatedPos.z.abs());
+    // ノード（球体）を描画
+    for (var node in nodes) {
+      final Offset nodeCenter = Offset(node.position.x, node.position.y);
 
-      final screenX = centerX + rotatedPos.x * scale * zoomLevel;
-      final screenY = centerY + rotatedPos.y * scale * zoomLevel;
+      // ノードの光沢を表現するためのグラデーション
+      final RadialGradient gradient = RadialGradient(
+        colors: [
+          node.isActive ? Colors.white : node.color.withOpacity(0.7),
+          node.color.withOpacity(0.9),
+          node.color,
+        ],
+        stops: [0.1, 0.5, 1.0],
+      );
 
-      if (_isInScreen(screenX, screenY, size)) {
-        final paint = Paint()
-          ..color = star.color.withOpacity(scale)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
-
-        // 星本体の描画
-        canvas.drawCircle(
-          Offset(screenX, screenY),
-          star.size * scale * zoomLevel,
-          paint,
+      final Paint spherePaint = Paint()
+        ..shader = gradient.createShader(
+          Rect.fromCircle(center: nodeCenter, radius: node.radius),
         );
 
-        // 光芒効果
-        if (star.brightness > 0.8) {
-          paint.color = star.color.withOpacity(0.3 * scale);
-          canvas.drawCircle(
-            Offset(screenX, screenY),
-            star.size * 2 * scale * zoomLevel,
-            paint,
-          );
-        }
+      // ノードの影を追加して立体感を表現
+      final Paint shadowPaint = Paint()
+        ..color = Colors.black.withOpacity(0.3) // 影の色と透明度
+        ..style = PaintingStyle.fill;
+
+      // 影を球体の下に描画（立体感を強調）
+      canvas.drawCircle(
+        Offset(nodeCenter.dx, nodeCenter.dy + node.radius * 0.3), // 影の位置
+        node.radius * 0.8, // 影の大きさ
+        shadowPaint,
+      );
+
+      // 球体の本体を描画
+      canvas.drawCircle(
+        nodeCenter,
+        node.radius,
+        spherePaint,
+      );
+
+      // ハイライト部分を追加して、球体に光沢を与える
+      final Paint highlightPaint = Paint()
+        ..color = Colors.white.withOpacity(0.5) // ハイライトの色
+        ..style = PaintingStyle.fill
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2);
+
+      // 光源の位置を決めて、球体に反射するハイライトを描画
+      canvas.drawCircle(
+        Offset(nodeCenter.dx - node.radius * 0.3,
+            nodeCenter.dy - node.radius * 0.3), // 光源位置
+        node.radius * 0.3, // ハイライトの大きさ
+        highlightPaint,
+      );
+
+      // アクティブなノードにはさらに輝きを追加
+      if (node.isActive) {
+        final Paint glowPaint = Paint()
+          ..color = Colors.white.withOpacity(0.7) // 光の色と透明度を調整
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 5 // 輪郭の太さ
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 10); // ぼかし効果
+
+        // アクティブノードの淵に輝きの円を描画
+        canvas.drawCircle(nodeCenter, node.radius + 5, glowPaint);
       }
     }
-  }
-
-  bool _isInScreen(double x, double y, Size size) {
-    return x >= -100 &&
-        x <= size.width + 100 &&
-        y >= -100 &&
-        y <= size.height + 100;
   }
 
   @override
-  bool shouldRepaint(covariant EnhancedStarFieldPainter oldDelegate) {
-    return oldDelegate.cameraPosition != cameraPosition ||
-        oldDelegate.cameraRotation != cameraRotation ||
-        oldDelegate.zoomLevel != zoomLevel;
+  bool shouldRepaint(CustomPainter oldDelegate) {
+    return true;
   }
-}
-
-class Star {
-  final Vector3 position;
-  final double brightness;
-  final Color color;
-  final double size;
-
-  Star({
-    required this.position,
-    required this.brightness,
-    this.color = Colors.white,
-    this.size = 1.0,
-  });
 }

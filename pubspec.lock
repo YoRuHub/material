@@ -158,6 +158,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.1.1"
+  flame:
+    dependency: "direct main"
+    description:
+      name: flame
+      sha256: baafe5c38075b60577db05e0421c12941695b246547d9aca95166def3f29e57f
+      url: "https://pub.dev"
+    source: hosted
+    version: "1.21.0"
   flutter:
     dependency: "direct main"
     description: flutter
@@ -179,6 +187,46 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "0.1.1"
+  flutter_gl:
+    dependency: "direct main"
+    description:
+      name: flutter_gl
+      sha256: de74c88f77228f47dd280e2092b50eb49fe1fc008de74047d195a27f2db0b491
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.21"
+  flutter_gl_macos:
+    dependency: transitive
+    description:
+      name: flutter_gl_macos
+      sha256: "62aa244d4aa9127115df651baec070893718dd27571c8dbca5374dbcb9fd4849"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
+  flutter_gl_platform_interface:
+    dependency: transitive
+    description:
+      name: flutter_gl_platform_interface
+      sha256: "03062491fac26d0fda80703e4a01894ecc4fec4f7e5cec131ef021fbf46b2fda"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.4"
+  flutter_gl_web:
+    dependency: transitive
+    description:
+      name: flutter_gl_web
+      sha256: "005dc72618ee14659dff7dfe72d6b1fce0efdda745cfebfe4618ce7ac2044af9"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.5"
+  flutter_gl_windows:
+    dependency: transitive
+    description:
+      name: flutter_gl_windows
+      sha256: cd9259fb8178863de9e667129f73447fa174447a3c4abd16defa07af648850e4
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.0.4"
   flutter_launcher_icons:
     dependency: "direct main"
     description:
@@ -208,6 +256,19 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
+  flutter_web_plugins:
+    dependency: transitive
+    description: flutter
+    source: sdk
+    version: "0.0.0"
+  forge2d:
+    dependency: "direct main"
+    description:
+      name: forge2d
+      sha256: "6aac85f1cb9f7e3720bff5d6884ff2e1bcb74402e6fe271599b7b1f65574f5e2"
+      url: "https://pub.dev"
+    source: hosted
+    version: "0.13.1"
   glob:
     dependency: transitive
     description:
@@ -328,6 +389,14 @@ packages:
       url: "https://pub.dev"
     source: hosted
     version: "1.15.0"
+  ordered_set:
+    dependency: transitive
+    description:
+      name: ordered_set
+      sha256: fc861bb51fc863cd3e0718e21768af9586e0d5022b91a0fd4437636456cdb7d0
+      url: "https://pub.dev"
+    source: hosted
+    version: "6.1.1"
   package_config:
     dependency: transitive
     description:
