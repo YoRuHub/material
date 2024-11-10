@@ -1,3 +1,4 @@
+import 'dart:collection';
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
@@ -5,6 +6,7 @@ import 'package:vector_math/vector_math.dart' as vector_math;
 class Node {
   vector_math.Vector2 position;
   vector_math.Vector2 velocity;
+  vector_math.Vector2? _targetPosition;
   Color color;
   double radius;
   bool isActive;
@@ -32,6 +34,9 @@ class _NodeAnimationState extends State<NodeAnimation>
   final double minDistance = 100.0;
   final double repulsionStrength = 0.0001;
   final double attractionStrength = 0.001; // 引力の強さを調整
+  final double levelHeight = 150.0; // 階層間の垂直距離
+  final double nodeHorizontalSpacing = 150.0; // ノード間の水平距離
+  bool isAligning = false; // 整列中かどうかのフラグ
 
   @override
   void initState() {
@@ -87,13 +92,27 @@ class _NodeAnimationState extends State<NodeAnimation>
             ),
             Padding(
               padding: const EdgeInsets.all(16.0),
-              child: ElevatedButton(
-                onPressed: _addNode,
-                style: ElevatedButton.styleFrom(
-                  foregroundColor: Colors.white,
-                  backgroundColor: Colors.blue[900],
-                ),
-                child: Text("Add Node"),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  ElevatedButton(
+                    onPressed: _addNode,
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.blue[900],
+                    ),
+                    child: Text("Add Node"),
+                  ),
+                  SizedBox(width: 16),
+                  ElevatedButton(
+                    onPressed: isAligning ? null : () => _alignNodes(context),
+                    style: ElevatedButton.styleFrom(
+                      foregroundColor: Colors.white,
+                      backgroundColor: Colors.green[900],
+                    ),
+                    child: Text("Align Nodes"),
+                  ),
+                ],
               ),
             ),
           ],
@@ -102,30 +121,135 @@ class _NodeAnimationState extends State<NodeAnimation>
     );
   }
 
+  // ノードを整列させる処理
+  void _alignNodes(BuildContext context) async {
+    if (nodes.isEmpty) return;
+
+    setState(() {
+      isAligning = true;
+    });
+
+    // ルートノードを見つける（親がないノード）
+    List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
+
+    // 画面の中心を計算
+    final double screenWidth = MediaQuery.of(context).size.width;
+    final double screenHeight =
+        MediaQuery.of(context).size.height - AppBar().preferredSize.height;
+    final double centerX = screenWidth / 2;
+    final double startY = 100.0; // 上部からの開始位置
+
+    // 各ルートノードとその子孫の目標位置を計算
+    for (int i = 0; i < rootNodes.length; i++) {
+      double rootX = centerX +
+          (i - (rootNodes.length - 1) / 2) * (nodeHorizontalSpacing * 2);
+      _calculateTargetPositions(rootNodes[i], rootX, startY, screenWidth);
+    }
+
+    // アニメーションで位置を更新
+    const int totalSteps = 60; // アニメーションのステップ数
+    for (int step = 0; step < totalSteps; step++) {
+      for (var node in nodes) {
+        if (node._targetPosition != null) {
+          double progress = step / totalSteps;
+          // イージング関数を適用（滑らかな動き）
+          double easedProgress = _easeInOutCubic(progress);
+
+          vector_math.Vector2 start = node.position;
+          vector_math.Vector2 target = node._targetPosition!;
+          node.position = vector_math.Vector2(
+            start.x + (target.x - start.x) * easedProgress,
+            start.y + (target.y - start.y) * easedProgress,
+          );
+        }
+      }
+
+      // 短い待機時間を入れて、アニメーションをスムーズに
+      await Future.delayed(Duration(milliseconds: 16));
+      setState(() {});
+    }
+
+    setState(() {
+      isAligning = false;
+    });
+  }
+
+  void _calculateTargetPositions(
+      Node node, double x, double y, double maxWidth) {
+    // このノードの目標位置を設定
+    node._targetPosition = vector_math.Vector2(x, y);
+
+    if (node.children.isEmpty) return;
+
+    // 子ノードの水平方向の範囲を計算
+    double totalWidth = (node.children.length - 1) * nodeHorizontalSpacing;
+    double startX = x - totalWidth / 2;
+
+    // 各子ノードの位置を計算
+    for (int i = 0; i < node.children.length; i++) {
+      double childX = startX + i * nodeHorizontalSpacing;
+      // 画面端に近づきすぎないように調整
+      childX = childX.clamp(node.radius, maxWidth - node.radius);
+
+      _calculateTargetPositions(
+          node.children[i], childX, y + levelHeight, maxWidth);
+    }
+  }
+
+  // イージング関数
+  double _easeInOutCubic(double t) {
+    return t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2;
+  }
+
   void _addNode() {
     setState(() {
       if (_activeNode != null) {
+        // アクティブなノードの階層に応じて子ノードを作成
+        int generation = _calculateGeneration(_activeNode!);
         Node childNode = Node(
           vector_math.Vector2(
               _activeNode!.position.x + Random().nextDouble() * 100 - 50,
               _activeNode!.position.y + Random().nextDouble() * 100 - 50),
           vector_math.Vector2(0, 0),
-          [Colors.blue, Colors.red, Colors.pink][Random().nextInt(3)],
+          _getColorForGeneration(generation + 1), // 次世代の色を取得
           20.0,
         );
         _activeNode!.children.add(childNode);
         childNode.parent = _activeNode;
         nodes.add(childNode);
       } else {
+        // ルートノードとして親ノードを作成
         nodes.add(Node(
           vector_math.Vector2(Random().nextDouble() * 400 + 100,
               Random().nextDouble() * 400 + 100),
           vector_math.Vector2(0, 0),
-          [Colors.blue, Colors.red, Colors.pink][Random().nextInt(3)],
+          _getColorForGeneration(0), // 最初の世代の色
           20.0,
         ));
       }
     });
+  }
+
+// ノードの世代を計算するヘルパーメソッド
+  int _calculateGeneration(Node node) {
+    int generation = 0;
+    Node? current = node;
+    while (current?.parent != null) {
+      generation++;
+      current = current?.parent;
+    }
+    return generation;
+  }
+
+// 世代に応じた色を返すヘルパーメソッド（HSLモデルを使用）
+  Color _getColorForGeneration(int generation) {
+    // HSL色モデルの色相（Hue）は0〜360度で表現可能。世代ごとに30度ずつ色相をずらす。
+    double hue = (generation * 10) % 360; // 世代ごとに異なる色相を設定
+    double saturation = 0.7; // 彩度（Saturation）を一定に設定
+    double lightness = 0.6; // 明度（Lightness）を一定に設定
+
+    // HSLからColorに変換
+    return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -147,35 +271,73 @@ class _NodeAnimationState extends State<NodeAnimation>
     }
   }
 
+// _updateConnectedNodesメソッドを以下のように変更します
   void _updateConnectedNodes(Node node) {
-    // 子ノードの更新
-    for (var child in node.children) {
-      vector_math.Vector2 direction = node.position - child.position;
+    // 関連するすべてのノードを探索
+    Set<Node> connectedNodes = _findConnectedNodes(node);
+
+    // 関連するすべてのノードに対して移動処理を適用
+    for (var connectedNode in connectedNodes) {
+      if (connectedNode == node) continue;
+
+      vector_math.Vector2 direction = node.position - connectedNode.position;
       double distance = direction.length;
 
-      if (distance > 200) {
-        // 最小距離より離れている場合
+      // 一定距離以上離れている場合、追従させる
+      if (distance > 150) {
+        // 追従開始距離を150に設定
         vector_math.Vector2 targetPosition =
-            node.position - direction.normalized() * 100;
+            node.position - direction.normalized() * 100; // 理想的な距離を100に設定
+
+        // 距離に応じて追従の強さを調整
+        double strengthMultiplier = (distance - 150) / 100; // 距離が離れるほど強く追従
+        strengthMultiplier = min(1.0, strengthMultiplier); // 最大値を1.0に制限
+
         vector_math.Vector2 movement =
-            (targetPosition - child.position) * attractionStrength;
-        child.velocity += movement;
+            (targetPosition - connectedNode.position) *
+                (attractionStrength * strengthMultiplier);
+
+        connectedNode.velocity += movement;
+      }
+    }
+  }
+
+// 関連するすべてのノードを見つけるためのヘルパーメソッドを追加
+  Set<Node> _findConnectedNodes(Node startNode) {
+    Set<Node> connectedNodes = {};
+    Queue<Node> queue = Queue<Node>();
+    queue.add(startNode);
+
+    while (queue.isNotEmpty) {
+      Node currentNode = queue.removeFirst();
+      if (connectedNodes.contains(currentNode)) continue;
+
+      connectedNodes.add(currentNode);
+
+      // 子ノードを追加
+      for (var child in currentNode.children) {
+        if (!connectedNodes.contains(child)) {
+          queue.add(child);
+        }
+      }
+
+      // 親ノードを追加
+      if (currentNode.parent != null &&
+          !connectedNodes.contains(currentNode.parent)) {
+        queue.add(currentNode.parent!);
+      }
+
+      // 同じ親を持つ兄弟ノードを追加
+      if (currentNode.parent != null) {
+        for (var sibling in currentNode.parent!.children) {
+          if (!connectedNodes.contains(sibling)) {
+            queue.add(sibling);
+          }
+        }
       }
     }
 
-    // 親ノードの更新
-    if (node.parent != null) {
-      vector_math.Vector2 direction = node.position - node.parent!.position;
-      double distance = direction.length;
-
-      if (distance > 200) {
-        vector_math.Vector2 targetPosition =
-            node.position - direction.normalized() * 100;
-        vector_math.Vector2 movement =
-            (targetPosition - node.parent!.position) * attractionStrength;
-        node.parent!.velocity += movement;
-      }
-    }
+    return connectedNodes;
   }
 
   void _onPanEnd(DragEndDetails details) {
@@ -305,7 +467,7 @@ class NodePainter extends CustomPainter {
       // グロー効果
       if (node.isActive) {
         final Paint glowPaint = Paint()
-          ..color = node.color.withOpacity(0.3)
+          ..color = node.color.withOpacity(1)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 20);
         canvas.drawCircle(center, node.radius * 1.5, glowPaint);
       }
