@@ -19,18 +19,19 @@ class Node {
 }
 
 class NodeAnimation extends StatefulWidget {
+  const NodeAnimation({super.key});
+
   @override
-  _NodeAnimationState createState() => _NodeAnimationState();
+  NodeAnimationState createState() => NodeAnimationState();
 }
 
-class _NodeAnimationState extends State<NodeAnimation>
+class NodeAnimationState extends State<NodeAnimation>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _signalAnimation;
   late List<Node> nodes;
   Node? _draggedNode;
   Node? _activeNode;
-  late Offset _dragStartOffset;
   final double minDistance = 100.0;
   final double repulsionStrength = 0.0001;
   final double attractionStrength = 0.001; // 引力の強さを調整
@@ -65,7 +66,7 @@ class _NodeAnimationState extends State<NodeAnimation>
     return Scaffold(
       backgroundColor: Colors.black,
       appBar: AppBar(
-        title: Text("Node Animation"),
+        title: const Text("Node Animation"),
         backgroundColor: Colors.black45,
       ),
       body: Center(
@@ -101,16 +102,16 @@ class _NodeAnimationState extends State<NodeAnimation>
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.blue[900],
                     ),
-                    child: Text("Add Node"),
+                    child: const Text("Add Node"),
                   ),
-                  SizedBox(width: 16),
+                  const SizedBox(width: 16),
                   ElevatedButton(
                     onPressed: isAligning ? null : () => _alignNodes(context),
                     style: ElevatedButton.styleFrom(
                       foregroundColor: Colors.white,
                       backgroundColor: Colors.green[900],
                     ),
-                    child: Text("Align Nodes"),
+                    child: const Text("Align Nodes"),
                   ),
                 ],
               ),
@@ -134,10 +135,8 @@ class _NodeAnimationState extends State<NodeAnimation>
 
     // 画面の中心を計算
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double screenHeight =
-        MediaQuery.of(context).size.height - AppBar().preferredSize.height;
     final double centerX = screenWidth / 2;
-    final double startY = 100.0; // 上部からの開始位置
+    const double startY = 100.0; // 上部からの開始位置
 
     // 各ルートノードとその子孫の目標位置を計算
     for (int i = 0; i < rootNodes.length; i++) {
@@ -165,7 +164,7 @@ class _NodeAnimationState extends State<NodeAnimation>
       }
 
       // 短い待機時間を入れて、アニメーションをスムーズに
-      await Future.delayed(Duration(milliseconds: 16));
+      await Future.delayed(const Duration(milliseconds: 16));
       setState(() {});
     }
 
@@ -254,9 +253,7 @@ class _NodeAnimationState extends State<NodeAnimation>
 
   void _onPanStart(DragStartDetails details) {
     _checkForNodeSelection(details.localPosition);
-    if (_draggedNode != null) {
-      _dragStartOffset = details.localPosition;
-    }
+    if (_draggedNode != null) {}
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
@@ -452,7 +449,7 @@ class NodePainter extends CustomPainter {
         final Paint signalPaint = Paint()
           ..color = Colors.white.withOpacity(0.8)
           ..style = PaintingStyle.fill
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2);
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
 
         final double signalX = start.dx + (end.dx - start.dx) * signalProgress;
         final double signalY = start.dy + (end.dy - start.dy) * signalProgress;
@@ -468,20 +465,20 @@ class NodePainter extends CustomPainter {
       if (node.isActive) {
         final Paint glowPaint = Paint()
           ..color = node.color.withOpacity(1)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 20);
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 20);
         canvas.drawCircle(center, node.radius * 1.5, glowPaint);
       }
 
       // メインの球体
       final gradient = RadialGradient(
-        center: Alignment(-0.3, -0.3),
+        center: const Alignment(-0.3, -0.3),
         radius: 0.9,
         colors: [
           Colors.white.withOpacity(0.9),
           node.color.withOpacity(0.7),
           node.color.withOpacity(0.5),
         ],
-        stops: [0.0, 0.3, 1.0],
+        stops: const [0.0, 0.3, 1.0],
       );
 
       final Paint spherePaint = Paint()
@@ -494,7 +491,7 @@ class NodePainter extends CustomPainter {
       // ハイライト
       final Paint highlightPaint = Paint()
         ..color = Colors.white.withOpacity(0.7)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3);
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 3);
 
       canvas.drawCircle(
         Offset(center.dx - node.radius * 0.3, center.dy - node.radius * 0.3),
