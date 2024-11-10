@@ -33,18 +33,18 @@ class NodeAnimationState extends State<NodeAnimation>
   late List<Node> nodes;
   Node? _draggedNode;
   Node? _activeNode;
-  static const double minDistance = 100.0;
+  static const double minDistance = 150.0;
   static const double repulsionStrength = 0.0001;
   static const double attractionStrength = 0.001;
   static const int totalSteps = 60;
-  static const double initialDistanceThreshold = 100;
-  static const double idealDistance = 100;
+  static const double initialDistanceThreshold = 150;
+  static const double idealDistance = 150;
   static const double maxStrengthMultiplier = 0.1;
 
   static const double saturation = 0.7;
   static const double lightness = 0.6;
-  static const double nodeHorizontalSpacing = 100.0;
-  static const double levelHeight = 100.0;
+  static const double nodeHorizontalSpacing = 150.0;
+  static const double levelHeight = 150.0;
   static const double alpha = 1.0;
   static const double hueShift = 20.0;
   static const double maxHue = 360.0;
@@ -116,13 +116,31 @@ class NodeAnimationState extends State<NodeAnimation>
                   onPointerSignal: (pointerSignal) {
                     if (pointerSignal is PointerScrollEvent) {
                       setState(() {
+                        // 現在のスケール値を保存
+                        final prevScale = _scale;
+
+                        // 新しいスケール値を計算
                         double newScale = _scale;
                         if (pointerSignal.scrollDelta.dy > 0) {
                           newScale *= 0.95;
                         } else {
                           newScale *= 1.05;
                         }
-                        _scale = newScale.clamp(minScale, maxScale);
+                        newScale = newScale.clamp(minScale, maxScale);
+
+                        // スケールの変化率を計算
+                        final scaleChange = newScale / prevScale;
+
+                        // 画面の中心座標を計算
+                        final screenCenter = Offset(
+                          MediaQuery.of(context).size.width / 2,
+                          MediaQuery.of(context).size.height / 2,
+                        );
+
+                        // オフセットを調整して画面中心を基準に拡大縮小
+                        _offset = screenCenter +
+                            ((_offset - screenCenter) * scaleChange);
+                        _scale = newScale;
                       });
                     }
                   },
@@ -289,8 +307,20 @@ class NodeAnimationState extends State<NodeAnimation>
 
   void _addNode() {
     setState(() {
+      // 画面の中央位置を取得
+      double screenWidth = MediaQuery.of(context).size.width;
+      double screenHeight = MediaQuery.of(context).size.height;
+
+      // 中央の座標を計算 (オフセットとスケールを考慮)
+      double centerX = (screenWidth / 2 - _offset.dx) / _scale;
+      double centerY = (screenHeight / 2 - _offset.dy) / _scale;
+
+      vector_math.Vector2 centerPosition =
+          vector_math.Vector2(centerX, centerY);
+
       if (_activeNode != null) {
         int generation = _calculateGeneration(_activeNode!);
+        // アクティブノードの位置を基に子ノードを追加
         Node childNode = Node(
           vector_math.Vector2(
               _activeNode!.position.x + Random().nextDouble() * 100 - 50,
@@ -303,9 +333,9 @@ class NodeAnimationState extends State<NodeAnimation>
         childNode.parent = _activeNode;
         nodes.add(childNode);
       } else {
+        // アクティブノードがない場合は画面の中央にノードを追加
         nodes.add(Node(
-          vector_math.Vector2(Random().nextDouble() * 400 + 100,
-              Random().nextDouble() * 400 + 100),
+          centerPosition, // 画面中央の位置を設定
           vector_math.Vector2(0, 0),
           _getColorForGeneration(0),
           20.0,
@@ -531,7 +561,6 @@ class NodePainter extends CustomPainter {
 
   NodePainter(this.nodes, this.signalProgress, this.scale, this.offset);
 
-  // 座標変換のヘルパーメソッド
   Offset transformPoint(double x, double y) {
     return Offset(
       x * scale + offset.dx,
@@ -541,15 +570,14 @@ class NodePainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    // 接続線の描画
+    // 接続線の描画部分は変更なし
     for (var node in nodes) {
       if (node.parent != null) {
         final Paint linePaint = Paint()
           ..color = Colors.white.withOpacity(0.5)
-          ..strokeWidth = 2 * scale // スケールに応じて線の太さを調整
+          ..strokeWidth = scale
           ..style = PaintingStyle.stroke
-          ..maskFilter =
-              MaskFilter.blur(BlurStyle.normal, 2 * scale); // グロー効果もスケールに応じて調整
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
         final Offset start = transformPoint(
           node.parent!.position.x,
@@ -560,29 +588,26 @@ class NodePainter extends CustomPainter {
           node.position.y,
         );
 
-        // メインの線
         canvas.drawLine(start, end, linePaint);
 
-        // 信号エフェクトの強度を交互に変える
         double opacity = 1 * (0.5 + 0.5 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
           ..color = Colors.white.withOpacity(opacity)
           ..style = PaintingStyle.fill
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 2 * scale);
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
-        // 信号の位置も変換
         final double signalX = start.dx + (end.dx - start.dx) * signalProgress;
         final double signalY = start.dy + (end.dy - start.dy) * signalProgress;
         canvas.drawCircle(Offset(signalX, signalY), 2 * scale, signalPaint);
       }
     }
 
-    // ノードの描画（細胞デザイン）
+    // 細胞本体の描画
     for (var node in nodes) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
 
-      // 細胞膜の描画（グローの追加）
+      // 細胞膜のグロー効果
       if (node.isActive) {
         final Paint glowPaint = Paint()
           ..color = node.color.withOpacity(0.9)
@@ -590,22 +615,19 @@ class NodePainter extends CustomPainter {
         canvas.drawCircle(center, scaledRadius * 1.8, glowPaint);
       }
 
-      // 細胞膜の微細なテクスチャを追加
+      // 細胞膜のテクスチャ
       final Paint texturePaint = Paint()
         ..color = Colors.white.withOpacity(0.2)
         ..strokeWidth = 0.5 * scale;
 
-      // 細胞膜に微細な模様
       for (double i = 0; i < 360; i += 15) {
         final double angle = i * 3.14159 / 180;
         final double x1 = center.dx + scaledRadius * 1.5 * cos(angle);
         final double y1 = center.dy + scaledRadius * 1.5 * sin(angle);
-        final double x2 = center.dx + scaledRadius * 1.6 * cos(angle);
-        final double y2 = center.dy + scaledRadius * 1.6 * sin(angle);
-        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), texturePaint);
+        canvas.drawCircle(Offset(x1, y1), scale * 0.5, texturePaint);
       }
 
-      // 細胞内部の描画（グラデーション）
+      // 細胞質のグラデーション
       final gradient = RadialGradient(
         center: const Alignment(0.0, 0.0),
         radius: 0.9,
@@ -624,54 +646,63 @@ class NodePainter extends CustomPainter {
 
       canvas.drawCircle(center, scaledRadius, spherePaint);
 
-      // 細胞核をリアルに描画
-      final double nucleusRadius = scaledRadius * 0.4;
+      // 細胞核の描画（改良版）
+      final double nucleusRadius = scaledRadius * 0.6;
 
-      // 細胞核のグラデーション
-      final nucleusGradient = RadialGradient(
-        center: Alignment.center,
-        radius: 0.7,
-        colors: [
-          node.color.withOpacity(0.9),
-          node.color.withOpacity(0.7),
-          node.color.withOpacity(0.5),
-        ],
-        stops: const [0.0, 0.5, 1.0],
-      );
+      // 核膜の二重構造表現
 
-      final Paint nucleusGlowPaint = Paint()
-        ..shader = nucleusGradient.createShader(
-          Rect.fromCircle(center: center, radius: nucleusRadius),
+      final Paint nuclearEnvelopePaint = Paint()
+        ..shader = gradient.createShader(
+            Rect.fromCircle(center: center, radius: nucleusRadius))
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = scale * 0.1;
+
+// 内側の二重構造を描画
+      canvas.drawCircle(
+          center, nucleusRadius - scale * 2, nuclearEnvelopePaint);
+
+      // 核小体の表現
+      final Paint nucleolusPaint = Paint()
+        ..color = node.color.withOpacity(1)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
+
+      for (int i = 0; i < 3; i++) {
+        final double angle = Random().nextDouble() * 2 * pi;
+        final double radius = nucleusRadius * 0.3 * Random().nextDouble();
+        final Offset nucleolusPosition = Offset(
+          center.dx + cos(angle) * radius,
+          center.dy + sin(angle) * radius,
         );
-      canvas.drawCircle(center, nucleusRadius, nucleusGlowPaint);
-
-      // 細胞核の表面テクスチャ
-      final Paint nucleusTexturePaint = Paint()
-        ..color = Colors.white.withOpacity(0.15)
-        ..strokeWidth = 0.5 * scale;
-
-      for (double i = 0; i < 360; i += 10) {
-        final double angle = i * 3.14159 / 180;
-        final double x1 = center.dx + nucleusRadius * cos(angle);
-        final double y1 = center.dy + nucleusRadius * sin(angle);
-        final double x2 = center.dx + (nucleusRadius + 5 * scale) * cos(angle);
-        final double y2 = center.dy + (nucleusRadius + 5 * scale) * sin(angle);
-        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), nucleusTexturePaint);
+        canvas.drawCircle(nucleolusPosition, scale * 2, nucleolusPaint);
       }
 
-      // 光沢効果
-      final Paint glossyPaint = Paint()
-        ..color = Colors.white.withOpacity(0.3)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 3 * scale);
+      // 核質の質感表現
+      final Paint nucleoplasmPaint = Paint()
+        ..color = Colors.white.withOpacity(0.1)
+        ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
-      canvas.drawCircle(center, nucleusRadius * 0.3, glossyPaint);
+      for (int i = 0; i < 20; i++) {
+        final double angle = Random().nextDouble() * 2 * pi;
+        final double radius = nucleusRadius * Random().nextDouble() * 0.8;
+        final Offset specklePosition = Offset(
+          center.dx + cos(angle) * radius,
+          center.dy + sin(angle) * radius,
+        );
+        canvas.drawCircle(specklePosition, scale * 0.5, nucleoplasmPaint);
+      }
 
-      // 陰影効果
-      final Paint shadowPaint = Paint()
-        ..color = Colors.black.withOpacity(0.2)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4 * scale);
+      // 3D効果のための光沢
+      final Paint highlightPaint = Paint()
+        ..shader = RadialGradient(
+          center: const Alignment(-0.3, -0.3),
+          radius: 0.2,
+          colors: [
+            Colors.white.withOpacity(0.4),
+            Colors.white.withOpacity(0.0),
+          ],
+        ).createShader(Rect.fromCircle(center: center, radius: nucleusRadius));
 
-      canvas.drawCircle(center, nucleusRadius * 0.4, shadowPaint);
+      canvas.drawCircle(center, nucleusRadius, highlightPaint);
     }
   }
 
