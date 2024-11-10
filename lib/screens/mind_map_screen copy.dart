@@ -32,22 +32,11 @@ class NodeAnimationState extends State<NodeAnimation>
   late List<Node> nodes;
   Node? _draggedNode;
   Node? _activeNode;
-  static const double minDistance = 100.0; // 最小距離
-  static const double repulsionStrength = 0.0001; // 反発力の強さ
-  static const double attractionStrength = 0.001; // 引力の強さ
-  static const int totalSteps = 60; // アニメーションのステップ数
-  static const double initialDistanceThreshold = 150; // 追従開始距離
-  static const double idealDistance = 100; // 理想的な距離
-  static const double maxStrengthMultiplier = 0.1; // 最大強さの倍率
-
-  // 定数を定義
-  static const double saturation = 0.7; // 彩度
-  static const double lightness = 0.6; // 明度
-  static const double nodeHorizontalSpacing = 100.0; // ノード間の水平方向のスペース
-  static const double levelHeight = 100.0; // ノードの垂直方向の間隔
-  static const double alpha = 1.0; // 不透明度
-  static const double hueShift = 10.0; // 色相の変化量
-  static const double maxHue = 360.0; // 色相の最大値
+  final double minDistance = 100.0;
+  final double repulsionStrength = 0.0001;
+  final double attractionStrength = 0.001; // 引力の強さを調整
+  final double levelHeight = 100.0; // 階層間の垂直距離
+  final double nodeHorizontalSpacing = 110.0; // ノード間の水平距離
   bool isAligning = false; // 整列中かどうかのフラグ
 
   @override
@@ -157,6 +146,7 @@ class NodeAnimationState extends State<NodeAnimation>
     }
 
     // アニメーションで位置を更新
+    const int totalSteps = 60; // アニメーションのステップ数
     for (int step = 0; step < totalSteps; step++) {
       for (var node in nodes) {
         if (node._targetPosition != null) {
@@ -251,11 +241,13 @@ class NodeAnimationState extends State<NodeAnimation>
   }
 
   Color _getColorForGeneration(int generation) {
-    // 世代ごとに色相をずらす
-    double hue = (generation * hueShift) % maxHue;
+    // HSL色モデルの色相（Hue）は0〜360度で表現可能。世代ごとに10度ずつ色相をずらす。
+    double hue = (generation * 10) % 360; // 世代ごとに異なる色相を設定
+    double saturation = 0.7; // 彩度（Saturation）を一定に設定
+    double lightness = 0.6; // 明度（Lightness）を一定に設定
 
     // HSLからColorに変換
-    return HSLColor.fromAHSL(alpha, hue, saturation, lightness).toColor();
+    return HSLColor.fromAHSL(1.0, hue, saturation, lightness).toColor();
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -275,6 +267,7 @@ class NodeAnimationState extends State<NodeAnimation>
     }
   }
 
+// _updateConnectedNodesメソッドを以下のように変更します
   void _updateConnectedNodes(Node node) {
     // 関連するすべてのノードを探索
     Set<Node> connectedNodes = _findConnectedNodes(node);
@@ -287,16 +280,14 @@ class NodeAnimationState extends State<NodeAnimation>
       double distance = direction.length;
 
       // 一定距離以上離れている場合、追従させる
-      if (distance > initialDistanceThreshold) {
+      if (distance > 150) {
         // 追従開始距離を150に設定
-        vector_math.Vector2 targetPosition = node.position -
-            direction.normalized() * idealDistance; // 理想的な距離を100に設定
+        vector_math.Vector2 targetPosition =
+            node.position - direction.normalized() * 100; // 理想的な距離を100に設定
 
         // 距離に応じて追従の強さを調整
-        double strengthMultiplier = (distance - initialDistanceThreshold) /
-            idealDistance; // 距離が離れるほど強く追従
-        strengthMultiplier = min(maxStrengthMultiplier,
-            strengthMultiplier); // 最大値をmaxStrengthMultiplierに制限
+        double strengthMultiplier = (distance - 150) / 100; // 距離が離れるほど強く追従
+        strengthMultiplier = min(0.1, strengthMultiplier); // 最大値を1.0に制限
 
         vector_math.Vector2 movement =
             (targetPosition - connectedNode.position) *
@@ -416,7 +407,7 @@ class NodeAnimationState extends State<NodeAnimation>
           vector_math.Vector2 direction =
               vector_math.Vector2(dx, dy).normalized();
           vector_math.Vector2 movement =
-              direction * (distance - 100) * attractionStrength; // 近づく強さを調整
+              direction * (distance - 100) * 0.001; // 近づく強さを調整
           node.position -= movement;
         }
       }
