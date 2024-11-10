@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/screens/mind_map_3d_screen.dart';
 import 'package:flutter_app/screens/mind_map_screen.dart';
+import 'package:flutter_app/screens/my_3d_view.dart';
 import 'detail_screen.dart';
 import 'icons_screen.dart'; // IconsScreenをインポート
 import '../widgets/square_button.dart';
@@ -25,13 +27,13 @@ class HomeScreen extends StatelessWidget {
       },
       {
         'icon': Icons.quiz,
-        'title': 'TEST2',
+        'title': 'Mind Map 3D',
         'color': Colors.orange,
         'index': 2,
       },
       {
         'icon': Icons.quiz,
-        'title': 'TEST3',
+        'title': 'TEST',
         'color': Colors.pink,
         'index': 3,
       },
@@ -79,6 +81,18 @@ class HomeScreen extends StatelessWidget {
                             context,
                             MaterialPageRoute(
                               builder: (context) => const NodeAnimation(),
+                            ));
+                      } else if (buttonData[index]['title'] == 'Mind Map 3D') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const MindMapScreen(),
+                            ));
+                      } else if (buttonData[index]['title'] == 'TEST') {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => const NodeAnimation3D(),
                             ));
                       } else {
                         Navigator.push(

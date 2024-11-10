@@ -1,0 +1,129 @@
+node_animation:
+  description: |
+    物理シミュレーションを使用したノードアニメーションを提供するアプリケーション。ノードは3D空間内で移動し、ノード間の引力や反発力によって相互作用します。
+    ユーザーはタッチ操作でノードを移動でき、ノードの階層を整列させることができます。ノード間の接続線や信号エフェクトも表示されます。
+
+  components:
+    - Node:
+        description: |
+          ノードを表現するクラス。位置、速度、親子関係、色などを持ち、3D空間でのシミュレーションに必要な属性を保持します。
+        attributes:
+          position: vector_math.Vector3 # ノードの位置 (x, y, z)
+          velocity: vector_math.Vector3 # ノードの速度 (dx, dy, dz)
+          _targetPosition: vector_math.Vector3? # ノードの目標位置 (x, y, z)
+          color: Color # ノードの色
+          radius: double # ノードの半径
+          isActive: bool # ノードがアクティブかどうか
+          parent: Node? # 親ノード
+          children: List<Node> # 子ノードのリスト
+
+    - NodeAnimation:
+        description: |
+          ノードアニメーションを管理するウィジェット。ノードの物理的な相互作用、整列機能、タッチ操作によるインタラクションを提供します。
+        attributes:
+          nodes: List<Node> # ノードのリスト
+          _draggedNode: Node? # ドラッグされているノード
+          _activeNode: Node? # アクティブなノード
+          minDistance: double # ノード間の最小距離
+          repulsionStrength: double # 反発力の強さ
+          attractionStrength: double # 引力の強さ
+          levelHeight: double # 階層間の垂直距離
+          nodeHorizontalSpacing: double # ノード間の水平距離
+          isAligning: bool # ノードを整列中かどうかのフラグ
+
+    - NodePainter:
+        description: |
+          ノードを描画するカスタムペインター。ノードとその接続線を描画し、信号エフェクトやノードのアクティブ状態に応じたグロー効果を適用します。
+        attributes:
+          nodes: List<Node> # 描画するノードのリスト
+          signalProgress: double # 信号エフェクトの進行状況
+
+  methods:
+    - _alignNodes:
+        description: |
+          ノードを整列させる処理。ルートノードとその子孫ノードを画面上に整列させる。
+        inputs:
+          context: BuildContext # 整列を開始するためのコンテキスト
+
+    - _addNode:
+        description: |
+          新しいノードを追加する処理。ノードが選択されている場合は子ノードを追加し、選択されていない場合はルートノードを追加する。
+
+    - _calculateTargetPositions:
+        description: |
+          ノードの目標位置を計算する処理。親ノードから子ノードへと位置を計算し、目標位置を設定します。
+
+    - _easeInOutCubic:
+        description: |
+          イージング関数。アニメーションの進行具合を滑らかにするための補間関数。
+
+    - _updatePhysics:
+        description: |
+          ノード間の物理的な相互作用を更新する処理。ノード同士の反発力、引力、摩擦などを計算し、位置と速度を更新します。
+
+    - _onPanStart:
+        description: |
+          パン操作が開始された時の処理。ノード選択を確認し、ドラッグを開始します。
+
+    - _onPanUpdate:
+        description: |
+          パン操作中の更新処理。ノードの位置を更新し、接続されているノードを更新します。
+
+    - _onPanEnd:
+        description: |
+          パン操作が終了した際の処理。ドラッグされていたノードをリセットします。
+
+    - _onTapUp:
+        description: |
+          タップ操作が終了した時の処理。ノード選択を確認し、アクティブなノードを設定します。
+
+    - _checkForNodeSelection:
+        description: |
+          ノードがタップされたかを判定する処理。タップ位置がノードの範囲内であれば、そのノードをアクティブにします。
+
+    - _updateConnectedNodes:
+        description: |
+          関連するすべてのノードの位置を更新する処理。ノード同士の距離が離れすぎている場合、ノードの位置を調整します。
+
+    - _findConnectedNodes:
+        description: |
+          ノードに接続されているすべてのノードを探索する処理。親、子、および兄弟ノードを再帰的に探索します。
+
+  interactions:
+    - touch:
+        description: |
+          ユーザーはタッチ操作（ドラッグやタップ）でノードを移動したり、アクティブなノードを変更できます。
+
+    - node_addition:
+        description: |
+          新しいノードを追加できる機能。既存のノードに子ノードを追加するか、ルートノードを追加できます。
+
+    - node_alignment:
+        description: |
+          ノードを整列させる機能。ルートノードとその子孫を指定された位置に配置します。
+
+  physics:
+    - repulsion:
+        description: |
+          ノード間に反発力を加え、ノード同士が近づきすぎないようにします。最小距離を下回ると反発力が働きます。
+
+    - attraction:
+        description: |
+          ノードが接続されている場合、引力が働き、ノードが互いに引き寄せられます。距離に応じて強さが調整されます。
+
+    - friction:
+        description: |
+          ノードの速度に摩擦が加わり、速度が減衰します。これにより、ノードの動きが滑らかになります。
+
+    - boundary:
+        description: |
+          画面端に達したノードは反発し、画面内に収められるように位置が調整されます。
+
+  design:
+    color_model: HSL # 色相環に基づく色設定（HSLモデル）
+    visual_effects:
+      - glow_effect: true # ノードがアクティブな場合、グロー効果を適用
+      - signal_effect: true # ノードの接続線に信号エフェクトを適用
+    layout:
+      - screen_width: double # 画面の横幅
+      - screen_height: double # 画面の高さ
