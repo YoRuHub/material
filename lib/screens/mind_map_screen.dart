@@ -35,8 +35,8 @@ class NodeAnimationState extends State<NodeAnimation>
   static const double minDistance = 100.0; // 最小距離
   static const double repulsionStrength = 0.0001; // 反発力の強さ
   static const double attractionStrength = 0.001; // 引力の強さ
-  static const int totalSteps = 60; // アニメーションのステップ数
-  static const double initialDistanceThreshold = 150; // 追従開始距離
+  static const int totalSteps = 60; // アニメーションのステップ数(分割数)
+  static const double initialDistanceThreshold = 100; // 追従開始距離
   static const double idealDistance = 100; // 理想的な距離
   static const double maxStrengthMultiplier = 0.1; // 最大強さの倍率
 
@@ -460,9 +460,10 @@ class NodePainter extends CustomPainter {
     for (var node in nodes) {
       if (node.parent != null) {
         final Paint linePaint = Paint()
-          ..color = Colors.white.withOpacity(0.3)
-          ..strokeWidth = 1.0
-          ..style = PaintingStyle.stroke;
+          ..color = Colors.white.withOpacity(0.5)
+          ..strokeWidth = 0
+          ..style = PaintingStyle.stroke
+          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2); // グロー効果追加
 
         final Offset start =
             Offset(node.parent!.position.x, node.parent!.position.y);
@@ -471,9 +472,10 @@ class NodePainter extends CustomPainter {
         // メインの線
         canvas.drawLine(start, end, linePaint);
 
-        // 信号エフェクト
+        // 信号エフェクトの強度を交互に変える
+        double opacity = 1 * (0.5 + 0.5 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
-          ..color = Colors.white.withOpacity(0.8)
+          ..color = Colors.white.withOpacity(opacity)
           ..style = PaintingStyle.fill
           ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 2);
 
@@ -551,10 +553,9 @@ class NodePainter extends CustomPainter {
       canvas.drawCircle(center, nucleusRadius, nucleusGlowPaint);
 
       // 3. 細胞核の表面にノイズを加える（質感）
-      final Paint nucleusTexturePaint =
-          Paint() // Renamed to 'nucleusTexturePaint'
-            ..color = Colors.white.withOpacity(0.15)
-            ..strokeWidth = 0.5;
+      final Paint nucleusTexturePaint = Paint()
+        ..color = Colors.white.withOpacity(0.15)
+        ..strokeWidth = 0.5;
 
       // 細胞核表面に細かなノイズを描画
       for (double i = 0; i < 360; i += 10) {
@@ -563,8 +564,7 @@ class NodePainter extends CustomPainter {
         final double y1 = center.dy + nucleusRadius * sin(angle);
         final double x2 = center.dx + (nucleusRadius + 5) * cos(angle);
         final double y2 = center.dy + (nucleusRadius + 5) * sin(angle);
-        canvas.drawLine(Offset(x1, y1), Offset(x2, y2),
-            nucleusTexturePaint); // Use renamed variable
+        canvas.drawLine(Offset(x1, y1), Offset(x2, y2), nucleusTexturePaint);
       }
 
       // 4. 光沢感の追加（反射効果）
