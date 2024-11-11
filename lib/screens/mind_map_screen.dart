@@ -2,7 +2,10 @@ import 'dart:collection';
 import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/widgets/add_node_button.dart';
+import 'package:flutter_app/widgets/positioned_text.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
+import '../widgets/tool_bar.dart';
 
 class Node {
   vector_math.Vector2 position;
@@ -44,7 +47,7 @@ class NodeAnimationState extends State<NodeAnimation>
   static const double saturation = 0.7;
   static const double lightness = 0.6;
   static const double nodeHorizontalSpacing = 150.0;
-  static const double levelHeight = 150.0;
+  static const double levelHeight = 100.0;
   static const double alpha = 1.0;
   static const double hueShift = 20.0;
   static const double maxHue = 360.0;
@@ -189,76 +192,91 @@ class NodeAnimationState extends State<NodeAnimation>
                   ),
                 ),
               ),
-              Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    ElevatedButton(
-                      onPressed: _addNode,
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.blue[900],
-                      ),
-                      child: const Text("Add Node"),
-                    ),
-                    const SizedBox(width: 16),
-                    ElevatedButton(
-                      onPressed: isAligning ? null : () => _alignNodes(context),
-                      style: ElevatedButton.styleFrom(
-                        foregroundColor: Colors.white,
-                        backgroundColor: Colors.green[900],
-                      ),
-                      child: const Text("Align Nodes"),
-                    ),
-                  ],
-                ),
-              ),
             ],
           ),
-          // 座標表示を左上に配置
-          Positioned(
-            left: 10,
-            top: 10,
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.black.withOpacity(0.7),
-                borderRadius: BorderRadius.circular(5),
+          Stack(
+            children: [
+              // 座標表示をToolBoxの上に表示
+              PositionedText(
+                offsetX: _offset.dx, // _offsetからX座標を渡す
+                offsetY: _offset.dy, // _offsetからY座標を渡す
+                scaleZ: _scale, // _scaleからZ座標を渡す
               ),
-              child: Text(
-                'X: ${_offset.dx.toStringAsFixed(1)}\nY: ${_offset.dy.toStringAsFixed(1)}',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 14,
-                ),
+              // ツールボックスの表示
+              ToolBarWidget(
+                // ToolBoxWidgetを使用
+                alignNodes: _alignNodes,
+                isAligning: isAligning,
+                deleteActiveNode: _deleteActiveNode,
               ),
-            ),
+              // 右下に四角いFloatingActionButtonを配置
+              AddNodeButton(onPressed: _addNode),
+            ],
           ),
         ],
       ),
     );
   }
 
+  void _deleteActiveNode() {
+    if (_activeNode != null) {
+      // 子ノードも再帰的に削除
+      _deleteNodeAndChildren(_activeNode!);
+    }
+    //アクティブ状態を解除
+    setState(() {
+      _activeNode = null;
+    });
+  }
+
+  void _deleteNodeAndChildren(Node node) {
+    // 子ノードを逆順に削除
+    for (var i = node.children.length - 1; i >= 0; i--) {
+      _deleteNodeAndChildren(node.children[i]);
+    }
+
+    // 子ノードを削除
+    node.parent?.children.remove(node);
+
+    // ノードを削除
+    nodes.remove(node);
+  }
+
   void _alignNodes(BuildContext context) async {
+    debugPrint('Aligning nodes...');
     if (nodes.isEmpty) return;
 
     setState(() {
       isAligning = true;
     });
 
+    // ルートノードを特定
     List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
 
+    // 画面の中心を計算
     final double screenWidth = MediaQuery.of(context).size.width;
-    final double centerX = screenWidth / 2;
+    final double screenCenterX = screenWidth / 2;
     const double startY = 100.0;
 
-    for (int i = 0; i < rootNodes.length; i++) {
-      double rootX = centerX +
-          (i - (rootNodes.length - 1) / 2) * (nodeHorizontalSpacing * 2);
-      _calculateTargetPositions(rootNodes[i], rootX, startY, screenWidth);
+    // 各ルートノードのサブツリーの幅を計算
+    Map<Node, double> nodeWidths = {};
+    for (var root in rootNodes) {
+      _calculateSubtreeWidth(root, nodeWidths);
     }
 
+    // ルートノードの合計幅を計算
+    double totalWidth =
+        rootNodes.fold(0.0, (sum, node) => sum + nodeWidths[node]!);
+    double startX = screenCenterX - totalWidth / 2;
+
+    // 各ルートノードとその子孫の目標位置を計算
+    double currentX = startX;
+    for (var root in rootNodes) {
+      _calculateTargetPositions(root, currentX, startY, nodeWidths);
+      currentX += nodeWidths[root]!;
+    }
+
+    // アニメーションでノードを移動
     for (int step = 0; step < totalSteps; step++) {
       for (var node in nodes) {
         if (node._targetPosition != null) {
@@ -283,21 +301,51 @@ class NodeAnimationState extends State<NodeAnimation>
     });
   }
 
+  // サブツリーの幅を計算するヘルパーメソッド
+  double _calculateSubtreeWidth(Node node, Map<Node, double> nodeWidths) {
+    if (node.children.isEmpty) {
+      // 葉ノードの場合は最小幅を返す
+      double width = nodeHorizontalSpacing;
+      nodeWidths[node] = width;
+      return width;
+    }
+
+    // 子ノードの幅の合計を計算
+    double width = node.children.fold(0.0, (sum, child) {
+      return sum + _calculateSubtreeWidth(child, nodeWidths);
+    });
+
+    // ノードの幅を保存
+    nodeWidths[node] = width;
+    return width;
+  }
+
   void _calculateTargetPositions(
-      Node node, double x, double y, double maxWidth) {
-    node._targetPosition = vector_math.Vector2(x, y);
+      Node node, double startX, double y, Map<Node, double> nodeWidths) {
+    // このノードのサブツリーの幅を取得
+    double subtreeWidth = nodeWidths[node]!;
 
-    if (node.children.isEmpty) return;
+    // このノードの中心位置を計算
+    double centerX = startX + subtreeWidth / 2;
 
-    double totalWidth = (node.children.length - 1) * nodeHorizontalSpacing;
-    double startX = x - totalWidth / 2;
+    // このノードの目標位置を設定
+    node._targetPosition = vector_math.Vector2(centerX, y);
 
-    for (int i = 0; i < node.children.length; i++) {
-      double childX = startX + i * nodeHorizontalSpacing;
-      childX = childX.clamp(node.radius, maxWidth - node.radius);
+    if (node.children.isNotEmpty) {
+      // 子ノードの配置開始位置を計算
+      double childStartX = startX;
 
-      _calculateTargetPositions(
-          node.children[i], childX, y + levelHeight, maxWidth);
+      // 各子ノードとそのサブツリーを配置
+      for (var child in node.children) {
+        _calculateTargetPositions(
+          child,
+          childStartX,
+          y + levelHeight,
+          nodeWidths,
+        );
+        // 次の子ノードの開始位置を更新
+        childStartX += nodeWidths[child]!;
+      }
     }
   }
 
@@ -333,9 +381,13 @@ class NodeAnimationState extends State<NodeAnimation>
         childNode.parent = _activeNode;
         nodes.add(childNode);
       } else {
-        // アクティブノードがない場合は画面の中央にノードを追加
+        vector_math.Vector2 offsetPosition = centerPosition +
+            vector_math.Vector2(
+                Random().nextDouble() * 50 - 25, // ランダムでX軸方向に少し動かす
+                Random().nextDouble() * 50 - 25 // ランダムでY軸方向に少し動かす
+                );
         nodes.add(Node(
-          centerPosition, // 画面中央の位置を設定
+          offsetPosition, // 少し動かした位置を設定
           vector_math.Vector2(0, 0),
           _getColorForGeneration(0),
           20.0,
@@ -538,11 +590,11 @@ class NodeAnimationState extends State<NodeAnimation>
         double dy = node.position.y - node.parent!.position.y;
         double distance = sqrt(dx * dx + dy * dy);
 
-        if (distance > 100) {
+        if (distance > minDistance) {
           vector_math.Vector2 direction =
               vector_math.Vector2(dx, dy).normalized();
           vector_math.Vector2 movement =
-              direction * (distance - 100) * attractionStrength;
+              direction * (distance - minDistance) * attractionStrength;
           node.position -= movement;
         }
       }
