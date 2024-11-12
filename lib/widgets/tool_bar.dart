@@ -1,24 +1,30 @@
 import 'package:flutter/material.dart';
 
 class ToolBarWidget extends StatefulWidget {
-  final Function alignNodes;
+  final Function alignNodesHorizontal;
+  final Function alignNodesVertical;
   final bool isAligning;
+  final Function detachChildren;
   final Function deleteActiveNode; // 削除用の関数
 
   const ToolBarWidget({
     super.key,
-    required this.alignNodes,
+    required this.alignNodesHorizontal,
+    required this.alignNodesVertical,
     required this.isAligning,
+    required this.detachChildren,
     required this.deleteActiveNode, // 関数を受け取る
   });
 
   @override
-  _ToolBarWidgetState createState() => _ToolBarWidgetState();
+  ToolBarWidgetState createState() => ToolBarWidgetState();
 }
 
-class _ToolBarWidgetState extends State<ToolBarWidget> {
+class ToolBarWidgetState extends State<ToolBarWidget> {
   // ホバー状態を管理するための変数
-  bool isHoveredAlign = false;
+  bool isHoveredAlignHorizontal = false;
+  bool isHoveredAlignVertical = false;
+  bool isHoveredDetach = false;
   bool isHoveredDelete = false;
 
   @override
@@ -30,7 +36,7 @@ class _ToolBarWidgetState extends State<ToolBarWidget> {
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.1),
+            color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12.0),
             boxShadow: [
               BoxShadow(
@@ -42,56 +48,99 @@ class _ToolBarWidgetState extends State<ToolBarWidget> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              Tooltip(
-                message: '整列',
-                child: MouseRegion(
-                  onEnter: (_) {
-                    setState(() {
-                      isHoveredAlign = true; // ホバー時に色を変更
-                    });
+              MouseRegion(
+                onEnter: (_) {
+                  setState(() {
+                    isHoveredAlignHorizontal = true; // ホバー時に色を変更
+                  });
+                },
+                onExit: (_) {
+                  setState(() {
+                    isHoveredAlignHorizontal = false; // ホバー解除時に元の色に戻す
+                  });
+                },
+                child: IconButton(
+                  icon: Icon(
+                    Icons.share,
+                    color: isHoveredAlignHorizontal || widget.isAligning
+                        ? Colors.cyan
+                        : Colors.cyan[900],
+                    size: 24.0,
+                  ),
+                  onPressed: () {
+                    widget.alignNodesHorizontal(context);
                   },
-                  onExit: (_) {
-                    setState(() {
-                      isHoveredAlign = false; // ホバー解除時に元の色に戻す
-                    });
-                  },
-                  child: IconButton(
-                    icon: Icon(
+                ),
+              ),
+              MouseRegion(
+                onEnter: (_) {
+                  setState(() {
+                    isHoveredAlignVertical = true; // ホバー時に色を変更
+                  });
+                },
+                onExit: (_) {
+                  setState(() {
+                    isHoveredAlignVertical = false; // ホバー解除時に元の色に戻す
+                  });
+                },
+                child: IconButton(
+                  icon: RotatedBox(
+                    quarterTurns: 1, // 90度回転
+                    child: Icon(
                       Icons.share,
-                      color: isHoveredAlign || widget.isAligning
+                      color: isHoveredAlignVertical || widget.isAligning
                           ? Colors.cyan
                           : Colors.cyan[900],
                       size: 24.0,
                     ),
-                    onPressed: () {
-                      widget.alignNodes(context);
-                    },
                   ),
+                  onPressed: () {
+                    widget.alignNodesVertical(context);
+                  },
                 ),
               ),
-              Tooltip(
-                message: 'ノード削除',
-                child: MouseRegion(
-                  onEnter: (_) {
-                    setState(() {
-                      isHoveredDelete = true; // ホバー時に色を変更
-                    });
-                  },
-                  onExit: (_) {
-                    setState(() {
-                      isHoveredDelete = false; // ホバー解除時に元の色に戻す
-                    });
-                  },
-                  child: IconButton(
-                    icon: Icon(
-                      Icons.delete,
-                      color: isHoveredDelete ? Colors.cyan : Colors.cyan[900],
-                      size: 24.0,
-                    ),
-                    onPressed: () {
-                      widget.deleteActiveNode(); // ボタンが押されたら削除関数を実行
-                    },
+              MouseRegion(
+                onEnter: (_) {
+                  setState(() {
+                    isHoveredDetach = true; // ホバー時に色を変更
+                  });
+                },
+                onExit: (_) {
+                  setState(() {
+                    isHoveredDetach = false; // ホバー解除時に元の色に戻す
+                  });
+                },
+                child: IconButton(
+                  icon: Icon(
+                    Icons.scatter_plot,
+                    color: isHoveredDetach ? Colors.cyan : Colors.cyan[900],
+                    size: 24.0,
                   ),
+                  onPressed: () {
+                    widget.detachChildren(); // ボタンが押されたら削除関数を実行
+                  },
+                ),
+              ),
+              MouseRegion(
+                onEnter: (_) {
+                  setState(() {
+                    isHoveredDelete = true; // ホバー時に色を変更
+                  });
+                },
+                onExit: (_) {
+                  setState(() {
+                    isHoveredDelete = false; // ホバー解除時に元の色に戻す
+                  });
+                },
+                child: IconButton(
+                  icon: Icon(
+                    Icons.delete,
+                    color: isHoveredDelete ? Colors.cyan : Colors.cyan[900],
+                    size: 24.0,
+                  ),
+                  onPressed: () {
+                    widget.deleteActiveNode(); // ボタンが押されたら削除関数を実行
+                  },
                 ),
               ),
             ],

@@ -38,7 +38,7 @@ class NodeAnimationState extends State<NodeAnimation>
   Node? _activeNode;
   static const double minDistance = 150.0;
   static const double repulsionStrength = 0.0001;
-  static const double attractionStrength = 0.001;
+  static const double attractionStrength = 0.01;
   static const int totalSteps = 60;
   static const double initialDistanceThreshold = 150;
   static const double idealDistance = 150;
@@ -47,7 +47,7 @@ class NodeAnimationState extends State<NodeAnimation>
   static const double saturation = 0.7;
   static const double lightness = 0.6;
   static const double nodeHorizontalSpacing = 150.0;
-  static const double levelHeight = 100.0;
+  static const double levelHeight = 150.0;
   static const double alpha = 1.0;
   static const double hueShift = 20.0;
   static const double maxHue = 360.0;
@@ -103,7 +103,6 @@ class NodeAnimationState extends State<NodeAnimation>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.black,
       appBar: AppBar(
         title: const Text("Node Animation"),
         backgroundColor: Colors.black45,
@@ -205,8 +204,10 @@ class NodeAnimationState extends State<NodeAnimation>
               // ツールボックスの表示
               ToolBarWidget(
                 // ToolBoxWidgetを使用
-                alignNodes: _alignNodes,
+                alignNodesHorizontal: _alignNodesHorizontal,
+                alignNodesVertical: _alignNodesVertical,
                 isAligning: isAligning,
+                detachChildren: _detachChildrenFromActiveNode,
                 deleteActiveNode: _deleteActiveNode,
               ),
               // 右下に四角いFloatingActionButtonを配置
@@ -216,6 +217,29 @@ class NodeAnimationState extends State<NodeAnimation>
         ],
       ),
     );
+  }
+
+  void _detachChildrenFromActiveNode() {
+    if (_activeNode != null) {
+      setState(() {
+        // 子ノードを切り離す
+        for (var child in _activeNode!.children) {
+          child.parent = null; // 親ノードをnullに設定
+        }
+        _activeNode!.children.clear(); // 子ノードリストを空にする
+
+        // アクティブノードの色を更新
+        _updateNodeColor(_activeNode!);
+
+        // 切り離した後、ノードの色を再計算
+        for (var node in nodes) {
+          if (node.parent == null) {
+            // 親がないノード（独立したノード）の色をリセット
+            _updateNodeColor(node);
+          }
+        }
+      });
+    }
   }
 
   void _deleteActiveNode() {
@@ -242,7 +266,7 @@ class NodeAnimationState extends State<NodeAnimation>
     nodes.remove(node);
   }
 
-  void _alignNodes(BuildContext context) async {
+  void _alignNodesVertical(BuildContext context) async {
     debugPrint('Aligning nodes...');
     if (nodes.isEmpty) return;
 
@@ -353,6 +377,114 @@ class NodeAnimationState extends State<NodeAnimation>
     return t < 0.5 ? 4 * t * t * t : 1 - pow(-2 * t + 2, 3) / 2;
   }
 
+  void _alignNodesHorizontal(BuildContext context) async {
+    debugPrint('Aligning nodes horizontally...');
+    if (nodes.isEmpty) return;
+
+    setState(() {
+      isAligning = true;
+    });
+
+    // ルートノードを特定
+    List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
+
+    // 画面の中心を計算
+    final double screenHeight = MediaQuery.of(context).size.height;
+    final double screenCenterY = screenHeight / 2;
+    const double startX = 100.0;
+
+    // 各ルートノードのサブツリーの高さを計算（横展開なので高さを基準にします）
+    Map<Node, double> nodeHeights = {};
+    for (var root in rootNodes) {
+      _calculateSubtreeHeight(root, nodeHeights);
+    }
+
+    // ルートノードの合計高さを計算
+    double totalHeight =
+        rootNodes.fold(0.0, (sum, node) => sum + nodeHeights[node]!);
+    double startY = screenCenterY - totalHeight / 2;
+
+    // 各ルートノードとその子孫の目標位置を計算
+    double currentY = startY;
+    for (var root in rootNodes) {
+      _calculateTargetPositionsHorizontal(root, startX, currentY, nodeHeights);
+      currentY += nodeHeights[root]!;
+    }
+
+    // アニメーションでノードを移動
+    for (int step = 0; step < totalSteps; step++) {
+      for (var node in nodes) {
+        if (node._targetPosition != null) {
+          double progress = step / totalSteps;
+          double easedProgress = _easeInOutCubic(progress);
+
+          vector_math.Vector2 start = node.position;
+          vector_math.Vector2 target = node._targetPosition!;
+          node.position = vector_math.Vector2(
+            start.x + (target.x - start.x) * easedProgress,
+            start.y + (target.y - start.y) * easedProgress,
+          );
+        }
+      }
+
+      await Future.delayed(const Duration(milliseconds: 16));
+      setState(() {});
+    }
+
+    setState(() {
+      isAligning = false;
+    });
+  }
+
+// サブツリーの高さを計算するヘルパーメソッド（横展開用）
+  double _calculateSubtreeHeight(Node node, Map<Node, double> nodeHeights) {
+    if (node.children.isEmpty) {
+      // 葉ノードの場合は最小高さを返す
+      double height = minDistance;
+      nodeHeights[node] = height;
+      return height;
+    }
+
+    // 子ノードの高さの合計を計算
+    double height = node.children.fold(0.0, (sum, child) {
+      return sum + _calculateSubtreeHeight(child, nodeHeights);
+    });
+
+    // ノードの高さを保存
+    nodeHeights[node] = height;
+    return height;
+  }
+
+// 横に展開した場合のターゲット位置を計算
+  void _calculateTargetPositionsHorizontal(
+      Node node, double x, double startY, Map<Node, double> nodeHeights) {
+    // このノードのサブツリーの高さを取得
+    double subtreeHeight = nodeHeights[node]!;
+
+    // このノードの中心位置を計算
+    double centerY = startY + subtreeHeight / 2;
+
+    // このノードの目標位置を設定
+    node._targetPosition = vector_math.Vector2(x, centerY);
+
+    if (node.children.isNotEmpty) {
+      // 子ノードの配置開始位置を計算
+      double childStartY = startY;
+
+      // 各子ノードとそのサブツリーを配置
+      for (var child in node.children) {
+        _calculateTargetPositionsHorizontal(
+          child,
+          x + minDistance, // 横に展開するので、x座標を次に進める
+          childStartY,
+          nodeHeights,
+        );
+        // 次の子ノードの開始位置を更新
+        childStartY += nodeHeights[child]!;
+      }
+    }
+  }
+
   void _addNode() {
     setState(() {
       // 画面の中央位置を取得
@@ -451,6 +583,7 @@ class NodeAnimationState extends State<NodeAnimation>
         setState(() {
           vector_math.Vector2 worldPos = screenToWorld(details.localPosition);
           _draggedNode!.position = worldPos; // ノードの位置を更新
+          _checkAndMoveNearbyNodes(_draggedNode!);
           _updateConnectedNodes(_draggedNode!); // ノード間の接続を更新
         });
       }
@@ -463,16 +596,85 @@ class NodeAnimationState extends State<NodeAnimation>
     }
   }
 
+  // ノードが近づいた場合、相手ノードから近づける
+  void _checkAndMoveNearbyNodes(Node draggedNode) {
+    for (Node node in nodes) {
+      // 自分自身はスキップ
+      if (node == draggedNode) continue;
+
+      // 他のノードとの距離を計算
+      double distance = (draggedNode.position - node.position).length;
+
+      // 距離が10以内の場合、相手ノードを少し動かす
+      if (distance < 30.0) {
+        // 動かす方向を計算
+        vector_math.Vector2 direction =
+            (draggedNode.position - node.position).normalized();
+        vector_math.Vector2 moveAmount = direction * 2.0; // 動かす距離
+
+        // ノードを動かす
+        node.position += moveAmount; // 相手ノードを近づける
+      }
+    }
+  }
+
+// ドラッグ終了時に親子関係をチェックして更新する
   void _onPanEnd(DragEndDetails details) {
-    setState(() {
-      _draggedNode = null;
-      _isPanning = false;
-    });
+    if (_draggedNode != null) {
+      // ノードが選択されている場合、親子関係を更新
+      setState(() {
+        _checkAndUpdateParentChildRelationship(
+            _draggedNode!); // ノードが近づいたときに親子関係を更新
+      });
+    }
   }
 
   void _onTapUp(TapUpDetails details) {
     vector_math.Vector2 worldPos = screenToWorld(details.localPosition);
     _checkForNodeSelection(worldPos);
+  }
+
+  void _checkAndUpdateParentChildRelationship(Node draggedNode) {
+    for (Node node in nodes) {
+      // 自分自身はスキップ
+      if (node == draggedNode) continue;
+
+      // 他のノードとの距離を計算
+      double distance = (draggedNode.position - node.position).length;
+
+      // 近距離の場合、親子関係を設定
+      if (distance < 10.0) {
+        if (node != draggedNode.parent) {
+          setState(() {
+            // 現在の親ノードから子ノードを削除（必要に応じて）
+            if (draggedNode.parent != null) {
+              draggedNode.parent!.children.remove(draggedNode);
+            }
+
+            // 新しい親ノードを設定
+            draggedNode.parent = node;
+            node.children.add(draggedNode); // 新しい親ノードの子に追加
+
+            // 親子関係に基づいて色を更新
+            _updateNodeColor(node); // 親ノードを基点に、親子関係すべてを更新
+          });
+        }
+      }
+    }
+  }
+
+// 親子関係に基づいてノードの色を更新するメソッド
+  void _updateNodeColor(Node node) {
+    // ノードの世代を計算
+    int generation = _calculateGeneration(node);
+
+    // 世代に基づいて色を設定
+    node.color = _getColorForGeneration(generation);
+
+    // 子ノードに対しても再帰的に色を更新
+    for (Node child in node.children) {
+      _updateNodeColor(child); // 子ノードの色も更新
+    }
   }
 
   void _checkForNodeSelection(vector_math.Vector2 worldPos) {
@@ -600,7 +802,7 @@ class NodeAnimationState extends State<NodeAnimation>
       }
 
       node.position += node.velocity;
-      node.velocity *= 0.95;
+      node.velocity *= 0.9;
     }
   }
 }
