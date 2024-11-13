@@ -7,6 +7,7 @@ class ToolBarWidget extends StatefulWidget {
   final VoidCallback detachParent;
   final VoidCallback stopPhysics;
   final VoidCallback deleteActiveNode;
+  final Function duplicateActiveNode;
   final bool isPhysicsEnabled;
 
   const ToolBarWidget({
@@ -17,6 +18,7 @@ class ToolBarWidget extends StatefulWidget {
     required this.detachParent,
     required this.stopPhysics,
     required this.deleteActiveNode,
+    required this.duplicateActiveNode,
     required this.isPhysicsEnabled,
   });
 
@@ -31,7 +33,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
     'alignVertical': false,
     'detachChildren': false,
     'detachParent': false,
-    'copy': false,
+    'duplicate': false,
     'lock': false,
     'delete': false,
   };
@@ -128,12 +130,12 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                 isHovered: _isHovered['detachParent'] ?? false,
                 rotated: true,
               ),
-              // ノードコピー
+              // ノード複製
               buildIconButton(
                 icon: Icons.control_point_duplicate,
-                onPressed: widget.deleteActiveNode,
-                action: 'copy',
-                isHovered: _isHovered['copy'] ?? false,
+                onPressed: widget.duplicateActiveNode,
+                action: 'duplicate',
+                isHovered: _isHovered['duplicate'] ?? false,
                 rotated: false,
               ),
               // ノード固定

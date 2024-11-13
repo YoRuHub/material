@@ -150,6 +150,7 @@ class MindMapScreenState extends State<MindMapScreen>
                 isPhysicsEnabled: isPhysicsEnabled,
                 detachChildren: _detachFromChildrenNode,
                 detachParent: _detachFromParentNode,
+                duplicateActiveNode: _duplicateActiveNode,
                 stopPhysics: _stopPhysics,
                 deleteActiveNode: _deleteActiveNode,
               ),
@@ -159,6 +160,60 @@ class MindMapScreenState extends State<MindMapScreen>
         ],
       ),
     );
+  }
+
+  // ノードとその子孫を再帰的にコピーするヘルパーメソッド
+  Node _copyNodeWithChildren(Node originalNode, {Node? newParent}) {
+    // 新しい位置を計算（少しずらす）
+    vector_math.Vector2 newPosition = originalNode.position +
+        vector_math.Vector2(
+          NodeConstants.nodeHorizontalSpacing,
+          NodeConstants.levelHeight,
+        );
+
+    // 新しいノードを作成
+    Node newNode = Node(
+      newPosition, // position
+      vector_math.Vector2.zero(), // velocity（初期速度は0）
+      originalNode.color, // color
+      originalNode.radius, // radius
+      parent: newParent, // parent
+    );
+
+    // 子ノードを再帰的にコピー
+    for (var child in originalNode.children) {
+      Node newChild = _copyNodeWithChildren(child, newParent: newNode);
+      newNode.children.add(newChild);
+    }
+
+    return newNode;
+  }
+
+  // アクティブノードとその子孫をコピーする関数
+  void _duplicateActiveNode() {
+    if (_activeNode != null) {
+      setState(() {
+        // アクティブノードとその子孫をコピー
+        Node copiedNode = _copyNodeWithChildren(_activeNode!);
+
+        // 新しいノードをノードリストに追加
+        nodes.add(copiedNode);
+
+        // 子ノードも追加
+        _addChildrenToNodesList(copiedNode);
+
+        // コピーしたノードの色を更新
+        _updateNodeColor(copiedNode);
+      });
+    }
+  }
+
+  // 子ノードを再帰的にノードリストに追加するヘルパーメソッド
+  void _addChildrenToNodesList(Node node) {
+    for (var child in node.children) {
+      nodes.add(child);
+      _addChildrenToNodesList(child);
+    }
   }
 
   void _detachFromChildrenNode() {

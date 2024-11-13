@@ -1,8 +1,6 @@
-
 import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/node.dart';
-
 
 class NodePainter extends CustomPainter {
   final List<Node> nodes;
@@ -19,14 +17,54 @@ class NodePainter extends CustomPainter {
     );
   }
 
+  bool isNodeInActiveLineage(Node node, Node? activeNode) {
+    if (activeNode == null) return false;
+
+    // 自分がアクティブノードかチェック
+    if (node == activeNode) return true;
+
+    // 親方向へのチェック（直系の親をすべてチェック）
+    Node? current = activeNode.parent;
+    while (current != null) {
+      if (current == node) return true;
+      current = current.parent;
+    }
+
+    // 子方向へのチェック（直系の子孫をすべてチェック）
+    return isDescendantOfNode(node, activeNode);
+  }
+
+  // 指定したノードの子孫かどうかを再帰的にチェックするヘルパーメソッド
+  bool isDescendantOfNode(Node node, Node ancestor) {
+    for (var child in ancestor.children) {
+      if (child == node) return true;
+      if (isDescendantOfNode(node, child)) return true;
+    }
+    return false;
+  }
+
   @override
   void paint(Canvas canvas, Size size) {
-    // 接続線の描画部分は変更なし
+    // アクティブノードを探す
+    Node? activeNode;
+    try {
+      activeNode = nodes.firstWhere((node) => node.isActive);
+    } catch (e) {
+      activeNode = null;
+    }
+
+    // 接続線
     for (var node in nodes) {
       if (node.parent != null) {
+        // アクティブノードの系統かどうかをチェック
+        bool isActiveLineage = isNodeInActiveLineage(node, activeNode) ||
+            isNodeInActiveLineage(node.parent!, activeNode);
+
         final Paint linePaint = Paint()
-          ..color = Colors.white.withOpacity(0.5)
-          ..strokeWidth = scale
+          ..color = isActiveLineage
+              ? Colors.yellow // アクティブ系統の線は黄色
+              : Colors.white.withOpacity(0.5) // 通常の線は白
+          ..strokeWidth = scale // アクティブ系統の線は太く
           ..style = PaintingStyle.stroke
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
@@ -41,15 +79,22 @@ class NodePainter extends CustomPainter {
 
         canvas.drawLine(start, end, linePaint);
 
+        // 信号エフェクトの色も変更
         double opacity = 1 * (0.5 + 0.5 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
-          ..color = Colors.white.withOpacity(opacity)
+          ..color = isActiveLineage
+              ? Colors.yellow.withOpacity(opacity) // アクティブ系統の信号は黄色
+              : Colors.white.withOpacity(opacity) // 通常の信号は白
           ..style = PaintingStyle.fill
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
+          ..maskFilter = MaskFilter.blur(
+              BlurStyle.normal, isActiveLineage ? scale * 1.5 : scale);
 
         final double signalX = start.dx + (end.dx - start.dx) * signalProgress;
         final double signalY = start.dy + (end.dy - start.dy) * signalProgress;
-        canvas.drawCircle(Offset(signalX, signalY), 2 * scale, signalPaint);
+        canvas.drawCircle(
+            Offset(signalX, signalY),
+            isActiveLineage ? 3 * scale : 2 * scale, // アクティブ系統の信号は大きく
+            signalPaint);
       }
     }
 
