@@ -2,14 +2,25 @@ import 'dart:math';
 import 'package:flutter/material.dart';
 import '../models/node.dart';
 
+/// ノードの描画を行うクラス
 class NodePainter extends CustomPainter {
   final List<Node> nodes;
   final double signalProgress;
   final double scale;
   final Offset offset;
 
+  /// コンストラクタ
+  ///
+  /// [nodes] 描画対象のノード
+  /// [signalProgress] 信号の進行割合
+  /// [scale] スケールの倍率
+  /// [offset] オフセット位置
   NodePainter(this.nodes, this.signalProgress, this.scale, this.offset);
 
+  /// 座標をスケールとオフセットで変換する
+  ///
+  /// [x] X座標
+  /// [y] Y座標
   Offset transformPoint(double x, double y) {
     return Offset(
       x * scale + offset.dx,
@@ -17,6 +28,10 @@ class NodePainter extends CustomPainter {
     );
   }
 
+  /// ノードがアクティブノードの系統に含まれるかを確認する
+  ///
+  /// [node] 判定対象のノード
+  /// [activeNode] アクティブなノード
   bool isNodeInActiveLineage(Node node, Node? activeNode) {
     if (activeNode == null) return false;
 
@@ -34,7 +49,10 @@ class NodePainter extends CustomPainter {
     return isDescendantOfNode(node, activeNode);
   }
 
-  // 指定したノードの子孫かどうかを再帰的にチェックするヘルパーメソッド
+  /// 指定したノードが特定の祖先ノードの子孫かどうかを再帰的にチェックする
+  ///
+  /// [node] 判定対象のノード
+  /// [ancestor] 祖先とするノード
   bool isDescendantOfNode(Node node, Node ancestor) {
     for (var child in ancestor.children) {
       if (child == node) return true;
@@ -43,6 +61,10 @@ class NodePainter extends CustomPainter {
     return false;
   }
 
+  /// ノードの描画を行う。
+  ///
+  /// [canvas] 描画するキャンバス
+  /// [size]  キャンバスのサイズ
   @override
   void paint(Canvas canvas, Size size) {
     // アクティブノードを探す
@@ -53,21 +75,23 @@ class NodePainter extends CustomPainter {
       activeNode = null;
     }
 
-    // 接続線
+    // ノード間の接続線の描画
     for (var node in nodes) {
       if (node.parent != null) {
         // アクティブノードの系統かどうかをチェック
         bool isActiveLineage = isNodeInActiveLineage(node, activeNode) ||
             isNodeInActiveLineage(node.parent!, activeNode);
 
+        // 線の設定
         final Paint linePaint = Paint()
           ..color = isActiveLineage
               ? Colors.yellow // アクティブ系統の線は黄色
               : Colors.white.withOpacity(0.5) // 通常の線は白
-          ..strokeWidth = scale // アクティブ系統の線は太く
+          ..strokeWidth = scale // 線の太さをスケールに基づいて設定
           ..style = PaintingStyle.stroke
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
+        // 開始点と終了点の座標を取得
         final Offset start = transformPoint(
           node.parent!.position.x,
           node.parent!.position.y,
@@ -79,7 +103,7 @@ class NodePainter extends CustomPainter {
 
         canvas.drawLine(start, end, linePaint);
 
-        // 信号エフェクトの色も変更
+        // 信号エフェクト
         double opacity = 1 * (0.5 + 0.5 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
           ..color = isActiveLineage
@@ -89,6 +113,7 @@ class NodePainter extends CustomPainter {
           ..maskFilter = MaskFilter.blur(
               BlurStyle.normal, isActiveLineage ? scale * 1.5 : scale);
 
+        // 信号位置を計算
         final double signalX = start.dx + (end.dx - start.dx) * signalProgress;
         final double signalY = start.dy + (end.dy - start.dy) * signalProgress;
         canvas.drawCircle(
@@ -98,7 +123,7 @@ class NodePainter extends CustomPainter {
       }
     }
 
-    // 細胞本体の描画
+    // ノードの描画
     for (var node in nodes) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
@@ -116,6 +141,7 @@ class NodePainter extends CustomPainter {
         ..color = Colors.white.withOpacity(0.2)
         ..strokeWidth = 0.5 * scale;
 
+      // 細胞膜に配置する円形テクスチャ
       for (double i = 0; i < 360; i += 15) {
         final double angle = i * 3.14159 / 180;
         final double x1 = center.dx + scaledRadius * 1.5 * cos(angle);
@@ -123,7 +149,7 @@ class NodePainter extends CustomPainter {
         canvas.drawCircle(Offset(x1, y1), scale * 0.5, texturePaint);
       }
 
-      // 細胞質のグラデーション
+      // 細胞質のグラデーション表現
       final gradient = RadialGradient(
         center: const Alignment(0.0, 0.0),
         radius: 0.9,
@@ -142,18 +168,17 @@ class NodePainter extends CustomPainter {
 
       canvas.drawCircle(center, scaledRadius, spherePaint);
 
-      // 細胞核の描画（改良版）
+      // 核の描画
       final double nucleusRadius = scaledRadius * 0.6;
 
       // 核膜の二重構造表現
-
       final Paint nuclearEnvelopePaint = Paint()
         ..shader = gradient.createShader(
             Rect.fromCircle(center: center, radius: nucleusRadius))
         ..style = PaintingStyle.stroke
         ..strokeWidth = scale * 0.1;
 
-// 内側の二重構造を描画
+      // 核膜の内側の構造を描画
       canvas.drawCircle(
           center, nucleusRadius - scale * 2, nuclearEnvelopePaint);
 
@@ -187,7 +212,7 @@ class NodePainter extends CustomPainter {
         canvas.drawCircle(specklePosition, scale * 0.5, nucleoplasmPaint);
       }
 
-      // 3D効果のための光沢
+      // 光沢の表現
       final Paint highlightPaint = Paint()
         ..shader = RadialGradient(
           center: const Alignment(-0.3, -0.3),
@@ -202,6 +227,9 @@ class NodePainter extends CustomPainter {
     }
   }
 
+  /// 更新判定
+  ///
+  /// [oldDelegate] 更新前のインスタンス
   @override
   bool shouldRepaint(NodePainter oldDelegate) {
     return true;
