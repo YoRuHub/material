@@ -85,4 +85,7 @@ class NodeConstants {
 
   /// ノードの最小接近距離
   static const double minApproachDistance = 10.0;
+
+  /// デタッチするノードの速度
+  static const double touchSpeedMultiplier = 30;
 }

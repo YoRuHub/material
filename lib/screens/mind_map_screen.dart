@@ -168,11 +168,17 @@ class MindMapScreenState extends State<MindMapScreen>
         for (var child in _activeNode!.children) {
           child.parent = null; // 親ノードをnullに設定
 
-          // 切り離した子ノードにランダムな初速度を与える
-          child.velocity = vector_math.Vector2(
-            Random().nextDouble() * 100 - 50,
-            Random().nextDouble() * 100 - 50,
+          // ランダムな方向と大きさを生成
+          double angle = Random().nextDouble() * 2 * pi;
+
+          // 極座標から直交座標に変換
+          vector_math.Vector2 velocity = vector_math.Vector2(
+            cos(angle) * NodeConstants.touchSpeedMultiplier,
+            sin(angle) * NodeConstants.touchSpeedMultiplier,
           );
+
+          // 切り離した子ノードにランダムな初速度を与える
+          child.velocity = velocity;
         }
         _activeNode!.children.clear(); // 子ノードリストを空にする
 
@@ -193,17 +199,26 @@ class MindMapScreenState extends State<MindMapScreen>
   void _detachFromParentNode() {
     if (_activeNode != null && _activeNode!.parent != null) {
       setState(() {
+        Node parentNode = _activeNode!.parent!;
+
         // 親ノードの子リストから削除
-        _activeNode!.parent!.children.remove(_activeNode);
+        parentNode.children.remove(_activeNode);
+
+        // ランダムな方向と大きさを生成
+        double angle = Random().nextDouble() * 2 * pi;
+
+        // 極座標から直交座標に変換
+        vector_math.Vector2 velocity = vector_math.Vector2(
+          cos(angle) * NodeConstants.touchSpeedMultiplier,
+          sin(angle) * NodeConstants.touchSpeedMultiplier,
+        );
+
+        // アクティブノードと親ノードを反対方向に弾く
+        _activeNode!.velocity = velocity;
+        parentNode.velocity = -velocity; // 反対方向の速度を設定
 
         // 親ノードへの参照を解除
         _activeNode!.parent = null;
-
-        // ランダムな初速度を与える
-        _activeNode!.velocity = vector_math.Vector2(
-          Random().nextDouble() * 100 - 50,
-          Random().nextDouble() * 100 - 50,
-        );
 
         // アクティブノードの色を更新（親がない状態の色に）
         _updateNodeColor(_activeNode!);
