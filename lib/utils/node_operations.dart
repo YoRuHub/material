@@ -35,7 +35,7 @@ class NodeOperations {
 
     // 親ノードから切り離す
     node.parent?.children.remove(node);
-    
+
     // ノードリストから削除
     nodes.remove(node);
   }
@@ -46,8 +46,10 @@ class NodeOperations {
       child.parent = null;
       // 切り離した子ノードにランダムな初速度を与える
       child.velocity = vector_math.Vector2(
-        Random().nextDouble() * NodeConstants.randomOffsetRange - NodeConstants.randomOffsetHalf,
-        Random().nextDouble() * NodeConstants.randomOffsetRange - NodeConstants.randomOffsetHalf,
+        Random().nextDouble() * NodeConstants.randomOffsetRange -
+            NodeConstants.randomOffsetHalf,
+        Random().nextDouble() * NodeConstants.randomOffsetRange -
+            NodeConstants.randomOffsetHalf,
       );
     }
     node.children.clear();
@@ -110,8 +112,10 @@ class NodeOperations {
   // ランダムな位置オフセットの生成
   static vector_math.Vector2 generateRandomOffset() {
     return vector_math.Vector2(
-      Random().nextDouble() * NodeConstants.randomOffsetRange - NodeConstants.randomOffsetHalf,
-      Random().nextDouble() * NodeConstants.randomOffsetRange - NodeConstants.randomOffsetHalf,
+      Random().nextDouble() * NodeConstants.randomOffsetRange -
+          NodeConstants.randomOffsetHalf,
+      Random().nextDouble() * NodeConstants.randomOffsetRange -
+          NodeConstants.randomOffsetHalf,
     );
   }
 
@@ -127,23 +131,19 @@ class NodeOperations {
       connectedNodes.add(currentNode);
 
       // 子ノードを追加
-      queue.addAll(currentNode.children.where(
-        (child) => !connectedNodes.contains(child)
-      ));
+      queue.addAll(currentNode.children
+          .where((child) => !connectedNodes.contains(child)));
 
       // 親ノードを追加
-      if (currentNode.parent != null && 
+      if (currentNode.parent != null &&
           !connectedNodes.contains(currentNode.parent)) {
         queue.add(currentNode.parent!);
       }
 
       // 兄弟ノードを追加
       if (currentNode.parent != null) {
-        queue.addAll(
-          currentNode.parent!.children.where(
-            (sibling) => !connectedNodes.contains(sibling)
-          )
-        );
+        queue.addAll(currentNode.parent!.children
+            .where((sibling) => !connectedNodes.contains(sibling)));
       }
     }
 

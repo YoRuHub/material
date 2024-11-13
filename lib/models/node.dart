@@ -8,10 +8,14 @@ class Node {
   Color color;
   double radius;
   bool isActive;
+  bool isTemporarilyDetached;
   Node? parent;
   List<Node> children;
 
   Node(this.position, this.velocity, this.color, this.radius,
-      {this.isActive = false, this.parent, List<Node>? children})
+      {this.isActive = false,
+      this.isTemporarilyDetached = false,
+      this.parent,
+      List<Node>? children})
       : children = children ?? [];
 }

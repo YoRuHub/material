@@ -4,10 +4,9 @@ class ToolBarWidget extends StatefulWidget {
   final VoidCallback alignNodesHorizontal;
   final VoidCallback alignNodesVertical;
   final VoidCallback detachChildren;
+  final VoidCallback detachParent;
   final VoidCallback stopPhysics;
   final VoidCallback deleteActiveNode;
-  final bool isAligningHorizontal;
-  final bool isAligningVertical;
   final bool isPhysicsEnabled;
 
   const ToolBarWidget({
@@ -15,10 +14,9 @@ class ToolBarWidget extends StatefulWidget {
     required this.alignNodesHorizontal,
     required this.alignNodesVertical,
     required this.detachChildren,
+    required this.detachParent,
     required this.stopPhysics,
     required this.deleteActiveNode,
-    required this.isAligningHorizontal,
-    required this.isAligningVertical,
     required this.isPhysicsEnabled,
   });
 
@@ -31,9 +29,11 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
   final Map<String, bool> _isHovered = {
     'alignHorizontal': false,
     'alignVertical': false,
-    'detach': false,
-    'delete': false,
+    'detachChildren': false,
+    'detachParent': false,
+    'copy': false,
     'lock': false,
+    'delete': false,
   };
 
   // アイコンボタンを作成する関数
@@ -96,36 +96,55 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
+              // 横整列
               buildIconButton(
                 icon: Icons.share,
                 onPressed: widget.alignNodesHorizontal,
                 action: 'alignHorizontal',
-                isHovered: _isHovered['alignHorizontal']! ||
-                    widget.isAligningHorizontal,
+                isHovered: _isHovered['alignHorizontal'] ?? false,
                 rotated: false,
               ),
+              // 縦整列
               buildIconButton(
                 icon: Icons.share,
                 onPressed: widget.alignNodesVertical,
                 action: 'alignVertical',
-                isHovered:
-                    _isHovered['alignVertical']! || widget.isAligningVertical,
+                isHovered: _isHovered['alignVertical'] ?? false,
                 rotated: true,
               ),
+              // 子ノード切り離し
               buildIconButton(
-                icon: Icons.scatter_plot,
+                icon: Icons.hdr_weak,
                 onPressed: widget.detachChildren,
-                action: 'detach',
-                isHovered: _isHovered['detach'] ?? false,
+                action: 'detachChildren',
+                isHovered: _isHovered['detachChildren'] ?? false,
+                rotated: true,
+              ),
+              // 親ノード切り離し
+              buildIconButton(
+                icon: Icons.hdr_strong,
+                onPressed: widget.detachParent,
+                action: 'detachParent',
+                isHovered: _isHovered['detachParent'] ?? false,
+                rotated: true,
+              ),
+              // ノードコピー
+              buildIconButton(
+                icon: Icons.control_point_duplicate,
+                onPressed: widget.deleteActiveNode,
+                action: 'copy',
+                isHovered: _isHovered['copy'] ?? false,
                 rotated: false,
               ),
+              // ノード固定
               buildIconButton(
-                icon: widget.isPhysicsEnabled ? Icons.lock : Icons.lock_open,
+                icon: widget.isPhysicsEnabled ? Icons.lock_open : Icons.lock,
                 onPressed: widget.stopPhysics,
                 action: 'lock',
-                isHovered: _isHovered['lock']! || widget.isPhysicsEnabled,
+                isHovered: _isHovered['lock']! || !widget.isPhysicsEnabled,
                 rotated: false,
               ),
+              // ノード削除
               buildIconButton(
                 icon: Icons.delete,
                 onPressed: widget.deleteActiveNode,

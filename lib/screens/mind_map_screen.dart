@@ -28,9 +28,8 @@ class MindMapScreenState extends State<MindMapScreen>
   Node? _draggedNode;
   Node? _activeNode;
 
-  bool isAligningHorizontal = false;
-  bool isAligningVertical = false;
-  bool isPhysicsEnabled = false;
+  bool isPhysicsEnabled = true;
+  bool isDragging = false;
 
   Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
@@ -115,7 +114,8 @@ class MindMapScreenState extends State<MindMapScreen>
                         NodePhysics.updatePhysics(
                             nodes: nodes,
                             draggedNode: _draggedNode,
-                            isPhysicsEnabled: isPhysicsEnabled);
+                            isPhysicsEnabled: isPhysicsEnabled,
+                            isDragging: isDragging);
                         return CustomPaint(
                           size: Size(
                             MediaQuery.of(context).size.width,
@@ -146,11 +146,10 @@ class MindMapScreenState extends State<MindMapScreen>
               ToolBarWidget(
                 alignNodesHorizontal:
                     _alignNodesHorizontal, // contextを渡さないように修正
-                alignNodesVertical: _alignNodesVertical, // contextを渡さないように修正
-                isAligningHorizontal: isAligningHorizontal,
-                isAligningVertical: isAligningVertical,
+                alignNodesVertical: _alignNodesVertical,
                 isPhysicsEnabled: isPhysicsEnabled,
-                detachChildren: _detachChildrenFromActiveNode,
+                detachChildren: _detachFromChildrenNode,
+                detachParent: _detachFromParentNode,
                 stopPhysics: _stopPhysics,
                 deleteActiveNode: _deleteActiveNode,
               ),
@@ -162,7 +161,7 @@ class MindMapScreenState extends State<MindMapScreen>
     );
   }
 
-  void _detachChildrenFromActiveNode() {
+  void _detachFromChildrenNode() {
     if (_activeNode != null) {
       setState(() {
         // 子ノードを切り離す
@@ -184,6 +183,34 @@ class MindMapScreenState extends State<MindMapScreen>
         for (var node in nodes) {
           if (node.parent == null) {
             // 親がないノード（独立したノード）の色をリセット
+            _updateNodeColor(node);
+          }
+        }
+      });
+    }
+  }
+
+  void _detachFromParentNode() {
+    if (_activeNode != null && _activeNode!.parent != null) {
+      setState(() {
+        // 親ノードの子リストから削除
+        _activeNode!.parent!.children.remove(_activeNode);
+
+        // 親ノードへの参照を解除
+        _activeNode!.parent = null;
+
+        // ランダムな初速度を与える
+        _activeNode!.velocity = vector_math.Vector2(
+          Random().nextDouble() * 100 - 50,
+          Random().nextDouble() * 100 - 50,
+        );
+
+        // アクティブノードの色を更新（親がない状態の色に）
+        _updateNodeColor(_activeNode!);
+
+        // 元の親ノードの色も更新（子が減った状態の色に）
+        for (var node in nodes) {
+          if (node.parent == null) {
             _updateNodeColor(node);
           }
         }
@@ -218,37 +245,21 @@ class MindMapScreenState extends State<MindMapScreen>
   void _alignNodesVertical() async {
     if (nodes.isEmpty) return;
 
-    setState(() {
-      isAligningVertical = true;
-    });
-
     await NodeAlignment.alignNodesVertical(
       nodes,
       MediaQuery.of(context).size,
       setState,
     );
-
-    setState(() {
-      isAligningVertical = false;
-    });
   }
 
   void _alignNodesHorizontal() async {
     if (nodes.isEmpty) return;
-
-    setState(() {
-      isAligningHorizontal = true;
-    });
 
     await NodeAlignment.alignNodesHorizontal(
       nodes,
       MediaQuery.of(context).size,
       setState,
     );
-
-    setState(() {
-      isAligningHorizontal = false;
-    });
   }
 
   void _stopPhysics() {
@@ -275,13 +286,19 @@ class MindMapScreenState extends State<MindMapScreen>
         );
         nodes.add(newNode);
       } else {
-        final newNode = NodeOperations.addNode(
-          position: CoordinateUtils.screenToWorld(
-            MediaQuery.of(context).size.center(Offset.zero),
-            _offset,
-            _scale,
-          ),
+        // 基準位置を取得
+        vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
+          MediaQuery.of(context).size.center(Offset.zero),
+          _offset,
+          _scale,
         );
+
+        // 既存のノードがある場合は、少しずらして配置
+        if (nodes.isNotEmpty) {
+          basePosition += vector_math.Vector2(20.0, 20.0);
+        }
+
+        final newNode = NodeOperations.addNode(position: basePosition);
         nodes.add(newNode);
       }
     });
@@ -326,6 +343,7 @@ class MindMapScreenState extends State<MindMapScreen>
         setState(() {
           _draggedNode = node; // ドラッグするノードを設定
           _isPanning = false; // 背景のドラッグではない
+          isDragging = true; // ノードのドラッグが開始
         });
         isNodeSelected = true;
         _checkForNodeSelection(worldPos);
@@ -368,10 +386,13 @@ class MindMapScreenState extends State<MindMapScreen>
 // ドラッグ終了時に親子関係をチェックして更新する
   void _onPanEnd(DragEndDetails details) {
     if (_draggedNode != null) {
-      // ノードが選択されている場合、親子関係を更新
       setState(() {
-        _checkAndUpdateParentChildRelationship(
-            _draggedNode!); // ノードが近づいたときに親子関係を更新
+        _checkAndUpdateParentChildRelationship(_draggedNode!);
+
+        // ドラッグ終了時に速度をリセット
+        _draggedNode!.velocity = vector_math.Vector2.zero();
+        _draggedNode = null;
+        isDragging = false;
       });
     }
   }
@@ -387,31 +408,42 @@ class MindMapScreenState extends State<MindMapScreen>
 
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {
     for (Node node in nodes) {
-      // 自分自身はスキップ
       if (node == draggedNode) continue;
 
-      // 他のノードとの距離を計算
       double distance = (draggedNode.position - node.position).length;
 
-      // 近距離の場合、親子関係を設定
-      if (distance < 10.0) {
+      if (distance < NodeConstants.snapDistance) {
+        // 循環参照のチェック
+        if (_wouldCreateCycle(draggedNode, node)) continue;
+
         if (node != draggedNode.parent) {
-          setState(() {
-            // 現在の親ノードから子ノードを削除（必要に応じて）
-            if (draggedNode.parent != null) {
-              draggedNode.parent!.children.remove(draggedNode);
-            }
+          // 現在の親ノードから子ノードを削除
+          draggedNode.parent?.children.remove(draggedNode);
 
-            // 新しい親ノードを設定
-            draggedNode.parent = node;
-            node.children.add(draggedNode); // 新しい親ノードの子に追加
+          // 新しい親子関係を設定
+          draggedNode.parent = node;
+          node.children.add(draggedNode);
 
-            // 親子関係に基づいて色を更新
-            _updateNodeColor(node); // 親ノードを基点に、親子関係すべてを更新
-          });
+          // 色を更新
+          _updateNodeColor(node);
+
+          // 物理演算用のフラグをリセット
+          draggedNode.isTemporarilyDetached = false;
+          node.isTemporarilyDetached = false;
         }
       }
     }
+  }
+
+  // 循環参照が発生するかチェックするヘルパーメソッド
+  bool _wouldCreateCycle(Node draggedNode, Node potentialParent) {
+    // ドラッグされているノードが、新しい親の祖先になっているかチェック
+    Node? current = potentialParent;
+    while (current != null) {
+      if (current == draggedNode) return true;
+      current = current.parent;
+    }
+    return false;
   }
 
 // 親子関係に基づいてノードの色を更新するメソッド
@@ -453,13 +485,6 @@ class MindMapScreenState extends State<MindMapScreen>
     setState(() {
       _activeNode?.isActive = false; // 前のノードを非アクティブにする
       _activeNode = null; // ノード選択を解除
-    });
-  }
-
-  void resetAlignmentState() {
-    setState(() {
-      isAligningVertical = false;
-      isAligningHorizontal = false;
     });
   }
 }
