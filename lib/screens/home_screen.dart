@@ -80,13 +80,13 @@ class HomeScreen extends StatelessWidget {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const NodeAnimation(),
+                              builder: (context) => const MindMapScreen(),
                             ));
                       } else if (buttonData[index]['title'] == 'Mind Map 3D') {
                         Navigator.push(
                             context,
                             MaterialPageRoute(
-                              builder: (context) => const MindMapScreen(),
+                              builder: (context) => const MindMapScreens(),
                             ));
                       } else if (buttonData[index]['title'] == 'TEST') {
                         Navigator.push(

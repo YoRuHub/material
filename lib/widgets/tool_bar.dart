@@ -1,19 +1,25 @@
 import 'package:flutter/material.dart';
 
 class ToolBarWidget extends StatefulWidget {
-  final Function alignNodesHorizontal;
-  final Function alignNodesVertical;
-  final bool isAligning;
-  final Function detachChildren;
-  final Function deleteActiveNode; // 削除用の関数
+  final VoidCallback alignNodesHorizontal;
+  final VoidCallback alignNodesVertical;
+  final VoidCallback detachChildren;
+  final VoidCallback stopPhysics;
+  final VoidCallback deleteActiveNode;
+  final bool isAligningHorizontal;
+  final bool isAligningVertical;
+  final bool isPhysicsEnabled;
 
   const ToolBarWidget({
     super.key,
     required this.alignNodesHorizontal,
     required this.alignNodesVertical,
-    required this.isAligning,
     required this.detachChildren,
-    required this.deleteActiveNode, // 関数を受け取る
+    required this.stopPhysics,
+    required this.deleteActiveNode,
+    required this.isAligningHorizontal,
+    required this.isAligningVertical,
+    required this.isPhysicsEnabled,
   });
 
   @override
@@ -21,11 +27,53 @@ class ToolBarWidget extends StatefulWidget {
 }
 
 class ToolBarWidgetState extends State<ToolBarWidget> {
-  // ホバー状態を管理するための変数
-  bool isHoveredAlignHorizontal = false;
-  bool isHoveredAlignVertical = false;
-  bool isHoveredDetach = false;
-  bool isHoveredDelete = false;
+  // ホバー状態を管理するマップ
+  final Map<String, bool> _isHovered = {
+    'alignHorizontal': false,
+    'alignVertical': false,
+    'detach': false,
+    'delete': false,
+    'lock': false,
+  };
+
+  // アイコンボタンを作成する関数
+  Widget buildIconButton({
+    required IconData icon,
+    required Function onPressed,
+    required String action,
+    required bool isHovered,
+    required bool rotated,
+  }) {
+    return MouseRegion(
+      onEnter: (_) {
+        setState(() {
+          _isHovered[action] = true;
+        });
+      },
+      onExit: (_) {
+        setState(() {
+          _isHovered[action] = false;
+        });
+      },
+      child: IconButton(
+        icon: rotated
+            ? RotatedBox(
+                quarterTurns: 1, // 90度回転
+                child: Icon(
+                  icon,
+                  color: isHovered ? Colors.cyan : Colors.cyan[900],
+                  size: 24.0,
+                ),
+              )
+            : Icon(
+                icon,
+                color: isHovered ? Colors.cyan : Colors.cyan[900],
+                size: 24.0,
+              ),
+        onPressed: () => onPressed(),
+      ),
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -48,100 +96,42 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
             crossAxisAlignment: CrossAxisAlignment.center,
             mainAxisSize: MainAxisSize.min,
             children: [
-              MouseRegion(
-                onEnter: (_) {
-                  setState(() {
-                    isHoveredAlignHorizontal = true; // ホバー時に色を変更
-                  });
-                },
-                onExit: (_) {
-                  setState(() {
-                    isHoveredAlignHorizontal = false; // ホバー解除時に元の色に戻す
-                  });
-                },
-                child: IconButton(
-                  icon: Icon(
-                    Icons.share,
-                    color: isHoveredAlignHorizontal || widget.isAligning
-                        ? Colors.cyan
-                        : Colors.cyan[900],
-                    size: 24.0,
-                  ),
-                  onPressed: () {
-                    widget.alignNodesHorizontal(context);
-                  },
-                ),
+              buildIconButton(
+                icon: Icons.share,
+                onPressed: widget.alignNodesHorizontal,
+                action: 'alignHorizontal',
+                isHovered: _isHovered['alignHorizontal']! ||
+                    widget.isAligningHorizontal,
+                rotated: false,
               ),
-              MouseRegion(
-                onEnter: (_) {
-                  setState(() {
-                    isHoveredAlignVertical = true; // ホバー時に色を変更
-                  });
-                },
-                onExit: (_) {
-                  setState(() {
-                    isHoveredAlignVertical = false; // ホバー解除時に元の色に戻す
-                  });
-                },
-                child: IconButton(
-                  icon: RotatedBox(
-                    quarterTurns: 1, // 90度回転
-                    child: Icon(
-                      Icons.share,
-                      color: isHoveredAlignVertical || widget.isAligning
-                          ? Colors.cyan
-                          : Colors.cyan[900],
-                      size: 24.0,
-                    ),
-                  ),
-                  onPressed: () {
-                    widget.alignNodesVertical(context);
-                  },
-                ),
+              buildIconButton(
+                icon: Icons.share,
+                onPressed: widget.alignNodesVertical,
+                action: 'alignVertical',
+                isHovered:
+                    _isHovered['alignVertical']! || widget.isAligningVertical,
+                rotated: true,
               ),
-              MouseRegion(
-                onEnter: (_) {
-                  setState(() {
-                    isHoveredDetach = true; // ホバー時に色を変更
-                  });
-                },
-                onExit: (_) {
-                  setState(() {
-                    isHoveredDetach = false; // ホバー解除時に元の色に戻す
-                  });
-                },
-                child: IconButton(
-                  icon: Icon(
-                    Icons.scatter_plot,
-                    color: isHoveredDetach ? Colors.cyan : Colors.cyan[900],
-                    size: 24.0,
-                  ),
-                  onPressed: () {
-                    widget.detachChildren(); // ボタンが押されたら削除関数を実行
-                  },
-                ),
+              buildIconButton(
+                icon: Icons.scatter_plot,
+                onPressed: widget.detachChildren,
+                action: 'detach',
+                isHovered: _isHovered['detach'] ?? false,
+                rotated: false,
               ),
-              MouseRegion(
-                onEnter: (_) {
-                  setState(() {
-                    isHoveredDelete = true; // ホバー時に色を変更
-                  });
-                },
-                onExit: (_) {
-                  setState(() {
-                    isHoveredDelete = false; // ホバー解除時に元の色に戻す
-                  });
-                },
-                child: IconButton(
-                  icon: Icon(
-                    Icons.delete,
-                    color: isHoveredDelete ? Colors.cyan : Colors.cyan[900],
-                    size: 24.0,
-                  ),
-                  onPressed: () {
-                    widget.deleteActiveNode(); // ボタンが押されたら削除関数を実行
-                  },
-                ),
+              buildIconButton(
+                icon: widget.isPhysicsEnabled ? Icons.lock : Icons.lock_open,
+                onPressed: widget.stopPhysics,
+                action: 'lock',
+                isHovered: _isHovered['lock']! || widget.isPhysicsEnabled,
+                rotated: false,
+              ),
+              buildIconButton(
+                icon: Icons.delete,
+                onPressed: widget.deleteActiveNode,
+                action: 'delete',
+                isHovered: _isHovered['delete'] ?? false,
+                rotated: false,
               ),
             ],
           ),

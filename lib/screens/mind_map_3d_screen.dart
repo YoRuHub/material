@@ -3,14 +3,14 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math_64.dart' show Vector3;
 
-class MindMapScreen extends StatefulWidget {
-  const MindMapScreen({super.key});
+class MindMapScreens extends StatefulWidget {
+  const MindMapScreens({super.key});
 
   @override
-  State<MindMapScreen> createState() => _MindMapScreenState();
+  State<MindMapScreens> createState() => _MindMapScreenState();
 }
 
-class _MindMapScreenState extends State<MindMapScreen>
+class _MindMapScreenState extends State<MindMapScreens>
     with SingleTickerProviderStateMixin {
   Vector3 _cameraPosition = Vector3(0, 0, -500); // 初期カメラ位置を調整
   Vector3 _cameraRotation = Vector3(0, 0, 0);
