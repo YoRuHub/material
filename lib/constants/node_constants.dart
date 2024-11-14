@@ -81,7 +81,7 @@ class NodeConstants {
   static const double dragSpeed = 10.0;
 
   /// ノード同士がスナップする距離
-  static const double snapDistance = 50.0;
+  static const double snapDistance = 35.0;
 
   /// ノードの最小接近距離
   static const double minApproachDistance = 10.0;

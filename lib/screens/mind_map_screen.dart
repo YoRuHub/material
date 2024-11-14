@@ -29,7 +29,6 @@ class MindMapScreenState extends State<MindMapScreen>
   Node? _activeNode;
 
   bool isPhysicsEnabled = true;
-  bool isDragging = false;
 
   Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
@@ -112,10 +111,10 @@ class MindMapScreenState extends State<MindMapScreen>
                       animation: _controller,
                       builder: (context, child) {
                         NodePhysics.updatePhysics(
-                            nodes: nodes,
-                            draggedNode: _draggedNode,
-                            isPhysicsEnabled: isPhysicsEnabled,
-                            isDragging: isDragging);
+                          nodes: nodes,
+                          draggedNode: _draggedNode,
+                          isPhysicsEnabled: isPhysicsEnabled,
+                        );
                         return CustomPaint(
                           size: Size(
                             MediaQuery.of(context).size.width,
@@ -413,7 +412,6 @@ class MindMapScreenState extends State<MindMapScreen>
         setState(() {
           _draggedNode = node; // ドラッグするノードを設定
           _isPanning = false; // 背景のドラッグではない
-          isDragging = true; // ノードのドラッグが開始
         });
         isNodeSelected = true;
         _checkForNodeSelection(worldPos);
@@ -462,7 +460,6 @@ class MindMapScreenState extends State<MindMapScreen>
         // ドラッグ終了時に速度をリセット
         _draggedNode!.velocity = vector_math.Vector2.zero();
         _draggedNode = null;
-        isDragging = false;
       });
     }
   }

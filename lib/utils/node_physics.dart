@@ -3,15 +3,17 @@ import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../constants/node_constants.dart';
 
-// メインの物理演算更新
+/// メインの物理演算更新
 class NodePhysics {
-  // メインの物理演算更新
-  // メインの物理演算更新
+  /// メインの物理演算更新
+  /// [nodes] = ノードリスト
+  /// [draggedNode] = ドラッグ中のノード
+  /// [isPhysicsEnabled] = 物理演算を有効にするか
+
   static void updatePhysics({
     required List<Node> nodes,
     required Node? draggedNode,
     required bool isPhysicsEnabled,
-    required bool isDragging,
   }) {
     if (!isPhysicsEnabled) return;
 
@@ -31,7 +33,7 @@ class NodePhysics {
     }
 
     // ドラッグ中のノードに紐づくノードの追従処理
-    if (draggedNode != null && isDragging) {
+    if (draggedNode != null) {
       // 親ノードへの追従
       if (draggedNode.parent != null) {
         _applyAttractionToParent(draggedNode);
@@ -61,7 +63,12 @@ class NodePhysics {
     }
   }
 
-  // 親ノードへの追従処理
+  /// 親ノードへの追従処理
+  /// ドラッグ中のノードが親ノードに対して引力を働かせる
+  /// ドラッグ中のノードと親ノードの距離が[minDistance]以上の場合に
+  /// ドラッグ中のノードを親ノードに向かって引力をかける
+  ///
+  /// [draggedNode] ドラッグ中のノード
   static void _applyAttractionToParent(Node draggedNode) {
     double dx = draggedNode.position.x - draggedNode.parent!.position.x;
     double dy = draggedNode.position.y - draggedNode.parent!.position.y;
@@ -76,7 +83,13 @@ class NodePhysics {
     }
   }
 
-// 子ノードの追従処理
+  /// 子ノードへの追従処理
+  /// ドラッグ中のノードの子ノードに対して引力を働かせる
+  /// ドラッグ中のノードと子ノードの距離が[minDistance]以上の場合に
+  /// ドラッグ中のノードを子ノードに向かって引力をかける
+  ///
+  /// [draggedNode] ドラッグ中のノード
+  /// [child] ドラッグ中のノードの子ノード
   static void _applyAttractionToChild(Node draggedNode, Node child) {
     double dx = child.position.x - draggedNode.position.x;
     double dy = child.position.y - draggedNode.position.y;
@@ -91,6 +104,13 @@ class NodePhysics {
     }
   }
 
+  /// 吸着処理
+  /// ドラッグ中のノードに向かってノードを移動させる
+  /// ノードの位置が[minApproachDistance]以上離れている場合のみ
+  /// ドラッグ中のノードに向かって移動する
+  ///
+  /// [node] 移動するノード
+  /// [draggedNode] ドラッグ中のノード
   static void _moveTowardsDraggedNode(Node node, Node draggedNode) {
     vector_math.Vector2 direction = draggedNode.position - node.position;
     double distance = direction.length;
@@ -121,7 +141,13 @@ class NodePhysics {
     }
   }
 
-  // 反発力の計算メソッドも修正
+  /// 反発力の計算
+  /// ノード同士の反発力を計算し、各ノードの速度を更新する
+  /// ドラッグ中のノードは完全にスキップ
+  ///
+  /// [node] 更新するノード
+  /// [nodes] ノードリスト
+  /// [draggedNode] ドラッグ中のノード
   static void _applyRepulsionForces(
       Node node, List<Node> nodes, Node? draggedNode) {
     // ドラッグ中のノードは完全にスキップ
@@ -145,7 +171,10 @@ class NodePhysics {
     }
   }
 
-  // 引力の適用（親子関係に基づく）
+  /// ドラッグ中のノードを除き、ノード同士の引力を計算し、各ノードの位置を更新する
+  ///
+  /// [node] 更新するノード
+  /// [draggedNode] ドラッグ中のノード
   static void _applyAttractionForces(Node node, Node? draggedNode) {
     // ドラッグ中のノードは完全にスキップ
     if (node == draggedNode) return;
@@ -191,7 +220,10 @@ class NodePhysics {
     }
   }
 
-// ノード位置の更新
+  /// ノード位置の更新
+  /// ドラッグ中のノードはスキップ
+  ///
+  /// [node] 更新するノード
   static void _updateNodePosition(Node node) {
     // ドラッグ中のノードは位置更新をスキップ
     if (!node.isTemporarilyDetached) {
@@ -200,7 +232,12 @@ class NodePhysics {
     }
   }
 
-  // 接続されたノード間の力の更新
+  /// 接続されたノード間の力の更新
+  /// 2つのノードが距離的に近づいている場合に
+  /// その2つのノードを引き寄せる力の大きさを計算し
+  /// その力に応じて velocity を更新する
+  ///
+  /// [node] 中心となるノード
   static void updateConnectedNodes(Node node) {
     Set<Node> connectedNodes = _findConnectedNodes(node);
 
@@ -229,7 +266,13 @@ class NodePhysics {
     }
   }
 
-  // 近接ノードの移動
+  /// 近接ノードの移動
+  /// ドラッグ中のノードに近いノードを移動させる
+  /// ドラッグ中のノードから一定距離以内にあるノードは
+  /// ドラッグ中のノードに追従するように移動する
+  ///
+  /// [draggedNode] ドラッグ中のノード
+  /// [nodes] ノードのリスト
   static void handleNearbyNodes(Node draggedNode, List<Node> nodes) {
     for (Node node in nodes) {
       if (node == draggedNode) continue;
@@ -247,7 +290,12 @@ class NodePhysics {
     }
   }
 
-  // 接続されたノードの検索
+  /// 接続されたノードの検索
+  /// 指定されたノードから繋がる全てのノードを検索する
+  ///
+  /// [startNode] 検索を開始するノード
+  ///
+  /// Returns: 接続されたノードのSet
   static Set<Node> _findConnectedNodes(Node startNode) {
     Set<Node> connectedNodes = {};
     Set<Node> visited = {}; // 探索済みノードを追跡

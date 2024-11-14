@@ -28,25 +28,67 @@ class NodePainter extends CustomPainter {
     );
   }
 
+  // ノードが共通の祖先を持つかチェック
+  bool hasCommonAncestor(Node node1, Node node2) {
+    // 両方のノードの全祖先を取得
+    Set<Node> ancestors1 = getAllAncestors(node1);
+    Set<Node> ancestors2 = getAllAncestors(node2);
+
+    // 共通の祖先が存在するかチェック
+    return ancestors1.intersection(ancestors2).isNotEmpty;
+  }
+
+  // ノードの全祖先を取得
+  Set<Node> getAllAncestors(Node node) {
+    Set<Node> ancestors = {};
+    Node? current = node.parent;
+    while (current != null) {
+      ancestors.add(current);
+      current = current.parent;
+    }
+    return ancestors;
+  }
+
+  // 全ての子孫ノードを取得
+  Set<Node> getAllDescendants(Node node) {
+    Set<Node> descendants = {};
+    for (var child in node.children) {
+      descendants.add(child);
+      descendants.addAll(getAllDescendants(child));
+    }
+    return descendants;
+  }
+
   /// ノードがアクティブノードの系統に含まれるかを確認する
   ///
   /// [node] 判定対象のノード
   /// [activeNode] アクティブなノード
+  // アクティブノードの系統かどうかをチェック（改善版）
   bool isNodeInActiveLineage(Node node, Node? activeNode) {
     if (activeNode == null) return false;
-
-    // 自分がアクティブノードかチェック
     if (node == activeNode) return true;
 
-    // 親方向へのチェック（直系の親をすべてチェック）
-    Node? current = activeNode.parent;
-    while (current != null) {
-      if (current == node) return true;
-      current = current.parent;
+    // 1. 直系の親子関係チェック
+    Set<Node> activeAncestors = getAllAncestors(activeNode);
+    if (activeAncestors.contains(node)) return true;
+
+    Set<Node> activeDescendants = getAllDescendants(activeNode);
+    if (activeDescendants.contains(node)) return true;
+
+    // 2. 兄弟関係チェック（共通の親を持つノード同士）
+    if (node.parent != null && activeNode.parent != null) {
+      if (node.parent == activeNode.parent) return true;
     }
 
-    // 子方向へのチェック（直系の子孫をすべてチェック）
-    return isDescendantOfNode(node, activeNode);
+    // 3. 従兄弟関係チェック（共通の祖先を持つノード同士）
+    if (hasCommonAncestor(node, activeNode)) return true;
+
+    // 4. 子孫同士の関係チェック
+    Set<Node> nodeDescendants = getAllDescendants(node);
+    if (nodeDescendants.any(
+        (descendant) => hasCommonAncestor(descendant, activeNode))) return true;
+
+    return false;
   }
 
   /// 指定したノードが特定の祖先ノードの子孫かどうかを再帰的にチェックする
@@ -67,7 +109,6 @@ class NodePainter extends CustomPainter {
   /// [size]  キャンバスのサイズ
   @override
   void paint(Canvas canvas, Size size) {
-    // アクティブノードを探す
     Node? activeNode;
     try {
       activeNode = nodes.firstWhere((node) => node.isActive);
