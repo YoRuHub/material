@@ -145,7 +145,7 @@ class NodePainter extends CustomPainter {
         canvas.drawLine(start, end, linePaint);
 
         // 信号エフェクト
-        double opacity = 1 * (0.5 + 0.5 * sin(signalProgress * 3.14159 * 5));
+        double opacity = 1 * (0.6 + 0.4 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
           ..color = isActiveLineage
               ? Colors.yellow.withOpacity(opacity) // アクティブ系統の信号は黄色

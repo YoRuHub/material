@@ -2,6 +2,8 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
+import 'package:flutter_app/database/database_helper.dart';
+import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
@@ -38,6 +40,8 @@ class MindMapScreenState extends State<MindMapScreen>
   double _scale = 1.0;
   bool _isPanning = false;
 
+  late NodeModel _nodeModel;
+
   @override
   void initState() {
     super.initState();
@@ -48,6 +52,15 @@ class MindMapScreenState extends State<MindMapScreen>
     )..repeat();
 
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    _nodeModel = NodeModel();
+    _initializeNodes();
+  }
+
+  Future<void> _initializeNodes() async {
+    final nodesData = await _nodeModel.fetchAllNodes();
+    for (var node in nodesData) {
+      _addNode(node['id']);
+    }
   }
 
   @override
@@ -165,22 +178,28 @@ class MindMapScreenState extends State<MindMapScreen>
     );
   }
 
+  Future<void> _deleteTables() async {
+    final dbHelper = DatabaseHelper();
+    await dbHelper.resetTables();
+  }
+
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
   Node _copyNodeWithChildren(Node originalNode, {Node? newParent}) {
     // 新しい位置を計算（少しずらす）
     vector_math.Vector2 newPosition = originalNode.position +
         vector_math.Vector2(
-          NodeConstants.nodeHorizontalSpacing,
+          NodeConstants.nodeSpacing,
           NodeConstants.levelHeight,
         );
 
     // 新しいノードを作成
     Node newNode = Node(
-      newPosition, // position
-      vector_math.Vector2.zero(), // velocity（初期速度は0）
-      originalNode.color, // color
-      originalNode.radius, // radius
-      parent: newParent, // parent
+      nodeId: originalNode.nodeId,
+      position: newPosition, // position
+      velocity: vector_math.Vector2.zero(), // velocity（初期速度は0）
+      color: originalNode.color, // color
+      radius: originalNode.radius, // radius
+      parent: newParent, title: '', contents: '', createdAt: '', // parent
     );
 
     // 子ノードを再帰的にコピー
@@ -348,33 +367,46 @@ class MindMapScreenState extends State<MindMapScreen>
     });
   }
 
-  void _addNode() {
-    setState(() {
-      if (_activeNode != null) {
-        final newNode = NodeOperations.addNode(
-          position:
-              _activeNode!.position + NodeOperations.generateRandomOffset(),
-          parentNode: _activeNode,
-          generation: NodeOperations.calculateGeneration(_activeNode!) + 1,
-        );
-        nodes.add(newNode);
-      } else {
-        // 基準位置を取得
-        vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
-          MediaQuery.of(context).size.center(Offset.zero),
-          _offset,
-          _scale,
-        );
+  void _addNode([int nodeId = -1]) async {
+    // 基準位置を取得
+    vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
+      MediaQuery.of(context).size.center(Offset.zero),
+      _offset,
+      _scale,
+    );
+    // 既存のノードがある場合は、少しずらしてランダム配置
+    basePosition += vector_math.Vector2(
+      (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+      (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+    );
+    if (_activeNode != null) {
+      // 非同期処理を先に完了させる
+      int newNodeId = await _nodeModel.upsertNode(nodeId, '', '');
+      debugPrint('basePosition: $basePosition');
+      final newNode = NodeOperations.addNode(
+        position: basePosition,
+        parentNode: _activeNode,
+        generation: NodeOperations.calculateGeneration(_activeNode!) + 1,
+        nodeId: newNodeId,
+      );
 
-        // 既存のノードがある場合は、少しずらして配置
-        if (nodes.isNotEmpty) {
-          basePosition += vector_math.Vector2(20.0, 20.0);
-        }
-
-        final newNode = NodeOperations.addNode(position: basePosition);
+      // 非同期処理完了後に setState で状態を更新
+      setState(() {
         nodes.add(newNode);
-      }
-    });
+        debugPrint('nodes: $nodes');
+      });
+    } else {
+      // 非同期処理を先に完了させる
+      int newNodeId = await _nodeModel.upsertNode(nodeId, '', '');
+      debugPrint('basePosition: $basePosition');
+      final newNode =
+          NodeOperations.addNode(position: basePosition, nodeId: newNodeId);
+
+      // 非同期処理完了後に setState で状態を更新
+      setState(() {
+        nodes.add(newNode);
+      });
+    }
   }
 
   int _calculateGeneration(Node node) {
@@ -412,6 +444,7 @@ class MindMapScreenState extends State<MindMapScreen>
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
+        debugPrint('Node clicked: ${node.nodeId}');
         // ノードがクリックされた場合、そのノードをドラッグ可能にする
         setState(() {
           _draggedNode = node; // ドラッグするノードを設定
@@ -526,6 +559,10 @@ class MindMapScreenState extends State<MindMapScreen>
         }
       }
     }
+    debugPrint('nodes: $nodes');
+    //parent
+    debugPrint('parent: ${draggedNode.parent}');
+    debugPrint('children: ${draggedNode.children}');
   }
 
   // 循環参照が発生するかチェックするヘルパーメソッド

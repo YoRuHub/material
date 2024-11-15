@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/database_helper.dart';
 import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
 import '../models/custom_icon.dart'; // CustomIcons のインポート
+import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
@@ -20,10 +22,10 @@ class SplashScreenState extends State<SplashScreen> {
 
   // 初期化処理を行い、その後画面遷移する非同期メソッド
   Future<void> _initializeApp() async {
-    // まずプリロード処理
+    // SVGIconのプリロード処理
     await CustomIcons.preloadIcons();
-
-    // その後、他の初期化処理があればここに追加
+    // データベースの初期化
+    await _initDatabase();
 
     // 初期化処理が終わったら、HomeScreenに遷移
     if (mounted) {
@@ -41,5 +43,17 @@ class SplashScreenState extends State<SplashScreen> {
         child: Text("Loading..."), // プリロード中のテキスト表示
       ),
     );
+  }
+
+  Future<void> _initDatabase() async {
+    try {
+      sqfliteFfiInit();
+      databaseFactory = databaseFactoryFfi;
+      final dbHelper = DatabaseHelper();
+      await dbHelper.database;
+      dbHelper.initDatabaseTables();
+    } catch (e) {
+      debugPrint(e.toString());
+    }
   }
 }

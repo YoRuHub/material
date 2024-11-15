@@ -10,12 +10,12 @@ class NodeContentsPanel extends StatelessWidget {
     super.key,
     required this.node,
   })  : titleController = TextEditingController(text: node.title),
-        contentController = TextEditingController(text: node.content);
+        contentController = TextEditingController(text: node.contents);
 
   // Saveボタンの機能を定義
   void _saveContent() {
     // 保存処理をここに実装（データベースへの保存や他ウィジェットとの連携など）
-    print("Content Saved: ${contentController.text}");
+    debugPrint("Content Saved: ${contentController.text}");
   }
 
   // Clearボタンの機能を定義

@@ -91,13 +91,13 @@ class NodeAlignment {
     Map<Node, double> nodeWidths,
   ) {
     if (node.children.isEmpty) {
-      nodeWidths[node] = NodeConstants.nodeHorizontalSpacing;
-      return NodeConstants.nodeHorizontalSpacing;
+      nodeWidths[node] = NodeConstants.nodeSpacing;
+      return NodeConstants.nodeSpacing;
     }
 
     double width = node.children.fold(
         0.0, (sum, child) => sum + _calculateSubtreeWidth(child, nodeWidths));
-    nodeWidths[node] = max(width, NodeConstants.nodeHorizontalSpacing);
+    nodeWidths[node] = max(width, NodeConstants.nodeSpacing);
     return nodeWidths[node]!;
   }
 
@@ -172,7 +172,7 @@ class NodeAlignment {
     for (var child in node.children) {
       _calculateTargetPositionsHorizontal(
         child,
-        x + NodeConstants.nodeHorizontalSpacing,
+        x + NodeConstants.nodeSpacing,
         childY + nodeHeights[child]! / 2,
         nodeHeights,
         setState,

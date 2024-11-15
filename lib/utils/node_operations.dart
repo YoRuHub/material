@@ -10,12 +10,17 @@ class NodeOperations {
     required vector_math.Vector2 position,
     Node? parentNode,
     int? generation,
+    required int nodeId,
   }) {
     final node = Node(
-      position,
-      vector_math.Vector2(0, 0),
-      _getColorForGeneration(generation ?? 0),
-      NodeConstants.defaultNodeRadius,
+      position: position,
+      velocity: vector_math.Vector2(0, 0),
+      color: _getColorForGeneration(generation ?? 0),
+      radius: NodeConstants.defaultNodeRadius,
+      nodeId: nodeId,
+      title: '',
+      contents: '',
+      createdAt: '',
     );
 
     if (parentNode != null) {

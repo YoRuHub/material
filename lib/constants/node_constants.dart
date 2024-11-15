@@ -26,8 +26,8 @@ class NodeConstants {
   /// ノードの色の明度（0.0 - 1.0）
   static const double lightness = 0.6;
 
-  /// ノード間の水平方向の間隔
-  static const double nodeHorizontalSpacing = 100.0;
+  /// ノード間の間隔
+  static const double nodeSpacing = 100.0;
 
   /// 階層間の垂直方向の間隔
   static const double levelHeight = 100.0;
