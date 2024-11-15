@@ -2,29 +2,60 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 
-class NodeContentsPanel extends StatelessWidget {
+class NodeContentsPanel extends StatefulWidget {
   final Node node;
-  final TextEditingController titleController;
-  final TextEditingController contentController;
-  final NodeModel nodeModel; // Define the nodeModel variable here
+  final NodeModel nodeModel;
+  final Function(Node) onNodeUpdated; // コールバック関数
 
-  NodeContentsPanel({
+  const NodeContentsPanel({
     super.key,
     required this.node,
     required this.nodeModel,
-  })  : titleController = TextEditingController(text: node.title),
-        contentController = TextEditingController(text: node.contents) {}
+    required this.onNodeUpdated,
+  });
 
-  // Saveボタンの機能を定義
-  Future<void> _saveContent() async {
-    await nodeModel.upsertNode(
-        node.id, titleController.text, contentController.text);
+  @override
+  NodeContentsPanelState createState() => NodeContentsPanelState();
+}
+
+class NodeContentsPanelState extends State<NodeContentsPanel> {
+  late TextEditingController titleController;
+  late TextEditingController contentController;
+
+  @override
+  void initState() {
+    super.initState();
+    titleController = TextEditingController(text: widget.node.title);
+    contentController = TextEditingController(text: widget.node.contents);
   }
 
-  // Clearボタンの機能を定義
+  @override
+  void dispose() {
+    titleController.dispose();
+    contentController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _saveContent() async {
+    await widget.nodeModel.upsertNode(
+      widget.node.id,
+      titleController.text,
+      contentController.text,
+    );
+
+    // 呼び出し元に変更を通知
+    widget.onNodeUpdated(
+      widget.node
+        ..title = titleController.text
+        ..contents = contentController.text,
+    );
+  }
+
   void _clearContent() {
-    titleController.clear();
-    contentController.clear();
+    setState(() {
+      titleController.clear();
+      contentController.clear();
+    });
   }
 
   @override
@@ -38,23 +69,22 @@ class NodeContentsPanel extends StatelessWidget {
         padding: const EdgeInsets.all(16.0),
         child: Card(
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(12), // 角を丸くする
+            borderRadius: BorderRadius.circular(12),
           ),
           child: Padding(
             padding: const EdgeInsets.all(16.0),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // タイトル入力欄の追加
                 TextField(
                   controller: titleController,
                   decoration: InputDecoration(
-                      fillColor: Colors.black.withOpacity(0.2),
-                      filled: true,
-                      border: InputBorder.none,
-                      hoverColor: Colors.black.withOpacity(0.2),
-                      prefixIcon: const Icon(Icons.edit),
-                      labelText: 'Title'),
+                    fillColor: Colors.black.withOpacity(0.2),
+                    filled: true,
+                    border: InputBorder.none,
+                    prefixIcon: const Icon(Icons.edit),
+                    labelText: 'Title',
+                  ),
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 18,
@@ -71,7 +101,6 @@ class NodeContentsPanel extends StatelessWidget {
                       hintText: "Content",
                       fillColor: Colors.black.withOpacity(0.2),
                       filled: true,
-                      hoverColor: Colors.black.withOpacity(0.2),
                     ),
                   ),
                 ),
@@ -90,10 +119,9 @@ class NodeContentsPanel extends StatelessWidget {
                     ElevatedButton(
                       onPressed: () async {
                         await _saveContent();
-                        // Do something after saving is complete
                       },
                       child: const Text('Save'),
-                    )
+                    ),
                   ],
                 ),
               ],

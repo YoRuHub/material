@@ -26,8 +26,8 @@ class Node {
   bool isTemporarilyDetached;
   Node? parent;
   final int id;
-  final String title;
-  final String contents;
+  late String title;
+  late String contents;
   final String createdAt;
   List<Node> children;
 }

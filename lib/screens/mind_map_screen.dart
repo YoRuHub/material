@@ -174,7 +174,16 @@ class MindMapScreenState extends State<MindMapScreen>
           ),
           if (_activeNode != null)
             Stack(children: <Widget>[
-              NodeContentsPanel(node: _activeNode!, nodeModel: _nodeModel)
+              NodeContentsPanel(
+                node: _activeNode!,
+                nodeModel: _nodeModel,
+                onNodeUpdated: (updatedNode) {
+                  setState(() {
+                    _activeNode = updatedNode;
+                    debugPrint('Node updated: $_activeNode');
+                  });
+                },
+              )
             ]),
         ],
       ),
@@ -417,6 +426,17 @@ class MindMapScreenState extends State<MindMapScreen>
       setState(() {
         nodes.add(newNode);
       });
+    }
+  }
+
+  Future<void> _onUpdateNode(id, text, contents) async {
+    await _nodeModel.upsertNode(id, text, contents);
+    //nodeの内容を更新
+    for (var node in nodes) {
+      if (node.id == id) {
+        node.title = text;
+        node.contents = contents;
+      }
     }
   }
 
