@@ -16,7 +16,7 @@ class AddNodeButtonState extends State<AddNodeButton> {
   Widget build(BuildContext context) {
     return Positioned(
       bottom: 8.0,
-      right: 8.0,
+      left: 8.0,
       child: MouseRegion(
         onEnter: (_) => setState(() => _isHovered = true),
         onExit: (_) => setState(() => _isHovered = false),

@@ -15,10 +15,13 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-ノードの役割を考える
-・ノード側に反発力を持たせる
-・ノード側に摩擦力を持たせる
-・ノード側にアクティブ・非アクティブを持たせる
+Todo
+・focus（追跡機能
+    アクティブ状態のノードが居るとき、カメラをノードに追従させ、ズームもする
+・map(マップ機能)
+    ノードの縮小図と座標、グループノードの次へ前へボタンもセット
+・データ構造の作成
+・yaml形式でインポート・エクスポート    
 
 lib/
 ├── models/

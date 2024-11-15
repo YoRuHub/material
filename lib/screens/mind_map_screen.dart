@@ -9,6 +9,7 @@ import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/add_node_button.dart';
+import 'package:flutter_app/widgets/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positioned_text.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/tool_bar.dart';
@@ -96,6 +97,7 @@ class MindMapScreenState extends State<MindMapScreen>
                     onPanUpdate: _onPanUpdate,
                     onPanEnd: _onPanEnd,
                     onTapUp: _onTapUp,
+                    onTapDown: _onTapDown,
                     onSecondaryTapDown: (details) =>
                         setState(() => _isPanning = true),
                     onSecondaryTapUp: (details) =>
@@ -156,6 +158,8 @@ class MindMapScreenState extends State<MindMapScreen>
               AddNodeButton(onPressed: _addNode),
             ],
           ),
+          if (_activeNode != null)
+            Stack(children: <Widget>[NodeContentsPanel(node: _activeNode!)]),
         ],
       ),
     );
@@ -473,6 +477,28 @@ class MindMapScreenState extends State<MindMapScreen>
     _checkForNodeSelection(worldPos);
   }
 
+  void _onTapDown(TapDownDetails details) {
+    vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
+      details.localPosition,
+      _offset,
+      _scale,
+    );
+
+    // ノードの選択が確認されればアクティブ状態を解除しない
+    if (_checkForNodeSelection(worldPos)) {
+      // ノードがクリックされた場合はアクティブ状態を保持
+      return;
+    }
+
+    // 背景クリック時、アクティブ状態を解除
+    setState(() {
+      if (_activeNode != null) {
+        _activeNode!.isActive = false; // アクティブ状態を解除
+        _activeNode = null;
+      }
+    });
+  }
+
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {
     for (Node node in nodes) {
       if (node == draggedNode) continue;
@@ -527,31 +553,26 @@ class MindMapScreenState extends State<MindMapScreen>
     }
   }
 
-  void _checkForNodeSelection(vector_math.Vector2 worldPos) {
-    // クリックした位置がノードに当たるかをチェック
+  bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
+    // Check if the click hit any node
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      // ノードを選択した場合
+      // Node was clicked
       if (distance < node.radius) {
         setState(() {
-          // クリックしたノードをアクティブにする
-          _activeNode?.isActive = false; // 前のノードを非アクティブにする（前のノードがあれば）
-
-          node.isActive = true; // クリックしたノードをアクティブにする
-          _activeNode = node; // アクティブなノードとして設定
-          _draggedNode = node; // ドラッグするノードを設定
+          // Activate the clicked node
+          _activeNode?.isActive = false; // Deactivate the previous active node
+          node.isActive = true; // Activate the clicked node
+          _activeNode = node; // Set the active node
         });
-        return;
+        return true;
       }
     }
 
-    // ノードが選択されなかった場合
-    setState(() {
-      _activeNode?.isActive = false; // 前のノードを非アクティブにする
-      _activeNode = null; // ノード選択を解除
-    });
+    // No node was clicked
+    return false;
   }
 }

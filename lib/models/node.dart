@@ -10,12 +10,16 @@ class Node {
   bool isActive;
   bool isTemporarilyDetached;
   Node? parent;
+  String? title;
+  String? content;
   List<Node> children;
 
   Node(this.position, this.velocity, this.color, this.radius,
       {this.isActive = false,
       this.isTemporarilyDetached = false,
       this.parent,
+      this.title,
+      this.content,
       List<Node>? children})
       : children = children ?? [];
 }
