@@ -59,7 +59,7 @@ class MindMapScreenState extends State<MindMapScreen>
   Future<void> _initializeNodes() async {
     final nodesData = await _nodeModel.fetchAllNodes();
     for (var node in nodesData) {
-      _addNode(node['id']);
+      await _addNode(node['id']);
     }
   }
 
@@ -367,7 +367,7 @@ class MindMapScreenState extends State<MindMapScreen>
     });
   }
 
-  void _addNode([int nodeId = -1]) async {
+  Future<void> _addNode(int nodeId) async {
     // 基準位置を取得
     vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
       MediaQuery.of(context).size.center(Offset.zero),
