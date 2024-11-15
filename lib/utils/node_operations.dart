@@ -11,16 +11,19 @@ class NodeOperations {
     Node? parentNode,
     int? generation,
     required int nodeId,
+    String title = '',
+    String contents = '',
+    String createdAt = '',
   }) {
     final node = Node(
       position: position,
       velocity: vector_math.Vector2(0, 0),
       color: _getColorForGeneration(generation ?? 0),
       radius: NodeConstants.defaultNodeRadius,
-      nodeId: nodeId,
-      title: '',
-      contents: '',
-      createdAt: '',
+      id: nodeId,
+      title: title,
+      contents: contents,
+      createdAt: createdAt,
     );
 
     if (parentNode != null) {

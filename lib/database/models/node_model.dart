@@ -49,18 +49,18 @@ class NodeModel extends BaseModel {
   /// [title] ノードのタイトル
   /// [contents] ノードの内容
   ///
-  /// 返り値: 挿入/更新されたID (-1: エラー)
+  /// 返り値: 挿入/更新されたID (0: エラー)
   Future<int> upsertNode(int id, String title, String contents) async {
     final createdAt = DateTime.now().toIso8601String();
     final data = {
-      if (id != -1) columnId: id,
+      if (id != 0) columnId: id,
       columnTitle: title,
       columnContents: contents,
       columnCreatedAt: createdAt,
     };
 
     try {
-      if (id != -1) {
+      if (id != 0) {
         // 更新処理
         await upsert(table, data, '$columnId = ?', [id]);
         debugPrint('Node updated successfully');
@@ -73,7 +73,7 @@ class NodeModel extends BaseModel {
       }
     } catch (e) {
       debugPrint('Error upserting node: $e');
-      return -1; // エラー時は -1 を返す
+      return 0; // エラー時は 0 を返す
     }
   }
 

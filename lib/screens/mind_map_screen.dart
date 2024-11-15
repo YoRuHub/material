@@ -59,7 +59,8 @@ class MindMapScreenState extends State<MindMapScreen>
   Future<void> _initializeNodes() async {
     final nodesData = await _nodeModel.fetchAllNodes();
     for (var node in nodesData) {
-      await _addNode(node['id']);
+      await _addNode(
+          nodeId: node['id'], title: node['title'], contents: node['contents']);
     }
   }
 
@@ -172,7 +173,9 @@ class MindMapScreenState extends State<MindMapScreen>
             ],
           ),
           if (_activeNode != null)
-            Stack(children: <Widget>[NodeContentsPanel(node: _activeNode!)]),
+            Stack(children: <Widget>[
+              NodeContentsPanel(node: _activeNode!, nodeModel: _nodeModel)
+            ]),
         ],
       ),
     );
@@ -194,7 +197,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
     // 新しいノードを作成
     Node newNode = Node(
-      nodeId: originalNode.nodeId,
+      id: originalNode.id,
       position: newPosition, // position
       velocity: vector_math.Vector2.zero(), // velocity（初期速度は0）
       color: originalNode.color, // color
@@ -310,10 +313,10 @@ class MindMapScreenState extends State<MindMapScreen>
     }
   }
 
-  void _deleteActiveNode() {
+  void _deleteActiveNode() async {
     if (_activeNode != null) {
       // 子ノードも再帰的に削除
-      _deleteNodeAndChildren(_activeNode!);
+      await _deleteNodeAndChildren(_activeNode!);
     }
     //アクティブ状態を解除
     setState(() {
@@ -321,10 +324,10 @@ class MindMapScreenState extends State<MindMapScreen>
     });
   }
 
-  void _deleteNodeAndChildren(Node node) {
+  Future<void> _deleteNodeAndChildren(Node node) async {
     // 子ノードを逆順に削除
     for (var i = node.children.length - 1; i >= 0; i--) {
-      _deleteNodeAndChildren(node.children[i]);
+      await _deleteNodeAndChildren(node.children[i]);
     }
 
     // 子ノードを削除
@@ -332,6 +335,9 @@ class MindMapScreenState extends State<MindMapScreen>
 
     // ノードを削除
     nodes.remove(node);
+    // dbから削除
+    await _nodeModel.deleteNode(node.id);
+    debugPrint('Node deleted successfully');
   }
 
   void _alignNodesVertical() async {
@@ -367,7 +373,11 @@ class MindMapScreenState extends State<MindMapScreen>
     });
   }
 
-  Future<void> _addNode(int nodeId) async {
+  Future<void> _addNode({
+    int nodeId = 0,
+    String title = '',
+    String contents = '',
+  }) async {
     // 基準位置を取得
     vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
       MediaQuery.of(context).size.center(Offset.zero),
@@ -381,8 +391,7 @@ class MindMapScreenState extends State<MindMapScreen>
     );
     if (_activeNode != null) {
       // 非同期処理を先に完了させる
-      int newNodeId = await _nodeModel.upsertNode(nodeId, '', '');
-      debugPrint('basePosition: $basePosition');
+      int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
       final newNode = NodeOperations.addNode(
         position: basePosition,
         parentNode: _activeNode,
@@ -393,14 +402,16 @@ class MindMapScreenState extends State<MindMapScreen>
       // 非同期処理完了後に setState で状態を更新
       setState(() {
         nodes.add(newNode);
-        debugPrint('nodes: $nodes');
       });
     } else {
       // 非同期処理を先に完了させる
-      int newNodeId = await _nodeModel.upsertNode(nodeId, '', '');
-      debugPrint('basePosition: $basePosition');
-      final newNode =
-          NodeOperations.addNode(position: basePosition, nodeId: newNodeId);
+
+      int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
+      final newNode = NodeOperations.addNode(
+          position: basePosition,
+          nodeId: newNodeId,
+          title: title,
+          contents: contents);
 
       // 非同期処理完了後に setState で状態を更新
       setState(() {
@@ -444,7 +455,6 @@ class MindMapScreenState extends State<MindMapScreen>
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
-        debugPrint('Node clicked: ${node.nodeId}');
         // ノードがクリックされた場合、そのノードをドラッグ可能にする
         setState(() {
           _draggedNode = node; // ドラッグするノードを設定
@@ -455,6 +465,7 @@ class MindMapScreenState extends State<MindMapScreen>
         break;
       }
     }
+    debugPrint('_draggedNode Title: ${_draggedNode?.title}');
 
     // ノードが選択されていない場合、背景のドラッグを開始
     if (!isNodeSelected) {

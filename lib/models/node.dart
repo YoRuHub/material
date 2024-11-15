@@ -10,7 +10,7 @@ class Node {
     this.isActive = false,
     this.isTemporarilyDetached = false,
     this.parent,
-    required this.nodeId,
+    required this.id,
     required this.title,
     required this.contents,
     required this.createdAt,
@@ -25,7 +25,7 @@ class Node {
   bool isActive;
   bool isTemporarilyDetached;
   Node? parent;
-  final int nodeId;
+  final int id;
   final String title;
   final String contents;
   final String createdAt;

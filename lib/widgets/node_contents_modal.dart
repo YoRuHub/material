@@ -1,21 +1,24 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 
 class NodeContentsPanel extends StatelessWidget {
   final Node node;
   final TextEditingController titleController;
   final TextEditingController contentController;
+  final NodeModel nodeModel; // Define the nodeModel variable here
 
   NodeContentsPanel({
     super.key,
     required this.node,
+    required this.nodeModel,
   })  : titleController = TextEditingController(text: node.title),
-        contentController = TextEditingController(text: node.contents);
+        contentController = TextEditingController(text: node.contents) {}
 
   // Saveボタンの機能を定義
-  void _saveContent() {
-    // 保存処理をここに実装（データベースへの保存や他ウィジェットとの連携など）
-    debugPrint("Content Saved: ${contentController.text}");
+  Future<void> _saveContent() async {
+    await nodeModel.upsertNode(
+        node.id, titleController.text, contentController.text);
   }
 
   // Clearボタンの機能を定義
@@ -85,9 +88,12 @@ class NodeContentsPanel extends StatelessWidget {
                     ),
                     const SizedBox(width: 8),
                     ElevatedButton(
-                      onPressed: _saveContent,
+                      onPressed: () async {
+                        await _saveContent();
+                        // Do something after saving is complete
+                      },
                       child: const Text('Save'),
-                    ),
+                    )
                   ],
                 ),
               ],
