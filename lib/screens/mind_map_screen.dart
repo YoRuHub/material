@@ -3,6 +3,7 @@ import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/database_helper.dart';
+import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
@@ -41,6 +42,7 @@ class MindMapScreenState extends State<MindMapScreen>
   bool _isPanning = false;
 
   late NodeModel _nodeModel;
+  late NodeMapModel _nodeMapModel;
 
   @override
   void initState() {
@@ -53,14 +55,46 @@ class MindMapScreenState extends State<MindMapScreen>
 
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _nodeModel = NodeModel();
+    _nodeMapModel = NodeMapModel();
+
     _initializeNodes();
   }
 
   Future<void> _initializeNodes() async {
+    // ノードデータの取得と作成
     final nodesData = await _nodeModel.fetchAllNodes();
     for (var node in nodesData) {
       await _addNode(
-          nodeId: node['id'], title: node['title'], contents: node['contents']);
+        nodeId: node['id'],
+        title: node['title'],
+        contents: node['contents'],
+      );
+    }
+
+    // ノードの関係性マップを取得
+    final nodeMap = await _nodeMapModel.fetchAllNodeMap();
+    for (var entry in nodeMap) {
+      int parentId = entry.key;
+      int childId = entry.value;
+      Node? parentNode = nodes.cast<Node?>().firstWhere(
+            (node) => node?.id == parentId,
+            orElse: () => null,
+          );
+
+      Node? childNode = nodes.cast<Node?>().firstWhere(
+            (node) => node?.id == childId,
+            orElse: () => null,
+          );
+
+      if (parentNode != null && childNode != null) {
+        setState(() {
+          childNode.parent = parentNode;
+          if (!parentNode.children.contains(childNode)) {
+            parentNode.children.add(childNode);
+            _updateNodeColor(childNode);
+          }
+        });
+      }
     }
   }
 
@@ -170,6 +204,7 @@ class MindMapScreenState extends State<MindMapScreen>
                 deleteActiveNode: _deleteActiveNode,
               ),
               AddNodeButton(onPressed: _addNode),
+              //_resetTables button
             ],
           ),
           if (_activeNode != null)
@@ -192,7 +227,7 @@ class MindMapScreenState extends State<MindMapScreen>
     );
   }
 
-  Future<void> _deleteTables() async {
+  Future<void> _resetTables() async {
     final dbHelper = DatabaseHelper();
     await dbHelper.resetTables();
   }
@@ -400,9 +435,12 @@ class MindMapScreenState extends State<MindMapScreen>
       (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
       (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
     );
+
     if (_activeNode != null) {
       // 非同期処理を先に完了させる
       int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
+      await _nodeMapModel.insertNodeMap(_activeNode!.id, newNodeId);
+
       final newNode = NodeOperations.addNode(
         position: basePosition,
         parentNode: _activeNode,
@@ -418,6 +456,7 @@ class MindMapScreenState extends State<MindMapScreen>
       // 非同期処理を先に完了させる
 
       int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
+
       final newNode = NodeOperations.addNode(
           position: basePosition,
           nodeId: newNodeId,

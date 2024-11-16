@@ -8,19 +8,33 @@ class NodeMapModel extends BaseModel {
   static const String columnChildId = 'child_id';
 
   /// ノードマップを取得
-  Future<Map<String, dynamic>?> fetchNodeMap() async {
+  Future<List<MapEntry>> fetchAllNodeMap() async {
     try {
       final result = await select(
         table,
         columns: [columnParentId, columnChildId],
-        limit: 1,
       );
-      return result.isNotEmpty ? result.first : null;
+      debugPrint('result: $result');
+      return result.isNotEmpty
+          ? result
+              .map((row) => MapEntry(row[columnParentId], row[columnChildId]))
+              .toList()
+          : [];
     } catch (e) {
       debugPrint('Error fetching node map: $e');
-      return null;
+      return [];
     }
   }
 
-  /// ノードマップを更新
+  Future<void> insertNodeMap(int parentId, int childId) async {
+    try {
+      await insert(
+        table,
+        {columnParentId: parentId, columnChildId: childId},
+      );
+      debugPrint('Node map inserted successfully');
+    } catch (e) {
+      debugPrint('Error upserting node map: $e');
+    }
+  }
 }
