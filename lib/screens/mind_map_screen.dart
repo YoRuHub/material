@@ -289,6 +289,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
   void _detachFromChildrenNode() {
     if (_activeNode != null) {
+      _nodeMapModel.deleteParentNodeMap(_activeNode!.id);
       setState(() {
         // 子ノードを切り離す
         for (var child in _activeNode!.children) {
@@ -328,6 +329,7 @@ class MindMapScreenState extends State<MindMapScreen>
         Node parentNode = _activeNode!.parent!;
 
         // 親ノードの子リストから削除
+        _nodeMapModel.deleteChildNodeMap(_activeNode!.id);
         parentNode.children.remove(_activeNode);
 
         // ランダムな方向と大きさを生成
@@ -381,8 +383,11 @@ class MindMapScreenState extends State<MindMapScreen>
 
     // ノードを削除
     nodes.remove(node);
+
     // dbから削除
     await _nodeModel.deleteNode(node.id);
+    await _nodeMapModel.deleteParentNodeMap(node.id);
+
     debugPrint('Node deleted successfully');
   }
 
@@ -613,10 +618,12 @@ class MindMapScreenState extends State<MindMapScreen>
 
         if (node != draggedNode.parent) {
           // 現在の親ノードから子ノードを削除
+          _nodeMapModel.deleteChildNodeMap(draggedNode.id);
           draggedNode.parent?.children.remove(draggedNode);
 
           // 新しい親子関係を設定
           draggedNode.parent = node;
+          _nodeMapModel.insertNodeMap(node.id, draggedNode.id);
           node.children.add(draggedNode);
 
           // 色を更新

@@ -37,4 +37,22 @@ class NodeMapModel extends BaseModel {
       debugPrint('Error upserting node map: $e');
     }
   }
+
+  Future<void> deleteParentNodeMap(int parentId) async {
+    try {
+      await delete(table, '$columnParentId = ?', [parentId]);
+      debugPrint('Node map deleted successfully');
+    } catch (e) {
+      debugPrint('Error deleting node map: $e');
+    }
+  }
+
+  Future<void> deleteChildNodeMap(int childId) async {
+    try {
+      await delete(table, '$columnChildId = ?', [childId]);
+      debugPrint('Node map deleted successfully');
+    } catch (e) {
+      debugPrint('Error deleting node map: $e');
+    }
+  }
 }

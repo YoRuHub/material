@@ -49,3 +49,13 @@ lib/
 │
 └── constants/
 └── node_constants.dart # 定数の定義
+
+
+flutter: result: [
+    {parent_id: 1, child_id: 3}, 
+    {parent_id: 3, child_id: 4}, 
+    {parent_id: 3, child_id: 5}, 
+    {parent_id: 11, child_id: 2}, 
+    {parent_id: 12, child_id: 2}, 
+    {parent_id: 2, child_id: 13}, 
+    {parent_id: 2, child_id: 14}]
