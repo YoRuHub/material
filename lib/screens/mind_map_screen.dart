@@ -173,18 +173,20 @@ class MindMapScreenState extends State<MindMapScreen>
             ],
           ),
           if (_activeNode != null)
-            Stack(children: <Widget>[
-              NodeContentsPanel(
-                node: _activeNode!,
-                nodeModel: _nodeModel,
-                onNodeUpdated: (updatedNode) {
-                  setState(() {
-                    _activeNode = updatedNode;
-                    debugPrint('Node updated: $_activeNode');
-                  });
-                },
-              )
-            ]),
+            Builder(
+              key: ValueKey(_activeNode!.id), // ここでキーを設定
+              builder: (context) {
+                return NodeContentsPanel(
+                  node: _activeNode!,
+                  nodeModel: _nodeModel,
+                  onNodeUpdated: (updatedNode) {
+                    setState(() {
+                      _activeNode = updatedNode;
+                    });
+                  },
+                );
+              },
+            )
         ],
       ),
     );
@@ -485,7 +487,6 @@ class MindMapScreenState extends State<MindMapScreen>
         break;
       }
     }
-    debugPrint('_draggedNode Title: ${_draggedNode?.title}');
 
     // ノードが選択されていない場合、背景のドラッグを開始
     if (!isNodeSelected) {
@@ -547,18 +548,16 @@ class MindMapScreenState extends State<MindMapScreen>
       _offset,
       _scale,
     );
+    // ノードの選択を確認
+    bool isNodeSelected = _checkForNodeSelection(worldPos);
 
-    // ノードの選択が確認されればアクティブ状態を解除しない
-    if (_checkForNodeSelection(worldPos)) {
-      // ノードがクリックされた場合はアクティブ状態を保持
-      return;
-    }
-
-    // 背景クリック時、アクティブ状態を解除
     setState(() {
-      if (_activeNode != null) {
-        _activeNode!.isActive = false; // アクティブ状態を解除
-        _activeNode = null;
+      // ノードが選択されていない場合、アクティブ状態を解除
+      if (!isNodeSelected) {
+        if (_activeNode != null) {
+          _activeNode!.isActive = false; // アクティブ状態を解除
+          _activeNode = null;
+        }
       }
     });
   }
