@@ -6,9 +6,12 @@ class ToolBarWidget extends StatefulWidget {
   final VoidCallback detachChildren;
   final VoidCallback detachParent;
   final VoidCallback stopPhysics;
+  final VoidCallback showNodeTitle;
   final VoidCallback deleteActiveNode;
   final Function duplicateActiveNode;
   final bool isPhysicsEnabled;
+
+  final bool isTitleVisible;
 
   const ToolBarWidget({
     super.key,
@@ -17,9 +20,11 @@ class ToolBarWidget extends StatefulWidget {
     required this.detachChildren,
     required this.detachParent,
     required this.stopPhysics,
+    required this.showNodeTitle,
     required this.deleteActiveNode,
     required this.duplicateActiveNode,
     required this.isPhysicsEnabled,
+    required this.isTitleVisible,
   });
 
   @override
@@ -35,6 +40,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
     'detachParent': false,
     'duplicate': false,
     'lock': false,
+    'showTitle': false,
     'delete': false,
   };
 
@@ -138,6 +144,14 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                 isHovered: _isHovered['duplicate'] ?? false,
                 rotated: false,
               ),
+              buildIconButton(
+                  icon: widget.isTitleVisible
+                      ? Icons.visibility
+                      : Icons.visibility_off,
+                  onPressed: widget.showNodeTitle,
+                  action: 'showTitle',
+                  isHovered: _isHovered['showTitle']! || widget.isTitleVisible,
+                  rotated: false),
               // ノード固定
               buildIconButton(
                 icon: widget.isPhysicsEnabled ? Icons.lock_open : Icons.lock,

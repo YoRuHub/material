@@ -33,6 +33,7 @@ class MindMapScreenState extends State<MindMapScreen>
   Node? _activeNode;
 
   bool isPhysicsEnabled = true;
+  bool isTitleVisible = true;
 
   Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
@@ -193,16 +194,17 @@ class MindMapScreenState extends State<MindMapScreen>
                 scaleZ: _scale,
               ),
               ToolBarWidget(
-                alignNodesHorizontal:
-                    _alignNodesHorizontal, // contextを渡さないように修正
-                alignNodesVertical: _alignNodesVertical,
-                isPhysicsEnabled: isPhysicsEnabled,
-                detachChildren: _detachFromChildrenNode,
-                detachParent: _detachFromParentNode,
-                duplicateActiveNode: _duplicateActiveNode,
-                stopPhysics: _stopPhysics,
-                deleteActiveNode: _deleteActiveNode,
-              ),
+                  alignNodesHorizontal:
+                      _alignNodesHorizontal, // contextを渡さないように修正
+                  alignNodesVertical: _alignNodesVertical,
+                  isPhysicsEnabled: isPhysicsEnabled,
+                  detachChildren: _detachFromChildrenNode,
+                  detachParent: _detachFromParentNode,
+                  duplicateActiveNode: _duplicateActiveNode,
+                  stopPhysics: _stopPhysics,
+                  deleteActiveNode: _deleteActiveNode,
+                  showNodeTitle: _showNodeTitle,
+                  isTitleVisible: isTitleVisible),
               AddNodeButton(onPressed: _addNode),
               //_resetTables button
             ],
@@ -230,6 +232,14 @@ class MindMapScreenState extends State<MindMapScreen>
   Future<void> _resetTables() async {
     final dbHelper = DatabaseHelper();
     await dbHelper.resetTables();
+  }
+
+  ///ノードのタイトルを表示するヘルパーメソッド
+
+  void _showNodeTitle() {
+    setState(() {
+      isTitleVisible = !isTitleVisible;
+    });
   }
 
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
