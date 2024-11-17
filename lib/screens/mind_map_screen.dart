@@ -239,7 +239,8 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
-  Node _copyNodeWithChildren(Node originalNode, {Node? newParent}) {
+  Future<Node> _copyNodeWithChildren(Node originalNode,
+      {Node? newParent}) async {
     // 新しい位置を計算（少しずらす）
     vector_math.Vector2 newPosition = originalNode.position +
         vector_math.Vector2(
@@ -247,19 +248,25 @@ class MindMapScreenState extends State<MindMapScreen>
           NodeConstants.levelHeight,
         );
 
+    int newNodeId = await _nodeModel.upsertNode(
+        0, originalNode.title, originalNode.contents);
     // 新しいノードを作成
     Node newNode = Node(
-      id: originalNode.id,
-      position: newPosition, // position
-      velocity: vector_math.Vector2.zero(), // velocity（初期速度は0）
-      color: originalNode.color, // color
-      radius: originalNode.radius, // radius
-      parent: newParent, title: '', contents: '', createdAt: '', // parent
+      id: newNodeId,
+      position: newPosition,
+      velocity: vector_math.Vector2.zero(),
+      color: originalNode.color,
+      radius: originalNode.radius,
+      parent: newParent,
+      title: originalNode.title,
+      contents: originalNode.contents,
+      createdAt: originalNode.createdAt,
     );
 
     // 子ノードを再帰的にコピー
     for (var child in originalNode.children) {
-      Node newChild = _copyNodeWithChildren(child, newParent: newNode);
+      Node newChild = await _copyNodeWithChildren(child, newParent: newNode);
+      await _nodeMapModel.insertNodeMap(newNode.id, newChild.id);
       newNode.children.add(newChild);
     }
 
@@ -267,19 +274,20 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   // アクティブノードとその子孫をコピーする関数
-  void _duplicateActiveNode() {
+  Future<void> _duplicateActiveNode() async {
     if (_activeNode != null) {
-      setState(() {
-        // アクティブノードとその子孫をコピー
-        Node copiedNode = _copyNodeWithChildren(_activeNode!);
+      // Perform the asynchronous work
+      Node copiedNode = await _copyNodeWithChildren(_activeNode!);
 
-        // 新しいノードをノードリストに追加
+      // Update the widget state
+      setState(() {
+        // Add the new node to the nodes list
         nodes.add(copiedNode);
 
-        // 子ノードも追加
+        // Add the children to the nodes list
         _addChildrenToNodesList(copiedNode);
 
-        // コピーしたノードの色を更新
+        // Update the node color
         _updateNodeColor(copiedNode);
       });
     }

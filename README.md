@@ -24,38 +24,43 @@ Todo
 ・yaml形式でインポート・エクスポート
 ・ノード削除時のマップ削除
 ・２つ以上の子ノードを初期描画できるように
-・
+
 
 lib/
+├── constants/
+│   ├── node_constants.dart         # ノード関連の定数
+│   └── theme_constants.dart        # テーマ関連の定数
+│
+├── database/
+│   ├── database_helper.dart        # データベースヘルパー
+│   └── models/
+│       ├── node_map_model.dart     # ノードマップモデル
+│       └── node_model.dart         # ノードモデル
+│
+├── features/
+│   └── mind_map/
+│       ├── screens/
+│       │   └── mind_map_screen.dart    # メインスクリーン
+│       ├── controllers/
+│       │   ├── node_controller.dart     # ノード操作のコントローラー
+│       │   └── physics_controller.dart  # 物理演算のコントローラー
+│       ├── widgets/
+│       │   ├── add_node_button.dart    # ノード追加ボタン
+│       │   ├── node_contents_modal.dart # ノードコンテンツモーダル
+│       │   ├── positioned_text.dart     # 配置されたテキスト
+│       │   └── tool_bar.dart           # ツールバー
+│       └── services/
+│           ├── node_service.dart        # ノード操作のサービス
+│           └── layout_service.dart      # レイアウト調整サービス
+│
 ├── models/
-│ └── node.dart # Node クラスの定義
-│
-├── screens/
-│ └── mind_map_screen.dart # メインの画面ウィジェット
-│
-├── painters/
-│ └── node_painter.dart # カスタムペインター
+│   └── node.dart                   # ノードモデル
 │
 ├── utils/
-│ ├── coordinate_utils.dart # 座標変換関連
-│ ├── node_physics.dart # 物理演算関連
-│ ├── node_alignment.dart # ノードの配置関連
-│ └── node_operations.dart # ノードの操作関連（追加・削除など）
+│   ├── coordinate_utils.dart       # 座標変換ユーティリティ
+│   ├── node_alignment.dart         # ノード配置ユーティリティ
+│   ├── node_operations.dart        # ノード操作ユーティリティ
+│   └── node_physics.dart          # 物理演算ユーティリティ
 │
-├── widgets/
-│ ├── add_node_button.dart # 既存
-│ ├── positioned_text.dart # 既存
-│ └── tool_bar.dart # 既存
-│
-└── constants/
-└── node_constants.dart # 定数の定義
-
-
-flutter: result: [
-    {parent_id: 1, child_id: 3}, 
-    {parent_id: 3, child_id: 4}, 
-    {parent_id: 3, child_id: 5}, 
-    {parent_id: 11, child_id: 2}, 
-    {parent_id: 12, child_id: 2}, 
-    {parent_id: 2, child_id: 13}, 
-    {parent_id: 2, child_id: 14}]
+└── painters/
+    └── node_painter.dart           # ノード描画クラス
