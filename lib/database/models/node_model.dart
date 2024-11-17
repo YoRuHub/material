@@ -85,7 +85,8 @@ class NodeModel extends BaseModel {
   Future<void> deleteNode(int id) async {
     try {
       await delete(table, '$columnId = ?', [id]);
-      debugPrint('Node deleted successfully');
+      await resetAutoIncrement(table);
+      debugPrint('Node deleted successfully with ID: $id');
     } catch (e) {
       debugPrint('Error deleting node: $e');
     }

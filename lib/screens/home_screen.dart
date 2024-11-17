@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/screens/mind_map_3d_screen.dart';
 import 'package:flutter_app/screens/mind_map_screen.dart';
 import 'package:flutter_app/screens/my_3d_view.dart';
+import 'package:flutter_app/widgets/particle_button.dart';
 import 'detail_screen.dart';
 import 'icons_screen.dart'; // IconsScreenをインポート
 import '../widgets/square_button.dart';
@@ -27,7 +28,7 @@ class HomeScreen extends StatelessWidget {
       },
       {
         'icon': Icons.quiz,
-        'title': 'Mind Map 3D',
+        'title': 'SpaceMap3D',
         'color': Colors.orange,
         'index': 2,
       },
@@ -51,7 +52,7 @@ class HomeScreen extends StatelessWidget {
           return Align(
             alignment: Alignment.center, // 画面中央に配置
             child: SizedBox(
-              width: crossAxisCount * 120.0, // グリッドの幅調整
+              width: crossAxisCount * 240.0, // グリッドの幅調整
               child: GridView.builder(
                 shrinkWrap: true, // グリッドの高さをコンテンツに合わせる
                 gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
@@ -63,8 +64,8 @@ class HomeScreen extends StatelessWidget {
                 padding: const EdgeInsets.all(16.0),
                 itemCount: buttonData.length,
                 itemBuilder: (context, index) {
-                  return SquareButton(
-                    title: buttonData[index]['title'],
+                  return ParticleButton(
+                    text: buttonData[index]['title'],
                     icon: buttonData[index]['icon'],
                     color: buttonData[index]['color'],
                     onPressed: () {

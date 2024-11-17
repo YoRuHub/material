@@ -387,8 +387,6 @@ class MindMapScreenState extends State<MindMapScreen>
     // dbから削除
     await _nodeModel.deleteNode(node.id);
     await _nodeMapModel.deleteParentNodeMap(node.id);
-
-    debugPrint('Node deleted successfully');
   }
 
   void _alignNodesVertical() async {
@@ -635,10 +633,6 @@ class MindMapScreenState extends State<MindMapScreen>
         }
       }
     }
-    debugPrint('nodes: $nodes');
-    //parent
-    debugPrint('parent: ${draggedNode.parent}');
-    debugPrint('children: ${draggedNode.children}');
   }
 
   // 循環参照が発生するかチェックするヘルパーメソッド

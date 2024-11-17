@@ -119,4 +119,19 @@ abstract class BaseModel {
       return [];
     }
   }
+
+  /// 自動インクリメントのIDシーケンスをリセットする
+  ///
+  /// [table] テーブル名
+  ///
+  /// リセットに失敗した場合はエラーを出力する
+  Future<void> resetAutoIncrement(String table) async {
+    final db = await _db;
+    try {
+      await db.execute('DELETE FROM sqlite_sequence WHERE name = ?', [table]);
+      debugPrint('Auto-increment sequence reset successfully for $table');
+    } catch (e) {
+      debugPrint('Error resetting auto-increment sequence for $table: $e');
+    }
+  }
 }
