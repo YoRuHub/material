@@ -172,12 +172,8 @@ class MindMapScreenState extends State<MindMapScreen>
                             MediaQuery.of(context).size.height -
                                 AppBar().preferredSize.height,
                           ),
-                          painter: NodePainter(
-                            nodes,
-                            _signalAnimation.value,
-                            _scale,
-                            _offset,
-                          ),
+                          painter: NodePainter(nodes, _signalAnimation.value,
+                              _scale, _offset, isTitleVisible, context),
                         );
                       },
                     ),

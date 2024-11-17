@@ -5,7 +5,6 @@ import 'package:flutter_app/screens/my_3d_view.dart';
 import 'package:flutter_app/widgets/particle_button.dart';
 import 'detail_screen.dart';
 import 'icons_screen.dart'; // IconsScreenをインポート
-import '../widgets/square_button.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

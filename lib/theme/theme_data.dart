@@ -11,7 +11,7 @@ ThemeData buildThemeData() {
       secondary: Color.fromARGB(70, 255, 255, 255),
       surface: Color.fromARGB(30, 255, 255, 255),
       onSecondary: Colors.white70,
-      onSurface: Colors.white30,
+      onSurface: Color.fromARGB(30, 255, 255, 255),
       error: Color(0xFFEE4266),
       onError: Colors.white,
       onPrimary: Colors.white,

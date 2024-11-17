@@ -8,6 +8,8 @@ class NodePainter extends CustomPainter {
   final double signalProgress;
   final double scale;
   final Offset offset;
+  final bool isTitleVisible;
+  final BuildContext context; // BuildContextを追加
 
   /// コンストラクタ
   ///
@@ -15,7 +17,8 @@ class NodePainter extends CustomPainter {
   /// [signalProgress] 信号の進行割合
   /// [scale] スケールの倍率
   /// [offset] オフセット位置
-  NodePainter(this.nodes, this.signalProgress, this.scale, this.offset);
+  NodePainter(this.nodes, this.signalProgress, this.scale, this.offset,
+      this.isTitleVisible, this.context); // コンストラクタにBuildContextを追加
 
   /// 座標をスケールとオフセットで変換する
   ///
@@ -168,7 +171,27 @@ class NodePainter extends CustomPainter {
     for (var node in nodes) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
-
+      // ノードのタイトルを表示
+      if (isTitleVisible) {
+        // isTitleVisibleがtrueの時
+        final TextPainter textPainter = TextPainter(
+          text: TextSpan(
+            text: node.title,
+            style: TextStyle(
+              color: Theme.of(context).colorScheme.onSurface,
+              fontWeight: FontWeight.bold,
+              fontSize: 16 * scale, // スケールに基づいてフォントサイズを調整
+            ),
+          ),
+          textDirection: TextDirection.ltr,
+        );
+        textPainter.layout();
+        // タイトルの位置をノードの下に設定
+        textPainter.paint(
+            canvas,
+            Offset(center.dx - textPainter.width / 2,
+                center.dy + scaledRadius + 5));
+      }
       // 細胞膜のグロー効果
       if (node.isActive) {
         final Paint glowPaint = Paint()
