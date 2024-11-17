@@ -69,13 +69,17 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                 quarterTurns: 1, // 90度回転
                 child: Icon(
                   icon,
-                  color: isHovered ? Colors.cyan : Colors.cyan[900],
+                  color: isHovered
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.primary.withOpacity(0.5),
                   size: 24.0,
                 ),
               )
             : Icon(
                 icon,
-                color: isHovered ? Colors.cyan : Colors.cyan[900],
+                color: isHovered
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
                 size: 24.0,
               ),
         onPressed: () => onPressed(),
@@ -94,11 +98,6 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
           decoration: BoxDecoration(
             color: Theme.of(context).colorScheme.surface,
             borderRadius: BorderRadius.circular(12.0),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.5),
-              ),
-            ],
           ),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.center,

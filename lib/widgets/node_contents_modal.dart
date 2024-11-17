@@ -22,6 +22,9 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
   late TextEditingController titleController;
   late TextEditingController contentController;
 
+  bool _isHoveringTitle = false;
+  bool _isHoveringContent = false;
+
   @override
   void initState() {
     super.initState();
@@ -43,7 +46,6 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       contentController.text,
     );
 
-    // 呼び出し元に変更を通知
     widget.onNodeUpdated(
       widget.node
         ..title = titleController.text
@@ -76,31 +78,43 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                TextField(
-                  controller: titleController,
-                  decoration: InputDecoration(
-                    fillColor: Colors.black.withOpacity(0.2),
-                    filled: true,
-                    border: InputBorder.none,
-                    prefixIcon: const Icon(Icons.edit),
-                    labelText: 'Title',
-                  ),
-                  style: const TextStyle(
-                    fontWeight: FontWeight.bold,
-                    fontSize: 18,
+                MouseRegion(
+                  onEnter: (_) => setState(() => _isHoveringTitle = true),
+                  onExit: (_) => setState(() => _isHoveringTitle = false),
+                  child: TextField(
+                    controller: titleController,
+                    decoration: InputDecoration(
+                      fillColor: _isHoveringTitle
+                          ? Theme.of(context).colorScheme.onSecondary
+                          : Theme.of(context).colorScheme.secondary,
+                      filled: true,
+                      border: InputBorder.none,
+                      prefixIcon: const Icon(Icons.edit),
+                      labelText: 'Title',
+                    ),
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 18,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
-                  child: TextField(
-                    controller: contentController,
-                    keyboardType: TextInputType.multiline,
-                    maxLines: 13,
-                    decoration: InputDecoration(
-                      border: InputBorder.none,
-                      hintText: "Content",
-                      fillColor: Colors.black.withOpacity(0.2),
-                      filled: true,
+                  child: MouseRegion(
+                    onEnter: (_) => setState(() => _isHoveringContent = true),
+                    onExit: (_) => setState(() => _isHoveringContent = false),
+                    child: TextField(
+                      controller: contentController,
+                      keyboardType: TextInputType.multiline,
+                      maxLines: 13,
+                      decoration: InputDecoration(
+                        fillColor: _isHoveringContent
+                            ? Theme.of(context).colorScheme.onSecondary
+                            : Theme.of(context).colorScheme.secondary,
+                        filled: true,
+                        border: InputBorder.none,
+                        hintText: "Content",
+                      ),
                     ),
                   ),
                 ),
@@ -111,7 +125,8 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                     ElevatedButton(
                       onPressed: _clearContent,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.black.withOpacity(0.1),
+                        backgroundColor:
+                            Theme.of(context).colorScheme.secondary,
                       ),
                       child: const Text('Clear'),
                     ),

@@ -22,10 +22,12 @@ class AddNodeButtonState extends State<AddNodeButton> {
         onExit: (_) => setState(() => _isHovered = false),
         child: FloatingActionButton(
           onPressed: () => widget.onPressed(),
-          backgroundColor: Colors.white.withOpacity(0.1),
+          backgroundColor: Theme.of(context).colorScheme.surface,
           child: Icon(
             Icons.add, // ノード追加アイコン
-            color: _isHovered ? Colors.cyan : Colors.cyan[900],
+            color: _isHovered
+                ? Theme.of(context).colorScheme.primary
+                : Theme.of(context).colorScheme.primary.withOpacity(0.5),
             size: 30,
           ),
         ),
