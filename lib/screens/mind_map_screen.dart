@@ -14,11 +14,16 @@ import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/add_node_button.dart';
 import 'package:flutter_app/widgets/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positioned_text.dart';
+import 'package:flutter_app/widgets/reset_button.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/tool_bar.dart';
 
 class MindMapScreen extends StatefulWidget {
-  const MindMapScreen({super.key});
+  final int projectId; // プロジェクトIDを保持
+  final String projectTitle;
+
+  const MindMapScreen(
+      {super.key, required this.projectId, required this.projectTitle});
 
   @override
   MindMapScreenState createState() => MindMapScreenState();
@@ -63,7 +68,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
   Future<void> _initializeNodes() async {
     // ノードデータの取得と作成
-    final nodesData = await _nodeModel.fetchAllNodes();
+    final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
     for (var node in nodesData) {
       await _addNode(
         nodeId: node['id'],
@@ -109,8 +114,14 @@ class MindMapScreenState extends State<MindMapScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("Mind Map"),
-        backgroundColor: Colors.black45,
+        title: Text(
+          widget.projectTitle,
+          style: TextStyle(
+            color: Colors.white.withOpacity(0.5),
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: Stack(
         children: [
@@ -202,7 +213,7 @@ class MindMapScreenState extends State<MindMapScreen>
                   showNodeTitle: _showNodeTitle,
                   isTitleVisible: isTitleVisible),
               AddNodeButton(onPressed: _addNode),
-              //_resetTables button
+              //_reset button
             ],
           ),
           if (_activeNode != null)
@@ -249,7 +260,7 @@ class MindMapScreenState extends State<MindMapScreen>
         );
 
     int newNodeId = await _nodeModel.upsertNode(
-        0, originalNode.title, originalNode.contents);
+        0, originalNode.title, originalNode.contents, widget.projectId);
     // 新しいノードを作成
     Node newNode = Node(
       id: newNodeId,
@@ -260,6 +271,7 @@ class MindMapScreenState extends State<MindMapScreen>
       parent: newParent,
       title: originalNode.title,
       contents: originalNode.contents,
+      projectId: widget.projectId,
       createdAt: originalNode.createdAt,
     );
 
@@ -399,7 +411,7 @@ class MindMapScreenState extends State<MindMapScreen>
     nodes.remove(node);
 
     // dbから削除
-    await _nodeModel.deleteNode(node.id);
+    await _nodeModel.deleteNode(node.id, widget.projectId);
     await _nodeMapModel.deleteParentNodeMap(node.id);
   }
 
@@ -441,21 +453,39 @@ class MindMapScreenState extends State<MindMapScreen>
     String title = '',
     String contents = '',
   }) async {
-    // 基準位置を取得
-    vector_math.Vector2 basePosition = CoordinateUtils.screenToWorld(
-      MediaQuery.of(context).size.center(Offset.zero),
-      _offset,
-      _scale,
-    );
-    // 既存のノードがある場合は、少しずらしてランダム配置
-    basePosition += vector_math.Vector2(
-      (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-      (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-    );
+    // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
+    vector_math.Vector2 basePosition;
 
     if (_activeNode != null) {
-      // 非同期処理を先に完了させる
-      int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
+      // 親ノードの位置を基準にする
+      basePosition = _activeNode!.position;
+
+      // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
+      basePosition += vector_math.Vector2(
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+      );
+    } else {
+      // 親ノードがない場合、画面の中心を基準にする
+      basePosition = CoordinateUtils.screenToWorld(
+        MediaQuery.of(context).size.center(Offset.zero),
+        _offset,
+        _scale,
+      );
+
+      // ランダムに少しずらして配置
+      basePosition += vector_math.Vector2(
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+      );
+    }
+
+    // 非同期処理を先に完了させる
+    int newNodeId =
+        await _nodeModel.upsertNode(nodeId, title, contents, widget.projectId);
+
+    if (_activeNode != null) {
+      // 親ノードがある場合、親ノード情報をセットしてノードを追加
       await _nodeMapModel.insertNodeMap(_activeNode!.id, newNodeId);
 
       final newNode = NodeOperations.addNode(
@@ -463,6 +493,7 @@ class MindMapScreenState extends State<MindMapScreen>
         parentNode: _activeNode,
         generation: NodeOperations.calculateGeneration(_activeNode!) + 1,
         nodeId: newNodeId,
+        projectId: widget.projectId,
       );
 
       // 非同期処理完了後に setState で状態を更新
@@ -470,15 +501,14 @@ class MindMapScreenState extends State<MindMapScreen>
         nodes.add(newNode);
       });
     } else {
-      // 非同期処理を先に完了させる
-
-      int newNodeId = await _nodeModel.upsertNode(nodeId, title, contents);
-
+      // 親ノードがない場合はそのまま新しいノードを追加
       final newNode = NodeOperations.addNode(
-          position: basePosition,
-          nodeId: newNodeId,
-          title: title,
-          contents: contents);
+        position: basePosition,
+        nodeId: newNodeId,
+        title: title,
+        contents: contents,
+        projectId: widget.projectId,
+      );
 
       // 非同期処理完了後に setState で状態を更新
       setState(() {
@@ -488,7 +518,7 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   Future<void> _onUpdateNode(id, text, contents) async {
-    await _nodeModel.upsertNode(id, text, contents);
+    await _nodeModel.upsertNode(id, text, contents, widget.projectId);
     //nodeの内容を更新
     for (var node in nodes) {
       if (node.id == id) {

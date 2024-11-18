@@ -13,6 +13,7 @@ class Node {
     required this.id,
     required this.title,
     required this.contents,
+    required this.projectId,
     required this.createdAt,
     List<Node>? children,
   }) : children = children ?? [];
@@ -28,6 +29,7 @@ class Node {
   final int id;
   late String title;
   late String contents;
+  final int projectId;
   final String createdAt;
   List<Node> children;
 }

@@ -11,11 +11,13 @@ ThemeData buildThemeData() {
       secondary: Color.fromARGB(100, 0, 0, 0),
       onSecondary: Color.fromARGB(255, 0, 0, 0),
       surface: Color.fromARGB(20, 255, 255, 255),
-      onSurface: Color.fromARGB(80, 255, 255, 255),
+      onSurface: Color.fromARGB(50, 255, 255, 255),
       error: Color(0xFFEE4266),
       onError: Colors.white,
       onPrimary: Colors.white,
     ),
+    iconTheme: IconThemeData(color: Colors.cyan[900]),
+    primaryIconTheme: const IconThemeData(color: Colors.cyan),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         color: Colors.white,

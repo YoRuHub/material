@@ -44,6 +44,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       widget.node.id,
       titleController.text,
       contentController.text,
+      widget.node.projectId,
     );
 
     widget.onNodeUpdated(

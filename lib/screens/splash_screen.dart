@@ -1,17 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/database/database_helper.dart';
+import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/custom_icon.dart'; // CustomIcons のインポート
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
-class SplashScreen extends StatefulWidget {
+class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
   @override
-  SplashScreenState createState() => SplashScreenState();
+  ConsumerState<SplashScreen> createState() => SplashScreenState();
 }
 
-class SplashScreenState extends State<SplashScreen> {
+class SplashScreenState extends ConsumerState<SplashScreen> {
   @override
   void initState() {
     super.initState();
@@ -27,11 +29,15 @@ class SplashScreenState extends State<SplashScreen> {
     // データベースの初期化
     await _initDatabase();
 
+    // プロジェクトデータの読み込み
+    await _loadProjects();
+
     // 初期化処理が終わったら、HomeScreenに遷移
     if (mounted) {
       Navigator.pushReplacement(
         context,
-        MaterialPageRoute(builder: (context) => const HomeScreen()),
+        MaterialPageRoute(
+            builder: (context) => const ProviderScope(child: HomeScreen())),
       );
     }
   }
@@ -54,6 +60,18 @@ class SplashScreenState extends State<SplashScreen> {
       dbHelper.initDatabaseTables();
     } catch (e) {
       debugPrint(e.toString());
+    }
+  }
+
+  // プロジェクトデータの読み込み
+  Future<void> _loadProjects() async {
+    final projectNotifier = ref.read(projectNotifierProvider.notifier);
+
+    try {
+      // プロジェクトデータを読み込み
+      await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
+    } catch (e) {
+      debugPrint("Error loading projects: $e");
     }
   }
 }

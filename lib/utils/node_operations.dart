@@ -13,6 +13,7 @@ class NodeOperations {
     required int nodeId,
     String title = '',
     String contents = '',
+    required int projectId,
     String createdAt = '',
   }) {
     final node = Node(
@@ -23,6 +24,7 @@ class NodeOperations {
       id: nodeId,
       title: title,
       contents: contents,
+      projectId: projectId,
       createdAt: createdAt,
     );
 

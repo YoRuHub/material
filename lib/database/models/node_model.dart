@@ -6,13 +6,22 @@ class NodeModel extends BaseModel {
   static const String columnId = 'id';
   static const String columnTitle = 'title';
   static const String columnContents = 'contents';
+  static const String columnProjectId = 'project_id';
   static const String columnCreatedAt = 'created_at';
 
-  Future<List<Map<String, dynamic>>> fetchAllNodes() async {
+  Future<List<Map<String, dynamic>>> fetchAllNodes(int projectId) async {
     try {
       final result = await select(
         table,
-        columns: [columnId, columnTitle, columnContents, columnCreatedAt],
+        columns: [
+          columnId,
+          columnTitle,
+          columnContents,
+          columnProjectId,
+          columnCreatedAt
+        ],
+        whereClause: '$columnProjectId = ?',
+        whereArgs: [projectId],
       );
       return result.isNotEmpty ? result : [];
     } catch (e) {
@@ -26,13 +35,20 @@ class NodeModel extends BaseModel {
   /// [id] ノードのID
   ///
   /// 取得に失敗した場合は空のリストを返す
-  Future<List<Map<String, dynamic>>> fetchNodeById(int id) async {
+  Future<List<Map<String, dynamic>>> fetchNodeById(
+      int id, int projectId) async {
     try {
       final result = await select(
         table,
-        columns: [columnId, columnTitle, columnContents, columnCreatedAt],
-        whereClause: '$columnId = ?',
-        whereArgs: [id],
+        columns: [
+          columnId,
+          columnTitle,
+          columnContents,
+          columnProjectId,
+          columnCreatedAt
+        ],
+        whereClause: '$columnId = ? AND $columnProjectId = ?',
+        whereArgs: [id, projectId],
       );
       return result.isNotEmpty ? result : [];
     } catch (e) {
@@ -50,19 +66,22 @@ class NodeModel extends BaseModel {
   /// [contents] ノードの内容
   ///
   /// 返り値: 挿入/更新されたID (0: エラー)
-  Future<int> upsertNode(int id, String title, String contents) async {
+  Future<int> upsertNode(
+      int id, String title, String contents, int projectId) async {
     final createdAt = DateTime.now().toIso8601String();
     final data = {
       if (id != 0) columnId: id,
       columnTitle: title,
       columnContents: contents,
       columnCreatedAt: createdAt,
+      columnProjectId: projectId
     };
 
     try {
       if (id != 0) {
         // 更新処理
-        await upsert(table, data, '$columnId = ?', [id]);
+        await upsert(table, data, '$columnId = ? AND $columnProjectId = ?',
+            [id, projectId]);
         debugPrint('Node updated successfully');
         return id;
       } else {
@@ -82,9 +101,10 @@ class NodeModel extends BaseModel {
   /// [id] ノードのID
   ///
   /// 削除に失敗した場合はエラーを出力する
-  Future<void> deleteNode(int id) async {
+  Future<void> deleteNode(int id, int projectId) async {
     try {
-      await delete(table, '$columnId = ?', [id]);
+      await delete(
+          table, '$columnId = ? AND $columnProjectId = ?', [id, projectId]);
       await resetAutoIncrement(table);
       debugPrint('Node deleted successfully with ID: $id');
     } catch (e) {
