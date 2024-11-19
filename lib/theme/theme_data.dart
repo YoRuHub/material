@@ -35,8 +35,11 @@ ThemeData buildThemeData() {
       ),
     ),
     buttonTheme: const ButtonThemeData(
-      buttonColor: Color(0xFF61C0BF), // 優しい青緑
+      buttonColor: Colors.cyan,
       textTheme: ButtonTextTheme.primary,
+    ),
+    dialogTheme: const DialogTheme(
+      backgroundColor: Color.fromARGB(255, 30, 30, 30),
     ),
   );
 }

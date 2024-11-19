@@ -22,6 +22,7 @@ class ProjectList extends StatefulWidget {
 
 class ProjectListState extends State<ProjectList> {
   late List<bool> _isHovered;
+  late List<bool> _isIconHovered; // アイコンのホバー状態
 
   @override
   void initState() {
@@ -42,6 +43,7 @@ class ProjectListState extends State<ProjectList> {
   // ホバー状態リストを初期化
   void _initializeHoverStates() {
     _isHovered = List.generate(widget.projects.length, (_) => false);
+    _isIconHovered = List.generate(widget.projects.length * 2, (_) => false);
   }
 
   @override
@@ -51,6 +53,8 @@ class ProjectListState extends State<ProjectList> {
         itemCount: widget.projects.length,
         itemBuilder: (context, index) {
           final project = widget.projects[index];
+          final editIconIndex = index * 2; // 各プロジェクトに編集ボタンのインデックス
+          final deleteIconIndex = editIconIndex + 1; // 削除ボタンのインデックス
 
           return MouseRegion(
             onEnter: (_) {
@@ -75,12 +79,14 @@ class ProjectListState extends State<ProjectList> {
                 );
               },
               child: Container(
+                height: 80, // アイテムの高さを固定
                 width: double.infinity, // 横幅を最大化
                 margin: const EdgeInsets.symmetric(vertical: 8.0), // 上下の間隔
-                padding: const EdgeInsets.all(16.0), // 内側の余白
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 16.0), // 内側の横方向余白
                 decoration: BoxDecoration(
-                  color: Theme.of(context).colorScheme.surface.withOpacity(0.2),
-                  borderRadius: BorderRadius.circular(12.0),
+                  color: Theme.of(context).colorScheme.surface.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8.0),
                   border: Border.all(
                     color: _isHovered[index]
                         ? Theme.of(context).colorScheme.primary // ホバー時の枠線
@@ -97,29 +103,72 @@ class ProjectListState extends State<ProjectList> {
                         ]
                       : null,
                 ),
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero, // ListTileの余白を無効化
-                  title: Text(
-                    project.title,
-                    style: Theme.of(context).textTheme.bodyLarge,
-                  ),
-                  subtitle: Text(
-                    'Last updated: ${project.updatedAt.toLocal().toString().split(' ')[0]}',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  trailing: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      IconButton(
-                        icon: const Icon(Icons.edit),
-                        onPressed: () => widget.onEdit(index),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    // テキスト部分
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Text(
+                            project.title,
+                            style: Theme.of(context).textTheme.bodyLarge,
+                          ),
+                          const SizedBox(height: 8.0),
+                          Text(
+                            'Last updated: ${project.updatedAt.toLocal().toString().split(' ')[0]}',
+                            style: Theme.of(context).textTheme.bodySmall,
+                          ),
+                        ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.delete),
-                        onPressed: () => widget.onDelete(index),
-                      ),
-                    ],
-                  ),
+                    ),
+                    // ボタン部分
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        MouseRegion(
+                          onEnter: (_) {
+                            setState(() {
+                              _isIconHovered[editIconIndex] = true;
+                            });
+                          },
+                          onExit: (_) {
+                            setState(() {
+                              _isIconHovered[editIconIndex] = false;
+                            });
+                          },
+                          child: IconButton(
+                            icon: const Icon(Icons.edit),
+                            color: _isIconHovered[editIconIndex]
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
+                            onPressed: () => widget.onEdit(index),
+                          ),
+                        ),
+                        MouseRegion(
+                          onEnter: (_) {
+                            setState(() {
+                              _isIconHovered[deleteIconIndex] = true;
+                            });
+                          },
+                          onExit: (_) {
+                            setState(() {
+                              _isIconHovered[deleteIconIndex] = false;
+                            });
+                          },
+                          child: IconButton(
+                            icon: const Icon(Icons.delete),
+                            color: _isIconHovered[deleteIconIndex]
+                                ? Theme.of(context).colorScheme.primary
+                                : Theme.of(context).colorScheme.onSurface,
+                            onPressed: () => widget.onDelete(index),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ),
               ),
             ),
