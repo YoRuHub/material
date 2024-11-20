@@ -130,7 +130,7 @@ class NodePainter extends CustomPainter {
         final Paint linePaint = Paint()
           ..color = isActiveLineage
               ? Colors.yellow // アクティブ系統の線は黄色
-              : Colors.white.withOpacity(0.5) // 通常の線は白
+              : Theme.of(context).colorScheme.onSurface // 通常の線は白
           ..strokeWidth = scale // 線の太さをスケールに基づいて設定
           ..style = PaintingStyle.stroke
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);

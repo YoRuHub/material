@@ -116,10 +116,6 @@ class MindMapScreenState extends State<MindMapScreen>
       appBar: AppBar(
         title: Text(
           widget.projectTitle,
-          style: TextStyle(
-            color: Colors.white.withOpacity(0.5),
-            fontWeight: FontWeight.bold,
-          ),
         ),
         backgroundColor: Theme.of(context).colorScheme.surface,
       ),

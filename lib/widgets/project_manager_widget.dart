@@ -1,4 +1,3 @@
-// lib/widgets/project_manager_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_app/widgets/project_dialog.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -32,18 +31,19 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
   ) async {
     try {
       await operation();
-      SnackBarHelper.success(successMessage);
-      if (mounted) {
-        Navigator.of(context).pop();
-      }
+      if (!mounted) return; // mounted をチェック
+      SnackBarHelper.success(context, successMessage);
     } catch (e) {
-      SnackBarHelper.error('Operation failed: $e');
+      if (!mounted) return; // mounted をチェック
+      SnackBarHelper.error(context, "Operation failed: $e");
     }
   }
 
   Future<void> _addProject(String name) async {
     if (name.isEmpty) {
-      SnackBarHelper.error('Project name cannot be empty');
+      if (mounted) {
+        SnackBarHelper.warning(context, "Project name cannot be empty.");
+      }
       return;
     }
 
@@ -51,7 +51,9 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
       () => ref.read(projectNotifierProvider.notifier).addProject(name),
       'Project added successfully!',
     );
-    _nameController.clear();
+    if (mounted) {
+      _nameController.clear();
+    }
   }
 
   Future<void> _editProject(Project project) async {
@@ -61,13 +63,17 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
       initialValue: project.title,
     );
 
-    if (newName != null) {
+    if (newName != null && newName.isNotEmpty) {
       await _handleProjectOperation(
         () => ref
             .read(projectNotifierProvider.notifier)
             .editProject(project.id, newName),
         'Project edited successfully!',
       );
+    } else if (newName == null && mounted) {
+      SnackBarHelper.info(context, "Project editing was canceled.");
+    } else if (newName != null && newName.isEmpty && mounted) {
+      SnackBarHelper.warning(context, "Project name cannot be empty.");
     }
   }
 
@@ -84,6 +90,8 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             .deleteProject(project.id),
         'Project deleted successfully!',
       );
+    } else if (mounted) {
+      SnackBarHelper.info(context, "Project deletion was canceled.");
     }
   }
 
@@ -109,6 +117,8 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             );
             if (name != null) {
               await _addProject(name);
+            } else if (context.mounted) {
+              SnackBarHelper.info(context, "Adding project was canceled.");
             }
           },
         ),

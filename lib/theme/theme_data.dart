@@ -10,14 +10,22 @@ ThemeData buildThemeData() {
       primary: Colors.cyan,
       secondary: Color.fromARGB(100, 0, 0, 0),
       onSecondary: Color.fromARGB(255, 0, 0, 0),
-      surface: Color.fromARGB(20, 255, 255, 255),
-      onSurface: Color.fromARGB(50, 255, 255, 255),
+      surface: Color.fromARGB(30, 255, 255, 255),
+      onSurface: Color.fromARGB(100, 255, 255, 255),
       error: Color(0xFFEE4266),
       onError: Colors.white,
       onPrimary: Colors.white,
     ),
     iconTheme: IconThemeData(color: Colors.cyan[900]),
     primaryIconTheme: const IconThemeData(color: Colors.cyan),
+    appBarTheme: const AppBarTheme(
+      backgroundColor: Color.fromARGB(100, 0, 0, 0),
+      titleTextStyle: TextStyle(
+        color: Color.fromARGB(200, 255, 255, 255),
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+      ),
+    ),
     textTheme: const TextTheme(
       displayLarge: TextStyle(
         color: Colors.white,
@@ -40,6 +48,15 @@ ThemeData buildThemeData() {
     ),
     dialogTheme: const DialogTheme(
       backgroundColor: Color.fromARGB(255, 30, 30, 30),
+      titleTextStyle: TextStyle(
+        color: Color.fromARGB(200, 255, 255, 255),
+        fontSize: 20, // フォントサイズを変更
+        fontWeight: FontWeight.bold, // 太字に設定
+      ),
+      contentTextStyle: TextStyle(
+        color: Color.fromARGB(100, 255, 255, 255),
+        fontSize: 16, // フォントサイズを変更
+      ),
     ),
   );
 }

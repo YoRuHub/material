@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/utils/snackbar_helper.dart';
 
 class NodeContentsPanel extends StatefulWidget {
   final Node node;
@@ -40,18 +41,28 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
   }
 
   Future<void> _saveContent() async {
-    await widget.nodeModel.upsertNode(
-      widget.node.id,
-      titleController.text,
-      contentController.text,
-      widget.node.projectId,
-    );
+    try {
+      await widget.nodeModel.upsertNode(
+        widget.node.id,
+        titleController.text,
+        contentController.text,
+        widget.node.projectId,
+      );
 
-    widget.onNodeUpdated(
-      widget.node
-        ..title = titleController.text
-        ..contents = contentController.text,
-    );
+      widget.onNodeUpdated(
+        widget.node
+          ..title = titleController.text
+          ..contents = contentController.text,
+      );
+
+      if (mounted) {
+        SnackBarHelper.success(context, "Node saved successfully!");
+      }
+    } catch (e) {
+      if (mounted) {
+        SnackBarHelper.error(context, "Failed to save node: $e");
+      }
+    }
   }
 
   void _clearContent() {
@@ -59,6 +70,9 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       titleController.clear();
       contentController.clear();
     });
+    if (mounted) {
+      SnackBarHelper.info(context, "Content cleared.");
+    }
   }
 
   @override
@@ -123,20 +137,26 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    ElevatedButton(
-                      onPressed: _clearContent,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            Theme.of(context).colorScheme.secondary,
+                    // Clearボタン
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: _clearContent,
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              Theme.of(context).colorScheme.secondary,
+                        ),
+                        child: const Text('Clear'),
                       ),
-                      child: const Text('Clear'),
                     ),
-                    const SizedBox(width: 8),
-                    ElevatedButton(
-                      onPressed: () async {
-                        await _saveContent();
-                      },
-                      child: const Text('Save'),
+                    const SizedBox(width: 8), // ボタン間のスペース
+                    // Saveボタン
+                    Expanded(
+                      child: ElevatedButton(
+                        onPressed: () async {
+                          await _saveContent();
+                        },
+                        child: const Text('Save'),
+                      ),
                     ),
                   ],
                 ),
