@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/database/database_helper.dart';
 import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
+import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/custom_icon.dart'; // CustomIcons のインポート
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
@@ -24,21 +25,27 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
 
   // 初期化処理を行い、その後画面遷移する非同期メソッド
   Future<void> _initializeApp() async {
-    // SVGIconのプリロード処理
-    await CustomIcons.preloadIcons();
-    // データベースの初期化
-    await _initDatabase();
+    try {
+      // ロガーの読み込み
+      await Logger.initialize(true);
+      // SVGIconのプリロード処理
+      await CustomIcons.preloadIcons();
+      // データベースの初期化
+      await _initDatabase();
+      // プロジェクトデータの読み込み
+      await _loadProjects();
 
-    // プロジェクトデータの読み込み
-    await _loadProjects();
-
-    // 初期化処理が終わったら、HomeScreenに遷移
-    if (mounted) {
-      Navigator.pushReplacement(
-        context,
-        MaterialPageRoute(
-            builder: (context) => const ProviderScope(child: HomeScreen())),
-      );
+      // 初期化処理が終わったら、HomeScreenに遷移
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          MaterialPageRoute(
+              builder: (context) => const ProviderScope(child: HomeScreen())),
+        );
+      }
+      Logger.info('App initialized.');
+    } catch (e) {
+      Logger.error('Error initializing app: ${e.toString()}');
     }
   }
 
@@ -59,19 +66,17 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await dbHelper.database;
       dbHelper.initDatabaseTables();
     } catch (e) {
-      debugPrint(e.toString());
+      Logger.error('Error initializing database: ${e.toString()}');
     }
   }
 
   // プロジェクトデータの読み込み
   Future<void> _loadProjects() async {
-    final projectNotifier = ref.read(projectNotifierProvider.notifier);
-
     try {
-      // プロジェクトデータを読み込み
+      final projectNotifier = ref.read(projectNotifierProvider.notifier);
       await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
     } catch (e) {
-      debugPrint("Error loading projects: $e");
+      Logger.error('Error loading projects: ${e.toString()}');
     }
   }
 }

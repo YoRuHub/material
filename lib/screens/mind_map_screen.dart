@@ -39,6 +39,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
   bool isPhysicsEnabled = true;
   bool isTitleVisible = true;
+  bool isFocusMode = false;
 
   Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
@@ -242,6 +243,13 @@ class MindMapScreenState extends State<MindMapScreen>
   void _showNodeTitle() {
     setState(() {
       isTitleVisible = !isTitleVisible;
+    });
+  }
+
+  // focusモード
+  void _toggleFocusMode() {
+    setState(() {
+      isFocusMode = !isFocusMode;
     });
   }
 

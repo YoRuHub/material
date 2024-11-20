@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'base_model.dart';
 
 class NodeModel extends BaseModel {
@@ -9,8 +9,10 @@ class NodeModel extends BaseModel {
   static const String columnProjectId = 'project_id';
   static const String columnCreatedAt = 'created_at';
 
+  /// プロジェクトに属するノード全件取得
   Future<List<Map<String, dynamic>>> fetchAllNodes(int projectId) async {
     try {
+      // ノードの取得
       final result = await select(
         table,
         columns: [
@@ -23,18 +25,20 @@ class NodeModel extends BaseModel {
         whereClause: '$columnProjectId = ?',
         whereArgs: [projectId],
       );
-      return result.isNotEmpty ? result : [];
+
+      // 結果が空でない場合にログとともに返す
+      if (result.isNotEmpty) {
+        return result;
+      } else {
+        return [];
+      }
     } catch (e) {
-      debugPrint('Error fetching nodes: $e');
+      Logger.error('Error fetching nodes for project $projectId: $e');
       return [];
     }
   }
 
-  /// ノードのIDに基づいてノードを取得
-  ///
-  /// [id] ノードのID
-  ///
-  /// 取得に失敗した場合は空のリストを返す
+  /// プロジェクトに属する特定のノードを取得
   Future<List<Map<String, dynamic>>> fetchNodeById(
       int id, int projectId) async {
     try {
@@ -50,22 +54,18 @@ class NodeModel extends BaseModel {
         whereClause: '$columnId = ? AND $columnProjectId = ?',
         whereArgs: [id, projectId],
       );
-      return result.isNotEmpty ? result : [];
+      if (result.isNotEmpty) {
+        return result;
+      } else {
+        return [];
+      }
     } catch (e) {
-      debugPrint('Error fetching node: $e');
+      Logger.error('Error fetching nodes for project $projectId: $e');
       return [];
     }
   }
 
-  /// ノードのUPSERTを行う
-  ///
-  /// [id] が null の場合は新規挿入処理
-  /// [id] が null 以外の場合は更新処理
-  ///
-  /// [title] ノードのタイトル
-  /// [contents] ノードの内容
-  ///
-  /// 返り値: 挿入/更新されたID (0: エラー)
+  /// プロジェクトに属するノードを更新または挿入
   Future<int> upsertNode(
       int id, String title, String contents, int projectId) async {
     final createdAt = DateTime.now().toIso8601String();
@@ -82,33 +82,27 @@ class NodeModel extends BaseModel {
         // 更新処理
         await upsert(table, data, '$columnId = ? AND $columnProjectId = ?',
             [id, projectId]);
-        debugPrint('Node updated successfully');
         return id;
       } else {
         // 新規挿入処理
-        final newId = await insert(table, data); // 挿入されたIDを取得
-        debugPrint('Node inserted successfully with ID: $newId');
+        final newId = await insert(table, data);
         return newId;
       }
     } catch (e) {
-      debugPrint('Error upserting node: $e');
+      Logger.error('Error upserting node: $e');
       return 0; // エラー時は 0 を返す
     }
   }
 
-  /// ノードを削除
-  ///
-  /// [id] ノードのID
-  ///
-  /// 削除に失敗した場合はエラーを出力する
+  /// プロジェクトに属するノードを削除
   Future<void> deleteNode(int id, int projectId) async {
     try {
       await delete(
           table, '$columnId = ? AND $columnProjectId = ?', [id, projectId]);
       await resetAutoIncrement(table);
-      debugPrint('Node deleted successfully with ID: $id');
     } catch (e) {
-      debugPrint('Error deleting node: $e');
+      Logger.error('Error deleting node: $e');
+      rethrow;
     }
   }
 }
