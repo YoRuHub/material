@@ -14,12 +14,14 @@ class NodeOperations {
     String title = '',
     String contents = '',
     required int projectId,
+    Color? color,
     String createdAt = '',
   }) {
+    final nodeColor = color ?? getColorForGeneration(generation ?? 0);
     final node = Node(
       position: position,
       velocity: vector_math.Vector2(0, 0),
-      color: _getColorForGeneration(generation ?? 0),
+      color: nodeColor,
       radius: NodeConstants.defaultNodeRadius,
       id: nodeId,
       title: title,
@@ -83,7 +85,7 @@ class NodeOperations {
   // ノードの色を更新（再帰的に子ノードも更新）
   static void updateNodeColor(Node node) {
     int generation = calculateGeneration(node);
-    node.color = _getColorForGeneration(generation);
+    node.color = getColorForGeneration(generation);
 
     // 子ノードの色も更新
     for (Node child in node.children) {
@@ -103,7 +105,7 @@ class NodeOperations {
   }
 
   // 世代に基づく色の取得
-  static Color _getColorForGeneration(int generation) {
+  static Color getColorForGeneration(int generation) {
     double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
     return HSLColor.fromAHSL(
       NodeConstants.alpha,

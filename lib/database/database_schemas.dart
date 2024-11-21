@@ -7,7 +7,7 @@ class DatabaseSchemas {
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT,
         contents TEXT,
-        color_code TEXT,
+        color INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
         project_id INTEGER NOT NULL
       )

@@ -72,9 +72,12 @@ class MindMapScreenState extends State<MindMapScreen>
     final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
     for (var node in nodesData) {
       await _addNode(
-        nodeId: node['id'],
-        title: node['title'],
-        contents: node['contents'],
+        nodeId: node['id'] as int,
+        title: node['title'] as String,
+        contents: node['contents'] as String,
+        color: node['color'] != null
+            ? Color(node['color'] as int) // int を Color に変換
+            : null, // null の場合はそのまま
       );
     }
 
@@ -210,7 +213,6 @@ class MindMapScreenState extends State<MindMapScreen>
                   showNodeTitle: _showNodeTitle,
                   isTitleVisible: isTitleVisible),
               AddNodeButton(onPressed: _addNode),
-              //_reset button
             ],
           ),
           if (_activeNode != null)
@@ -263,8 +265,8 @@ class MindMapScreenState extends State<MindMapScreen>
           NodeConstants.levelHeight,
         );
 
-    int newNodeId = await _nodeModel.upsertNode(
-        0, originalNode.title, originalNode.contents, widget.projectId);
+    int newNodeId = await _nodeModel.upsertNode(0, originalNode.title,
+        originalNode.contents, originalNode.color, widget.projectId);
     // 新しいノードを作成
     Node newNode = Node(
       id: newNodeId,
@@ -456,6 +458,7 @@ class MindMapScreenState extends State<MindMapScreen>
     int nodeId = 0,
     String title = '',
     String contents = '',
+    Color? color,
   }) async {
     // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
     vector_math.Vector2 basePosition;
@@ -485,8 +488,8 @@ class MindMapScreenState extends State<MindMapScreen>
     }
 
     // 非同期処理を先に完了させる
-    int newNodeId =
-        await _nodeModel.upsertNode(nodeId, title, contents, widget.projectId);
+    int newNodeId = await _nodeModel.upsertNode(
+        nodeId, title, contents, color, widget.projectId);
 
     if (_activeNode != null) {
       // 親ノードがある場合、親ノード情報をセットしてノードを追加
@@ -497,6 +500,7 @@ class MindMapScreenState extends State<MindMapScreen>
         parentNode: _activeNode,
         generation: NodeOperations.calculateGeneration(_activeNode!) + 1,
         nodeId: newNodeId,
+        color: color,
         projectId: widget.projectId,
       );
 
@@ -511,6 +515,7 @@ class MindMapScreenState extends State<MindMapScreen>
         nodeId: newNodeId,
         title: title,
         contents: contents,
+        color: color,
         projectId: widget.projectId,
       );
 
@@ -521,8 +526,8 @@ class MindMapScreenState extends State<MindMapScreen>
     }
   }
 
-  Future<void> _onUpdateNode(id, text, contents) async {
-    await _nodeModel.upsertNode(id, text, contents, widget.projectId);
+  Future<void> _onUpdateNode(id, text, contents, color) async {
+    await _nodeModel.upsertNode(id, text, contents, color, widget.projectId);
     //nodeの内容を更新
     for (var node in nodes) {
       if (node.id == id) {
@@ -696,11 +701,14 @@ class MindMapScreenState extends State<MindMapScreen>
 
 // 親子関係に基づいてノードの色を更新するメソッド
   void _updateNodeColor(Node node) {
-    // ノードの世代を計算
-    int generation = _calculateGeneration(node);
+    // ノードに色が設定されていない場合のみ更新
+    if (node.color == Colors.transparent) {
+      // ノードの世代を計算
+      int generation = _calculateGeneration(node);
 
-    // 世代に基づいて色を設定
-    node.color = getColorForGeneration(generation);
+      // 世代に基づいて色を設定
+      node.color = getColorForGeneration(generation);
+    }
 
     // 子ノードに対しても再帰的に色を更新
     for (Node child in node.children) {

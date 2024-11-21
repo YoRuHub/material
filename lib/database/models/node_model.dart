@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'base_model.dart';
 
@@ -6,6 +7,7 @@ class NodeModel extends BaseModel {
   static const String columnId = 'id';
   static const String columnTitle = 'title';
   static const String columnContents = 'contents';
+  static const String columnColor = 'color';
   static const String columnProjectId = 'project_id';
   static const String columnCreatedAt = 'created_at';
 
@@ -19,6 +21,7 @@ class NodeModel extends BaseModel {
           columnId,
           columnTitle,
           columnContents,
+          columnColor,
           columnProjectId,
           columnCreatedAt
         ],
@@ -48,6 +51,7 @@ class NodeModel extends BaseModel {
           columnId,
           columnTitle,
           columnContents,
+          columnColor,
           columnProjectId,
           columnCreatedAt
         ],
@@ -66,22 +70,27 @@ class NodeModel extends BaseModel {
   }
 
   /// プロジェクトに属するノードを更新または挿入
-  Future<int> upsertNode(
-      int id, String title, String contents, int projectId) async {
+  Future<int> upsertNode(int id, String title, String contents, Color? color,
+      int projectId) async {
     final createdAt = DateTime.now().toIso8601String();
     final data = {
       if (id != 0) columnId: id,
       columnTitle: title,
       columnContents: contents,
+      if (color != null) columnColor: color.value,
       columnCreatedAt: createdAt,
-      columnProjectId: projectId
+      columnProjectId: projectId,
     };
 
     try {
       if (id != 0) {
         // 更新処理
-        await upsert(table, data, '$columnId = ? AND $columnProjectId = ?',
-            [id, projectId]);
+        await upsert(
+          table,
+          data,
+          '$columnId = ? AND $columnProjectId = ?',
+          [id, projectId],
+        );
         return id;
       } else {
         // 新規挿入処理

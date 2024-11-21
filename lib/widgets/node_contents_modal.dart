@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
+import 'package:flutter_app/widgets/color_picker_dialog.dart';
 
 class NodeContentsPanel extends StatefulWidget {
   final Node node;
@@ -25,12 +28,14 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
 
   bool _isHoveringTitle = false;
   bool _isHoveringContent = false;
+  Color _selectedColor = Colors.blue; // 初期値として青を設定
 
   @override
   void initState() {
     super.initState();
     titleController = TextEditingController(text: widget.node.title);
     contentController = TextEditingController(text: widget.node.contents);
+    _selectedColor = widget.node.color; // ノードの色を初期値に設定
   }
 
   @override
@@ -46,13 +51,15 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
         widget.node.id,
         titleController.text,
         contentController.text,
+        _selectedColor, // 選択された色を保存
         widget.node.projectId,
       );
 
       widget.onNodeUpdated(
         widget.node
           ..title = titleController.text
-          ..contents = contentController.text,
+          ..contents = contentController.text
+          ..color = _selectedColor,
       );
 
       if (mounted) {
@@ -70,9 +77,56 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       titleController.clear();
       contentController.clear();
     });
-    if (mounted) {
-      SnackBarHelper.info(context, "Content cleared.");
+  }
+
+  Future<void> _pickColor() async {
+    final pickedColor = await showDialog<Color>(
+      context: context,
+      builder: (_) => ColorPickerDialog(
+        availableColors: generateColorsForGenerations(18), // 生成した18色を渡す
+        selectedColor: _selectedColor,
+        onColorSelected: (color) {
+          setState(() {
+            if (color == null) {
+              // nullが選ばれた場合、世代に基づいて色を再設定
+              int generation = NodeOperations.calculateGeneration(widget.node);
+              _selectedColor = NodeOperations.getColorForGeneration(generation);
+            } else {
+              // 色が選ばれた場合
+              _selectedColor = color;
+            }
+          });
+        },
+      ),
+    );
+
+    if (pickedColor != null) {
+      setState(() {
+        // 透明色（色なし）を選んだ場合、世代に基づいて色を再設定
+        if (pickedColor == Colors.transparent) {
+          int generation = NodeOperations.calculateGeneration(widget.node);
+          _selectedColor = NodeOperations.getColorForGeneration(generation);
+        } else {
+          _selectedColor = pickedColor;
+        }
+      });
     }
+  }
+
+  List<Color> generateColorsForGenerations(int count) {
+    return List<Color>.generate(
+      count,
+      (generation) {
+        double hue =
+            (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
+        return HSLColor.fromAHSL(
+          NodeConstants.alpha,
+          hue,
+          NodeConstants.saturation,
+          NodeConstants.lightness,
+        ).toColor();
+      },
+    );
   }
 
   @override
@@ -137,6 +191,20 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
+                    // カラーパレットボタン
+                    ElevatedButton(
+                      onPressed: _pickColor,
+                      style: ElevatedButton.styleFrom(
+                        shape: const CircleBorder(),
+                        padding: const EdgeInsets.all(16),
+                        backgroundColor: _selectedColor,
+                      ),
+                      child: const Icon(
+                        Icons.palette,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(width: 8), // ボタン間のスペース
                     // Clearボタン
                     Expanded(
                       child: ElevatedButton(
