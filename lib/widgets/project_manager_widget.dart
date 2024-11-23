@@ -70,8 +70,6 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             .editProject(project.id, newName),
         'Project edited successfully!',
       );
-    } else if (newName == null && mounted) {
-      SnackBarHelper.info(context, "Project editing was canceled.");
     } else if (newName != null && newName.isEmpty && mounted) {
       SnackBarHelper.warning(context, "Project name cannot be empty.");
     }
@@ -90,8 +88,6 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             .deleteProject(project.id),
         'Project deleted successfully!',
       );
-    } else if (mounted) {
-      SnackBarHelper.info(context, "Project deletion was canceled.");
     }
   }
 
@@ -117,8 +113,6 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             );
             if (name != null) {
               await _addProject(name);
-            } else if (context.mounted) {
-              SnackBarHelper.info(context, "Adding project was canceled.");
             }
           },
         ),

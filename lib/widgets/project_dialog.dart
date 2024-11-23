@@ -1,4 +1,3 @@
-// lib/widgets/dialogs/project_dialog.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/styles.dart';
 
@@ -8,30 +7,39 @@ Future<String?> showProjectDialog({
   String? initialValue,
 }) async {
   final controller = TextEditingController(text: initialValue);
+  final focusNode = FocusNode(); // FocusNodeを作成
 
-  try {
-    return await showDialog<String>(
-      context: context,
-      builder: (context) => AlertDialog(
+  return await showDialog<String>(
+    context: context,
+    builder: (context) {
+      // ダイアログがビルドされた後にフォーカスを設定
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        FocusScope.of(context).requestFocus(focusNode); // 自動でフォーカスを設定
+      });
+
+      return AlertDialog(
         title: Text(title),
         content: TextField(
           controller: controller,
+          focusNode: focusNode, // FocusNodeをTextFieldに関連付け
           decoration: const InputDecoration(
             hintText: 'Enter project name',
           ),
         ),
         actions: [
           DialogActionButtons(
-            onCancel: () => Navigator.of(context).pop(),
-            onConfirm: () => Navigator.of(context).pop(controller.text),
+            onCancel: () {
+              Navigator.of(context).pop(); // ダイアログを閉じる
+            },
+            onConfirm: () {
+              Navigator.of(context).pop(controller.text); // 入力されたテキストを返す
+            },
             confirmText: initialValue == null ? 'Add' : 'Save',
           ),
         ],
-      ),
-    );
-  } finally {
-    controller.dispose();
-  }
+      );
+    },
+  );
 }
 
 Future<bool?> showDeleteConfirmationDialog({
@@ -45,8 +53,12 @@ Future<bool?> showDeleteConfirmationDialog({
       content: Text('Are you sure you want to delete "$projectTitle"?'),
       actions: [
         DialogActionButtons(
-          onCancel: () => Navigator.of(context).pop(false),
-          onConfirm: () => Navigator.of(context).pop(true),
+          onCancel: () {
+            Navigator.of(context).pop(false); // キャンセル時にfalseを返す
+          },
+          onConfirm: () {
+            Navigator.of(context).pop(true); // 確認時にtrueを返す
+          },
           confirmText: 'Delete',
           confirmButtonStyle: DialogButtonStyles.destructive,
         ),

@@ -1,5 +1,3 @@
-// add_project_button.dart
-
 import 'package:flutter/material.dart';
 
 class AddProjectButton extends StatelessWidget {
