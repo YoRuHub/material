@@ -1,9 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/widgets/spherical_color_widget.dart';
 
 class ColorPickerDialog extends StatelessWidget {
   final List<Color> availableColors;
-  final Color? selectedColor; // Color? に変更
-  final ValueChanged<Color?> onColorSelected; // Color? に変更
+  final Color? selectedColor;
+  final ValueChanged<Color?> onColorSelected;
+
+  static const double dialogHeight = 150.0;
+  static const double dialogWidth = 300.0;
+  static const int crossAxisCount = 6;
 
   const ColorPickerDialog({
     super.key,
@@ -12,83 +17,81 @@ class ColorPickerDialog extends StatelessWidget {
     required this.onColorSelected,
   });
 
-  // アイコンの色を選択された色に基づいて計算するメソッド
-  Color _getIconColor(Color color) {
-    final hslColor = HSLColor.fromColor(color);
-    // 明度が50%以上なら黒、50%未満なら白
-    return hslColor.lightness > 0.5 ? Colors.black : Colors.white;
-  }
-
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+      ),
       title: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          const Text('Pick a color'),
-          IconButton(
-            icon: const Icon(Icons.refresh),
-            color: Theme.of(context).colorScheme.primary,
-            onPressed: () {
-              onColorSelected(null); // 色をnullに設定
-              Navigator.of(context).pop(); // ダイアログを閉じる
-            },
+          Text(
+            'Pick a color',
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                  fontWeight: FontWeight.bold,
+                ),
           ),
+          _buildResetButton(context),
         ],
       ),
       content: SizedBox(
-        height: 150, // 高さを固定して、スクロール可能にする
-        width: 300, // 必要に応じて調整
+        height: dialogHeight,
+        width: dialogWidth,
         child: GridView.builder(
-          shrinkWrap: true, // 必要なだけアイテムを表示する
+          shrinkWrap: true,
+          physics: const BouncingScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-            crossAxisCount: 6, // 6列
-            crossAxisSpacing: 8.0,
-            mainAxisSpacing: 8.0,
+            crossAxisCount: crossAxisCount,
+            crossAxisSpacing: 12.0,
+            mainAxisSpacing: 12.0,
           ),
           itemCount: availableColors.length,
           itemBuilder: (context, index) {
             final color = availableColors[index];
-
-            // 色なし（透明色）の場合
-            if (color == Colors.transparent) {
-              return GestureDetector(
+            return SphericalColorWidget(
+                color: color,
+                isSelected: selectedColor == color,
                 onTap: () {
-                  onColorSelected(color); // 色を選択
-                  Navigator.of(context).pop(); // ダイアログを閉じる
+                  onColorSelected(color);
+                  Navigator.of(context).pop();
                 },
-                child: CircleAvatar(
-                  radius: 25.0,
-                  backgroundColor: color,
-                  child: const Icon(
-                    Icons.clear, // 色なしのアイコン
-                    color: Colors.black,
-                    size: 30,
-                  ),
-                ),
-              );
-            }
-
-            // アイコンの色を計算
-            Color iconColor = _getIconColor(color);
-
-            return GestureDetector(
-              onTap: () {
-                onColorSelected(color); // 色を選択
-                Navigator.of(context).pop(); // ダイアログを閉じる
-              },
-              child: CircleAvatar(
-                radius: 25.0,
-                backgroundColor: color,
-                child: selectedColor == color
-                    ? Icon(
-                        Icons.check,
-                        color: iconColor, // アイコンの色を動的に設定
-                      )
-                    : null,
-              ),
-            );
+                checkIcon: Icons.check);
           },
+        ),
+      ),
+    );
+  }
+
+  Widget _buildResetButton(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        borderRadius: BorderRadius.circular(50),
+        onTap: () {
+          onColorSelected(null);
+          Navigator.of(context).pop();
+        },
+        child: Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                Icons.refresh,
+                color: Theme.of(context).colorScheme.primary,
+                size: 20,
+              ),
+              const SizedBox(width: 4),
+              Text(
+                'Reset',
+                style: TextStyle(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontSize: 14,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

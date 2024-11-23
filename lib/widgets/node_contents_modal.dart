@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/widgets/color_picker_dialog.dart';
+import 'package:flutter_app/widgets/spherical_color_widget.dart';
 
 class NodeContentsPanel extends StatefulWidget {
   final Node node;
@@ -83,7 +83,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
     final pickedColor = await showDialog<Color>(
       context: context,
       builder: (_) => ColorPickerDialog(
-        availableColors: generateColorsForGenerations(18), // 生成した18色を渡す
+        availableColors: NodeColorUtils.generateColorsForGenerations(18),
         selectedColor: _selectedColor,
         onColorSelected: (color) {
           setState(() {
@@ -111,22 +111,6 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
         }
       });
     }
-  }
-
-  List<Color> generateColorsForGenerations(int count) {
-    return List<Color>.generate(
-      count,
-      (generation) {
-        double hue =
-            (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
-        return HSLColor.fromAHSL(
-          NodeConstants.alpha,
-          hue,
-          NodeConstants.saturation,
-          NodeConstants.lightness,
-        ).toColor();
-      },
-    );
   }
 
   @override
@@ -191,18 +175,11 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
-                    // カラーパレットボタン
-                    ElevatedButton(
-                      onPressed: _pickColor,
-                      style: ElevatedButton.styleFrom(
-                        shape: const CircleBorder(),
-                        padding: const EdgeInsets.all(16),
-                        backgroundColor: _selectedColor,
-                      ),
-                      child: const Icon(
-                        Icons.palette,
-                        color: Colors.white,
-                      ),
+                    SphericalColorWidget(
+                      color: _selectedColor,
+                      isSelected: true,
+                      checkIcon: Icons.palette,
+                      onTap: _pickColor,
                     ),
                     const SizedBox(width: 8), // ボタン間のスペース
                     // Clearボタン
@@ -227,7 +204,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                       ),
                     ),
                   ],
-                ),
+                )
               ],
             ),
           ),
