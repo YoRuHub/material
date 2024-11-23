@@ -69,9 +69,14 @@ class NodeModel extends BaseModel {
     }
   }
 
-  /// プロジェクトに属するノードを更新または挿入
-  Future<int> upsertNode(int id, String title, String contents, Color? color,
-      int projectId) async {
+  /// プロジェクトに属するノードを更新または挿入し、処理後のデータを返す
+  Future<Map<String, dynamic>> upsertNode(
+    int id,
+    String title,
+    String contents,
+    Color? color,
+    int projectId,
+  ) async {
     final createdAt = DateTime.now().toIso8601String();
     final data = {
       if (id != 0) columnId: id,
@@ -85,21 +90,23 @@ class NodeModel extends BaseModel {
     try {
       if (id != 0) {
         // 更新処理
-        await upsert(
+        final updatedData = await upsert(
           table,
           data,
           '$columnId = ? AND $columnProjectId = ?',
           [id, projectId],
         );
-        return id;
+        Logger.debug('Node updated successfully: $updatedData');
+        return updatedData;
       } else {
         // 新規挿入処理
-        final newId = await insert(table, data);
-        return newId;
+        final insertedData = await insert(table, data);
+        Logger.debug('Node inserted successfully: $insertedData');
+        return insertedData;
       }
     } catch (e) {
       Logger.error('Error upserting node: $e');
-      return 0; // エラー時は 0 を返す
+      rethrow;
     }
   }
 

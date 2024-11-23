@@ -254,11 +254,11 @@ class MindMapScreenState extends State<MindMapScreen>
           NodeConstants.levelHeight,
         );
 
-    int newNodeId = await _nodeModel.upsertNode(0, originalNode.title,
+    final newNodeData = await _nodeModel.upsertNode(0, originalNode.title,
         originalNode.contents, originalNode.color, widget.projectId);
     // 新しいノードを作成
     Node newNode = Node(
-      id: newNodeId,
+      id: newNodeData['id'] as int,
       position: newPosition,
       velocity: vector_math.Vector2.zero(),
       color: originalNode.color,
@@ -267,7 +267,7 @@ class MindMapScreenState extends State<MindMapScreen>
       title: originalNode.title,
       contents: originalNode.contents,
       projectId: widget.projectId,
-      createdAt: originalNode.createdAt,
+      createdAt: newNodeData['created_at'] as String,
     );
 
     // 子ノードを再帰的にコピー
@@ -477,8 +477,9 @@ class MindMapScreenState extends State<MindMapScreen>
     }
 
     // 非同期処理を先に完了させる
-    int newNodeId = await _nodeModel.upsertNode(
+    final newNodeData = await _nodeModel.upsertNode(
         nodeId, title, contents, color, widget.projectId);
+    int newNodeId = newNodeData['id'] as int;
 
     if (_activeNode != null) {
       // 親ノードがある場合、親ノード情報をセットしてノードを追加

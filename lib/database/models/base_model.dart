@@ -7,37 +7,85 @@ abstract class BaseModel {
 
   Future<Database> get _db async => await _dbHelper.database;
 
-  /// データを挿入, IDを取得
-  Future<int> insert(String table, Map<String, dynamic> values) async {
+  /// データを挿入し、挿入した全データを返す
+  Future<Map<String, dynamic>> insert(
+      String table, Map<String, dynamic> values) async {
     final db = await _db;
     try {
+      // データ挿入
       final id = await db.insert(table, values);
-      Logger.debug('Successfully inserted into $table with ID $id');
-      return id;
+
+      // 挿入後にデータを取得
+      final insertedData = await db.query(
+        table,
+        where: 'id = ?',
+        whereArgs: [id],
+      );
+
+      if (insertedData.isNotEmpty) {
+        Logger.debug(
+            'Successfully inserted into $table with data: ${insertedData.first}');
+        return insertedData.first; // 挿入されたデータを返す
+      } else {
+        throw Exception('Failed to retrieve the inserted data from $table');
+      }
     } catch (e) {
       Logger.error('Error inserting data into $table: $e');
       rethrow;
     }
   }
 
-  /// データを更新
-  Future<void> update(String table, Map<String, dynamic> values,
-      String whereClause, List<dynamic> whereArgs) async {
+  /// データを更新し、更新後のデータを返す
+  Future<Map<String, dynamic>> update(
+    String table,
+    Map<String, dynamic> values,
+    String whereClause,
+    List<dynamic> whereArgs,
+  ) async {
     final db = await _db;
     try {
-      await db.update(table, values, where: whereClause, whereArgs: whereArgs);
-      Logger.debug('Successfully updated data in $table');
+      // データ更新
+      final rowsAffected = await db.update(
+        table,
+        values,
+        where: whereClause,
+        whereArgs: whereArgs,
+      );
+
+      if (rowsAffected == 0) {
+        throw Exception('No rows were updated in $table');
+      }
+
+      // 更新後のデータを取得
+      final updatedData = await db.query(
+        table,
+        where: whereClause,
+        whereArgs: whereArgs,
+      );
+
+      if (updatedData.isNotEmpty) {
+        Logger.debug(
+            'Successfully updated data in $table with data: ${updatedData.first}');
+        return updatedData.first; // 更新後のデータを返す
+      } else {
+        throw Exception('Failed to retrieve updated data from $table');
+      }
     } catch (e) {
       Logger.error('Error updating data in $table: $e');
       rethrow;
     }
   }
 
-  /// データを挿入または更新
-  Future<void> upsert(String table, Map<String, dynamic> values,
-      String whereClause, List<dynamic> whereArgs) async {
+  /// データを挿入または更新し、処理後のデータを返す
+  Future<Map<String, dynamic>> upsert(
+    String table,
+    Map<String, dynamic> values,
+    String whereClause,
+    List<dynamic> whereArgs,
+  ) async {
     final db = await _db;
     try {
+      // 既存データを確認
       final existingData = await db.query(
         table,
         where: whereClause,
@@ -45,12 +93,14 @@ abstract class BaseModel {
       );
 
       if (existingData.isNotEmpty) {
-        await update(table, values, whereClause, whereArgs);
+        // データが存在する場合、更新処理を行う
+        Logger.debug('Data exists in $table, updating...');
+        return await update(table, values, whereClause, whereArgs);
       } else {
-        await insert(table, values);
+        // データが存在しない場合、挿入処理を行う
+        Logger.debug('Data does not exist in $table, inserting...');
+        return await insert(table, values);
       }
-
-      Logger.debug('Successfully upserted data in $table');
     } catch (e) {
       Logger.error('Error upserting data in $table: $e');
       rethrow;
