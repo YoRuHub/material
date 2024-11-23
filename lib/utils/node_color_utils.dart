@@ -5,13 +5,12 @@ import 'package:flutter_app/models/node.dart';
 class NodeColorUtils {
   /// 次の世代の色を取得
   static Color getColorForNextGeneration(Node? node) {
-    // nodeがnullの場合、世代0の色を返す
+    if (node == null) return _getColorForGeneration(0);
     return _getColorForGeneration(_calculateGeneration(node) + 1);
   }
 
   /// 現在の世代の色を取得
   static Color getColorForCurrentGeneration(Node? node) {
-    // nodeがnullの場合、世代0の色を返す
     return _getColorForGeneration(_calculateGeneration(node));
   }
 
