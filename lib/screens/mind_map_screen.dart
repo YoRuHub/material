@@ -532,49 +532,39 @@ class MindMapScreenState extends State<MindMapScreen>
       _scale,
     );
 
-    // クリックした位置がノードに当たるかをチェック
-    bool isNodeSelected = false;
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
-        // ノードがクリックされた場合、そのノードをドラッグ可能にする
         setState(() {
-          _draggedNode = node; // ドラッグするノードを設定
-          _isPanning = false; // 背景のドラッグではない
+          _draggedNode = node;
+          _isPanning = false;
         });
-        isNodeSelected = true;
-        _checkForNodeSelection(worldPos);
-        break;
+        return;
       }
     }
 
-    // ノードが選択されていない場合、背景のドラッグを開始
-    if (!isNodeSelected) {
-      setState(() {
-        _isPanning = true;
-        _offsetStart = _offset; // 現在のオフセットを記録
-        _dragStart = details.localPosition; // ドラッグ開始位置を記録
-        _draggedNode = null; // 背景ドラッグ時はノードを選択しない
-      });
-    }
+    setState(() {
+      _isPanning = true;
+      _offsetStart = _offset;
+      _dragStart = details.localPosition;
+      _draggedNode = null;
+    });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
     if (_draggedNode != null) {
-      // ノードが選択されている場合、そのノードを移動
-      if (_activeNode == _draggedNode) {
-        setState(() {
-          vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-            details.localPosition,
-            _offset,
-            _scale,
-          );
-          _draggedNode!.position = worldPos;
-        });
-      }
+      // ノードの移動を相対位置で更新
+      setState(() {
+        vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
+          details.localPosition,
+          _offset,
+          _scale,
+        );
+        _draggedNode!.position = worldPos;
+      });
     } else if (_isPanning) {
       setState(() {
         final dragDelta = details.localPosition - _dragStart;
