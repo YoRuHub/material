@@ -1,7 +1,7 @@
 import 'dart:math';
 
-import 'package:flutter/material.dart';
 import 'package:flutter/gestures.dart';
+import 'package:flutter/material.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/providers/node_provider.dart';
@@ -11,15 +11,15 @@ import 'package:vector_math/vector_math.dart' as vector_math;
 
 class NodeCanvas extends ConsumerStatefulWidget {
   final double signalAnimationValue;
-  final double scale;
-  final Offset offset;
+  final double initialScale; // 初期スケール
+  final Offset initialOffset; // 初期オフセット
   final bool isTitleVisible;
 
   const NodeCanvas({
     Key? key,
     required this.signalAnimationValue,
-    required this.scale,
-    required this.offset,
+    required this.initialScale,
+    required this.initialOffset,
     required this.isTitleVisible,
   }) : super(key: key);
 
@@ -28,45 +28,61 @@ class NodeCanvas extends ConsumerStatefulWidget {
 }
 
 class NodeCanvasState extends ConsumerState<NodeCanvas> {
+  double _scale = 1.0; // スケール
+  Offset _offset = Offset.zero; // オフセット
   Node? _draggedNode;
   bool _isPanning = false;
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
 
   @override
+  void initState() {
+    super.initState();
+    _scale = widget.initialScale; // 初期スケールを設定
+    _offset = widget.initialOffset; // 初期オフセットを設定
+  }
+
+  @override
   Widget build(BuildContext context) {
     final nodes = ref.watch(nodeNotifierProvider);
 
-    return GestureDetector(
-      onPanStart: (details) => _onPanStart(details, nodes),
-      onPanUpdate: (details) => _onPanUpdate(details),
-      onPanEnd: (details) => _onPanEnd(details),
-      onTapDown: (details) => _onTapDown(details),
-      onTapUp: (details) => _onTapUp(details),
-      child: CustomPaint(
-        painter: NodePainter(
-          nodes,
-          widget.signalAnimationValue,
-          widget.scale,
-          widget.offset,
-          widget.isTitleVisible,
-          context,
-        ),
-        child: Container(
-          color: Colors.transparent,
+    return Listener(
+      onPointerSignal: (event) {
+        if (event is PointerScrollEvent) {
+          _onPointerScroll(event); // スクロールによるズーム処理
+        }
+      },
+      child: GestureDetector(
+        onPanStart: (details) => _onPanStart(details, nodes),
+        onPanUpdate: (details) => _onPanUpdate(details),
+        onPanEnd: (details) => _onPanEnd(details),
+        onTapDown: (details) => _onTapDown(details),
+        onTapUp: (details) => _onTapUp(details),
+        child: CustomPaint(
+          painter: NodePainter(
+            nodes,
+            widget.signalAnimationValue,
+            _scale, // スケール
+            _offset, // オフセット
+            widget.isTitleVisible,
+            context,
+          ),
+          child: Container(
+            color: Colors.transparent,
+          ),
         ),
       ),
     );
   }
 
+  // ドラッグ開始時の処理
   void _onPanStart(DragStartDetails details, List<Node> nodes) {
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      widget.offset,
-      widget.scale,
+      _offset,
+      _scale,
     );
 
-    // ノードのドラッグ開始判定
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
@@ -81,21 +97,21 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
       }
     }
 
-    // ノードが選択されなかった場合はパンニング開始
     setState(() {
       _isPanning = true;
-      _offsetStart = widget.offset;
+      _offsetStart = _offset;
       _dragStart = details.localPosition;
       _draggedNode = null;
     });
   }
 
+  // ドラッグ更新時の処理
   void _onPanUpdate(DragUpdateDetails details) {
     if (_draggedNode != null) {
       vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
         details.localPosition,
-        widget.offset,
-        widget.scale,
+        _offset,
+        _scale,
       );
 
       final updatedNode = _draggedNode!.copyWith(
@@ -108,9 +124,16 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
       });
 
       ref.read(nodeNotifierProvider.notifier).updateNodeState(updatedNode);
+    } else if (_isPanning) {
+      Offset delta = details.localPosition - _dragStart;
+
+      setState(() {
+        _offset = _offsetStart + delta;
+      });
     }
   }
 
+  // ドラッグ終了時の処理
   void _onPanEnd(DragEndDetails details) {
     if (_draggedNode != null) {
       final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
@@ -123,26 +146,27 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
     _isPanning = false;
   }
 
+  // タップアップ時の処理
   void _onTapUp(TapUpDetails details) {
     final worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      widget.offset,
-      widget.scale,
+      _offset,
+      _scale,
     );
     _checkForNodeSelection(worldPos);
   }
 
+  // タップダウン時の処理
   void _onTapDown(TapDownDetails details) {
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      widget.offset,
-      widget.scale,
+      _offset,
+      _scale,
     );
 
     bool isNodeSelected = _checkForNodeSelection(worldPos);
 
     if (!isNodeSelected) {
-      // アクティブなノードの選択解除
       final activeNode = ref.read(nodeNotifierProvider.notifier).activeNode;
       if (activeNode != null) {
         ref.read(nodeNotifierProvider.notifier).updateNodeState(
@@ -152,6 +176,7 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
     }
   }
 
+  // ノード選択の確認
   bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
     final nodes = ref.read(nodeNotifierProvider);
     final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
@@ -167,5 +192,25 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
       }
     }
     return false;
+  }
+
+  // ズーム処理（スクロールによるズーム）
+  void _onPointerScroll(PointerScrollEvent pointerSignal) {
+    setState(() {
+      final screenCenter = CoordinateUtils.calculateScreenCenter(
+        MediaQuery.of(context).size,
+        AppBar().preferredSize.height,
+      );
+
+      final (newScale, newOffset) = CoordinateUtils.calculateZoom(
+        currentScale: _scale,
+        scrollDelta: pointerSignal.scrollDelta.dy,
+        screenCenter: screenCenter,
+        currentOffset: _offset,
+      );
+
+      _scale = newScale;
+      _offset = newOffset;
+    });
   }
 }

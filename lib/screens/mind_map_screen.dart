@@ -124,8 +124,9 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         );
                         return NodeCanvas(
                           signalAnimationValue: _signalAnimation.value,
-                          scale: _scale,
-                          offset: _offset,
+                          initialScale: _scale,
+                          initialOffset:
+                              _offset, // 修正: offset ではなく initialOffset を渡す
                           isTitleVisible: isTitleVisible,
                         );
                       },
