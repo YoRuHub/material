@@ -1,6 +1,4 @@
-import 'package:flutter/material.dart';
 import 'package:flutter_app/utils/logger.dart';
-
 import 'base_model.dart';
 
 class NodeMapModel extends BaseModel {

@@ -2,19 +2,18 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
-import 'package:flutter_app/database/database_helper.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/add_node_button.dart';
 import 'package:flutter_app/widgets/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positioned_text.dart';
-import 'package:flutter_app/widgets/reset_button.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/tool_bar.dart';
 
@@ -101,7 +100,7 @@ class MindMapScreenState extends State<MindMapScreen>
           childNode.parent = parentNode;
           if (!parentNode.children.contains(childNode)) {
             parentNode.children.add(childNode);
-            _updateNodeColor(childNode);
+            NodeColorUtils.updateNodeColor(childNode);
           }
         });
       }
@@ -235,11 +234,6 @@ class MindMapScreenState extends State<MindMapScreen>
     );
   }
 
-  Future<void> _resetTables() async {
-    final dbHelper = DatabaseHelper();
-    await dbHelper.resetTables();
-  }
-
   ///ノードのタイトルを表示するヘルパーメソッド
 
   void _showNodeTitle() {
@@ -249,11 +243,6 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   // focusモード
-  void _toggleFocusMode() {
-    setState(() {
-      isFocusMode = !isFocusMode;
-    });
-  }
 
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
   Future<Node> _copyNodeWithChildren(Node originalNode,
@@ -306,7 +295,7 @@ class MindMapScreenState extends State<MindMapScreen>
         _addChildrenToNodesList(copiedNode);
 
         // Update the node color
-        _updateNodeColor(copiedNode);
+        NodeColorUtils.updateNodeColor(copiedNode);
       });
     }
   }
@@ -342,13 +331,13 @@ class MindMapScreenState extends State<MindMapScreen>
         _activeNode!.children.clear(); // 子ノードリストを空にする
 
         // アクティブノードの色を更新
-        _updateNodeColor(_activeNode!);
+        NodeColorUtils.updateNodeColor(_activeNode!);
 
         // 切り離した後、ノードの色を再計算
         for (var node in nodes) {
           if (node.parent == null) {
             // 親がないノード（独立したノード）の色をリセット
-            _updateNodeColor(node);
+            NodeColorUtils.updateNodeColor(node);
           }
         }
       });
@@ -381,12 +370,12 @@ class MindMapScreenState extends State<MindMapScreen>
         _activeNode!.parent = null;
 
         // アクティブノードの色を更新（親がない状態の色に）
-        _updateNodeColor(_activeNode!);
+        NodeColorUtils.updateNodeColor(_activeNode!);
 
         // 元の親ノードの色も更新（子が減った状態の色に）
         for (var node in nodes) {
           if (node.parent == null) {
-            _updateNodeColor(node);
+            NodeColorUtils.updateNodeColor(node);
           }
         }
       });
@@ -498,7 +487,6 @@ class MindMapScreenState extends State<MindMapScreen>
       final newNode = NodeOperations.addNode(
         position: basePosition,
         parentNode: _activeNode,
-        generation: NodeOperations.calculateGeneration(_activeNode!) + 1,
         nodeId: newNodeId,
         color: color,
         projectId: widget.projectId,
@@ -524,27 +512,6 @@ class MindMapScreenState extends State<MindMapScreen>
         nodes.add(newNode);
       });
     }
-  }
-
-  Future<void> _onUpdateNode(id, text, contents, color) async {
-    await _nodeModel.upsertNode(id, text, contents, color, widget.projectId);
-    //nodeの内容を更新
-    for (var node in nodes) {
-      if (node.id == id) {
-        node.title = text;
-        node.contents = contents;
-      }
-    }
-  }
-
-  int _calculateGeneration(Node node) {
-    int generation = 0;
-    Node? current = node;
-    while (current?.parent != null) {
-      generation++;
-      current = current?.parent;
-    }
-    return generation;
   }
 
   static Color getColorForGeneration(int generation) {
@@ -678,7 +645,7 @@ class MindMapScreenState extends State<MindMapScreen>
           node.children.add(draggedNode);
 
           // 色を更新
-          _updateNodeColor(node);
+          NodeColorUtils.updateNodeColor(node);
 
           // 物理演算用のフラグをリセット
           draggedNode.isTemporarilyDetached = false;
@@ -697,23 +664,6 @@ class MindMapScreenState extends State<MindMapScreen>
       current = current.parent;
     }
     return false;
-  }
-
-// 親子関係に基づいてノードの色を更新するメソッド
-  void _updateNodeColor(Node node) {
-    // ノードに色が設定されていない場合のみ更新
-    if (node.color == Colors.transparent) {
-      // ノードの世代を計算
-      int generation = _calculateGeneration(node);
-
-      // 世代に基づいて色を設定
-      node.color = getColorForGeneration(generation);
-    }
-
-    // 子ノードに対しても再帰的に色を更新
-    for (Node child in node.children) {
-      _updateNodeColor(child); // 子ノードの色も更新
-    }
   }
 
   bool _checkForNodeSelection(vector_math.Vector2 worldPos) {

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../constants/node_constants.dart';
@@ -9,7 +10,6 @@ class NodeOperations {
   static Node addNode({
     required vector_math.Vector2 position,
     Node? parentNode,
-    int? generation,
     required int nodeId,
     String title = '',
     String contents = '',
@@ -17,11 +17,10 @@ class NodeOperations {
     Color? color,
     String createdAt = '',
   }) {
-    final nodeColor = color ?? getColorForGeneration(generation ?? 0);
     final node = Node(
       position: position,
       velocity: vector_math.Vector2(0, 0),
-      color: nodeColor,
+      color: color ?? NodeColorUtils.getColorForNextGeneration(parentNode),
       radius: NodeConstants.defaultNodeRadius,
       id: nodeId,
       title: title,
@@ -65,54 +64,6 @@ class NodeOperations {
       );
     }
     node.children.clear();
-  }
-
-  // 親子関係の更新
-  static void updateParentChildRelationship(Node draggedNode, Node newParent) {
-    // 現在の親ノードから子ノードを削除
-    if (draggedNode.parent != null) {
-      draggedNode.parent!.children.remove(draggedNode);
-    }
-
-    // 新しい親ノードを設定
-    draggedNode.parent = newParent;
-    newParent.children.add(draggedNode);
-
-    // 色を更新
-    updateNodeColor(newParent);
-  }
-
-  // ノードの色を更新（再帰的に子ノードも更新）
-  static void updateNodeColor(Node node) {
-    int generation = calculateGeneration(node);
-    node.color = getColorForGeneration(generation);
-
-    // 子ノードの色も更新
-    for (Node child in node.children) {
-      updateNodeColor(child);
-    }
-  }
-
-  // 世代数の計算
-  static int calculateGeneration(Node node) {
-    int generation = 0;
-    Node? current = node;
-    while (current?.parent != null) {
-      generation++;
-      current = current?.parent;
-    }
-    return generation;
-  }
-
-  // 世代に基づく色の取得
-  static Color getColorForGeneration(int generation) {
-    double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
-    return HSLColor.fromAHSL(
-      NodeConstants.alpha,
-      hue,
-      NodeConstants.saturation,
-      NodeConstants.lightness,
-    ).toColor();
   }
 
   // ノード間の距離チェック

@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
-import 'package:flutter_app/utils/node_operations.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/widgets/color_picker_dialog.dart';
 
@@ -88,9 +88,9 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
         onColorSelected: (color) {
           setState(() {
             if (color == null) {
-              // nullが選ばれた場合、世代に基づいて色を再設定
-              int generation = NodeOperations.calculateGeneration(widget.node);
-              _selectedColor = NodeOperations.getColorForGeneration(generation);
+              // nullが選ばれた場合、世代に基づいて色を再設定;
+              _selectedColor =
+                  NodeColorUtils.getColorForCurrentGeneration(widget.node);
             } else {
               // 色が選ばれた場合
               _selectedColor = color;
@@ -104,8 +104,8 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       setState(() {
         // 透明色（色なし）を選んだ場合、世代に基づいて色を再設定
         if (pickedColor == Colors.transparent) {
-          int generation = NodeOperations.calculateGeneration(widget.node);
-          _selectedColor = NodeOperations.getColorForGeneration(generation);
+          _selectedColor =
+              NodeColorUtils.getColorForCurrentGeneration(widget.node);
         } else {
           _selectedColor = pickedColor;
         }
