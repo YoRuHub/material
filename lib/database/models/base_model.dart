@@ -9,13 +9,15 @@ abstract class BaseModel {
 
   /// データを挿入し、挿入した全データを返す
   Future<Map<String, dynamic>> insert(
-      String table, Map<String, dynamic> values) async {
+    String table,
+    Map<String, dynamic> values,
+  ) async {
     final db = await _db;
     try {
-      // データ挿入
       final id = await db.insert(table, values);
+      Logger.debug('Successfully inserted into $table with ID $id');
 
-      // 挿入後にデータを取得
+      // 挿入後のデータを取得
       final insertedData = await db.query(
         table,
         where: 'id = ?',
@@ -23,11 +25,9 @@ abstract class BaseModel {
       );
 
       if (insertedData.isNotEmpty) {
-        Logger.debug(
-            'Successfully inserted into $table with data: ${insertedData.first}');
         return insertedData.first; // 挿入されたデータを返す
       } else {
-        throw Exception('Failed to retrieve the inserted data from $table');
+        throw Exception('Failed to retrieve the inserted data');
       }
     } catch (e) {
       Logger.error('Error inserting data into $table: $e');
@@ -76,16 +76,22 @@ abstract class BaseModel {
     }
   }
 
-  /// データを挿入または更新し、処理後のデータを返す
+  /// 新規なら挿入、既存なら更新して、処理後のデータを返す
   Future<Map<String, dynamic>> upsert(
     String table,
     Map<String, dynamic> values,
-    String whereClause,
-    List<dynamic> whereArgs,
+    List<String> conditionColumns, // 条件カラムのリスト
   ) async {
     final db = await _db;
     try {
-      // 既存データを確認
+      // 動的にwhere句を作成
+      final whereClause =
+          conditionColumns.map((column) => '$column = ?').join(' AND ');
+
+      final whereArgs =
+          conditionColumns.map((column) => values[column]).toList();
+
+      // 既存データのチェック
       final existingData = await db.query(
         table,
         where: whereClause,
@@ -93,11 +99,11 @@ abstract class BaseModel {
       );
 
       if (existingData.isNotEmpty) {
-        // データが存在する場合、更新処理を行う
+        // 既存データがある場合、更新
         Logger.debug('Data exists in $table, updating...');
         return await update(table, values, whereClause, whereArgs);
       } else {
-        // データが存在しない場合、挿入処理を行う
+        // 既存データがない場合、挿入
         Logger.debug('Data does not exist in $table, inserting...');
         return await insert(table, values);
       }

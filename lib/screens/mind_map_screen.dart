@@ -1,24 +1,28 @@
 import 'dart:math';
+
 import 'package:flutter/gestures.dart';
+import 'package:flutter_app/database/models/node_model.dart';
+import 'package:flutter_app/providers/node_map_provider.dart';
+import 'package:flutter_app/providers/node_provider.dart';
+import 'package:flutter_app/utils/logger.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
+import 'package:flutter_app/utils/node_physics.dart';
+import 'package:flutter_app/widgets/node_canvas.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
-import 'package:flutter_app/database/models/node_map_model.dart';
-import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
-import 'package:flutter_app/utils/node_alignment.dart';
-import 'package:flutter_app/utils/node_color_utils.dart';
-import 'package:flutter_app/utils/node_operations.dart';
-import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/add_node_button.dart';
 import 'package:flutter_app/widgets/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positioned_text.dart';
+import 'package:flutter_app/widgets/tool_bar.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
-import '../widgets/tool_bar.dart';
 
-class MindMapScreen extends StatefulWidget {
-  final int projectId; // プロジェクトIDを保持
+// SingleTickerProviderStateMixinを追加
+class MindMapScreen extends ConsumerStatefulWidget {
+  final int projectId;
   final String projectTitle;
 
   const MindMapScreen(
@@ -28,82 +32,58 @@ class MindMapScreen extends StatefulWidget {
   MindMapScreenState createState() => MindMapScreenState();
 }
 
-class MindMapScreenState extends State<MindMapScreen>
+class MindMapScreenState extends ConsumerState<MindMapScreen>
     with SingleTickerProviderStateMixin {
+  // ここを追加
   late AnimationController _controller;
   late Animation<double> _signalAnimation;
-  late List<Node> nodes;
+
   Node? _draggedNode;
   Node? _activeNode;
-
   bool isPhysicsEnabled = true;
   bool isTitleVisible = true;
   bool isFocusMode = false;
-
+  bool _isPanning = false;
   Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
 
   double _scale = 1.0;
-  bool _isPanning = false;
-
   late NodeModel _nodeModel;
-  late NodeMapModel _nodeMapModel;
 
   @override
   void initState() {
     super.initState();
-    nodes = [];
+    // NodeModel を初期化
+    _nodeModel = NodeModel();
     _controller = AnimationController(
-      vsync: this,
+      vsync: this, // TickerProviderを提供
       duration: const Duration(seconds: 3),
     )..repeat();
-
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
-    _nodeModel = NodeModel();
-    _nodeMapModel = NodeMapModel();
+  }
 
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _initializeNodes();
   }
 
   Future<void> _initializeNodes() async {
-    // ノードデータの取得と作成
-    final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
-    for (var node in nodesData) {
-      await _addNode(
-        nodeId: node['id'] as int,
-        title: node['title'] as String,
-        contents: node['contents'] as String,
-        color: node['color'] != null
-            ? Color(node['color'] as int) // int を Color に変換
-            : null, // null の場合はそのまま
-      );
-    }
+    try {
+      final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
 
-    // ノードの関係性マップを取得
-    final nodeMap = await _nodeMapModel.fetchAllNodeMap();
-    for (var entry in nodeMap) {
-      int parentId = entry.key;
-      int childId = entry.value;
-      Node? parentNode = nodes.cast<Node?>().firstWhere(
-            (node) => node?.id == parentId,
-            orElse: () => null,
-          );
+      // ノードとノードマップをロード
+      await nodeNotifier.loadNodes(widget.projectId);
 
-      Node? childNode = nodes.cast<Node?>().firstWhere(
-            (node) => node?.id == childId,
-            orElse: () => null,
-          );
+      final nodeMapNotifier = ref.read(nodeMapNotifierProvider.notifier);
+      await nodeMapNotifier.loadNodeMaps();
 
-      if (parentNode != null && childNode != null) {
-        setState(() {
-          childNode.parent = parentNode;
-          if (!parentNode.children.contains(childNode)) {
-            parentNode.children.add(childNode);
-            NodeColorUtils.updateNodeColor(childNode);
-          }
-        });
-      }
+      // 親子関係を同期
+      final nodeMap = ref.read(nodeMapNotifierProvider);
+      await nodeNotifier.syncParentChildRelations(nodeMap);
+    } catch (e) {
+      Logger.error('Error initializing nodes: $e');
     }
   }
 
@@ -115,11 +95,12 @@ class MindMapScreenState extends State<MindMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final nodes = ref.watch(nodeNotifierProvider);
+    final activeNode = ref.watch(nodeNotifierProvider.notifier).activeNode;
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.projectTitle,
-        ),
+        title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
       ),
       body: Stack(
@@ -130,44 +111,9 @@ class MindMapScreenState extends State<MindMapScreen>
               Expanded(
                 child: Listener(
                   onPointerSignal: (pointerSignal) {
-                    if (pointerSignal is PointerScrollEvent) {
-                      setState(() {
-                        final screenCenter =
-                            CoordinateUtils.calculateScreenCenter(
-                          MediaQuery.of(context).size,
-                          AppBar().preferredSize.height,
-                        );
-
-                        final (newScale, newOffset) =
-                            CoordinateUtils.calculateZoom(
-                          currentScale: _scale,
-                          scrollDelta: pointerSignal.scrollDelta.dy,
-                          screenCenter: screenCenter,
-                          currentOffset: _offset,
-                        );
-
-                        _scale = newScale;
-                        _offset = newOffset;
-                      });
-                    }
+                    // Implement zoom handling if needed
                   },
                   child: GestureDetector(
-                    onPanStart: _onPanStart,
-                    onPanUpdate: _onPanUpdate,
-                    onPanEnd: _onPanEnd,
-                    onTapUp: _onTapUp,
-                    onTapDown: _onTapDown,
-                    onSecondaryTapDown: (details) =>
-                        setState(() => _isPanning = true),
-                    onSecondaryTapUp: (details) =>
-                        setState(() => _isPanning = false),
-                    onSecondaryTapCancel: () =>
-                        setState(() => _isPanning = false),
-                    onSecondaryLongPressMoveUpdate: (details) {
-                      if (_isPanning) {
-                        setState(() => _offset += details.offsetFromOrigin);
-                      }
-                    },
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, child) {
@@ -176,14 +122,11 @@ class MindMapScreenState extends State<MindMapScreen>
                           draggedNode: _draggedNode,
                           isPhysicsEnabled: isPhysicsEnabled,
                         );
-                        return CustomPaint(
-                          size: Size(
-                            MediaQuery.of(context).size.width,
-                            MediaQuery.of(context).size.height -
-                                AppBar().preferredSize.height,
-                          ),
-                          painter: NodePainter(nodes, _signalAnimation.value,
-                              _scale, _offset, isTitleVisible, context),
+                        return NodeCanvas(
+                          signalAnimationValue: _signalAnimation.value,
+                          scale: _scale,
+                          offset: _offset,
+                          isTitleVisible: isTitleVisible,
                         );
                       },
                     ),
@@ -200,332 +143,38 @@ class MindMapScreenState extends State<MindMapScreen>
                 scaleZ: _scale,
               ),
               ToolBarWidget(
-                  alignNodesHorizontal:
-                      _alignNodesHorizontal, // contextを渡さないように修正
-                  alignNodesVertical: _alignNodesVertical,
-                  isPhysicsEnabled: isPhysicsEnabled,
-                  detachChildren: _detachFromChildrenNode,
-                  detachParent: _detachFromParentNode,
-                  duplicateActiveNode: _duplicateActiveNode,
-                  stopPhysics: _stopPhysics,
-                  deleteActiveNode: _deleteActiveNode,
-                  showNodeTitle: _showNodeTitle,
-                  isTitleVisible: isTitleVisible),
-              AddNodeButton(onPressed: _addNode),
+                alignNodesHorizontal: _alignNodesHorizontal,
+                alignNodesVertical: _alignNodesVertical,
+                isPhysicsEnabled: isPhysicsEnabled,
+                detachChildren: _alignNodesVertical,
+                detachParent: _alignNodesVertical,
+                duplicateActiveNode: _alignNodesVertical,
+                stopPhysics: _stopPhysics,
+                deleteActiveNode: _alignNodesVertical,
+                showNodeTitle: _showNodeTitle,
+                isTitleVisible: isTitleVisible,
+              ),
+              AddNodeButton(onPressed: _onAddNodePressed),
             ],
           ),
-          if (_activeNode != null)
-            Builder(
-              key: ValueKey(_activeNode!.id), // ここでキーを設定
-              builder: (context) {
-                return NodeContentsPanel(
-                  node: _activeNode!,
-                  nodeModel: _nodeModel,
-                  onNodeUpdated: (updatedNode) {
-                    setState(() {
-                      _activeNode = updatedNode;
-                    });
-                  },
-                );
+          if (activeNode != null)
+            NodeContentsPanel(
+              key: ValueKey(activeNode.id),
+              node: activeNode,
+              nodeModel: _nodeModel,
+              onNodeUpdated: (updatedNode) {
+                ref
+                    .read(nodeNotifierProvider.notifier)
+                    .updateNodeState(updatedNode);
               },
-            )
+            ),
         ],
       ),
     );
   }
 
-  ///ノードのタイトルを表示するヘルパーメソッド
-
-  void _showNodeTitle() {
-    setState(() {
-      isTitleVisible = !isTitleVisible;
-    });
-  }
-
-  // focusモード
-
-  // ノードとその子孫を再帰的にコピーするヘルパーメソッド
-  Future<Node> _copyNodeWithChildren(Node originalNode,
-      {Node? newParent}) async {
-    // 新しい位置を計算（少しずらす）
-    vector_math.Vector2 newPosition = originalNode.position +
-        vector_math.Vector2(
-          NodeConstants.nodeSpacing,
-          NodeConstants.levelHeight,
-        );
-
-    final newNodeData = await _nodeModel.upsertNode(0, originalNode.title,
-        originalNode.contents, originalNode.color, widget.projectId);
-    // 新しいノードを作成
-    Node newNode = Node(
-      id: newNodeData['id'] as int,
-      position: newPosition,
-      velocity: vector_math.Vector2.zero(),
-      color: originalNode.color,
-      radius: originalNode.radius,
-      parent: newParent,
-      title: originalNode.title,
-      contents: originalNode.contents,
-      projectId: widget.projectId,
-      createdAt: newNodeData['created_at'] as String,
-    );
-
-    // 子ノードを再帰的にコピー
-    for (var child in originalNode.children) {
-      Node newChild = await _copyNodeWithChildren(child, newParent: newNode);
-      await _nodeMapModel.insertNodeMap(newNode.id, newChild.id);
-      newNode.children.add(newChild);
-    }
-
-    return newNode;
-  }
-
-  // アクティブノードとその子孫をコピーする関数
-  Future<void> _duplicateActiveNode() async {
-    if (_activeNode != null) {
-      // Perform the asynchronous work
-      Node copiedNode = await _copyNodeWithChildren(_activeNode!);
-
-      // Update the widget state
-      setState(() {
-        // Add the new node to the nodes list
-        nodes.add(copiedNode);
-
-        // Add the children to the nodes list
-        _addChildrenToNodesList(copiedNode);
-
-        // Update the node color
-        NodeColorUtils.updateNodeColor(copiedNode);
-      });
-    }
-  }
-
-  // 子ノードを再帰的にノードリストに追加するヘルパーメソッド
-  void _addChildrenToNodesList(Node node) {
-    for (var child in node.children) {
-      nodes.add(child);
-      _addChildrenToNodesList(child);
-    }
-  }
-
-  void _detachFromChildrenNode() {
-    if (_activeNode != null) {
-      _nodeMapModel.deleteParentNodeMap(_activeNode!.id);
-      setState(() {
-        // 子ノードを切り離す
-        for (var child in _activeNode!.children) {
-          child.parent = null; // 親ノードをnullに設定
-
-          // ランダムな方向と大きさを生成
-          double angle = Random().nextDouble() * 2 * pi;
-
-          // 極座標から直交座標に変換
-          vector_math.Vector2 velocity = vector_math.Vector2(
-            cos(angle) * NodeConstants.touchSpeedMultiplier,
-            sin(angle) * NodeConstants.touchSpeedMultiplier,
-          );
-
-          // 切り離した子ノードにランダムな初速度を与える
-          child.velocity = velocity;
-        }
-        _activeNode!.children.clear(); // 子ノードリストを空にする
-
-        // アクティブノードの色を更新
-        NodeColorUtils.updateNodeColor(_activeNode!);
-
-        // 切り離した後、ノードの色を再計算
-        for (var node in nodes) {
-          if (node.parent == null) {
-            // 親がないノード（独立したノード）の色をリセット
-            NodeColorUtils.updateNodeColor(node);
-          }
-        }
-      });
-    }
-  }
-
-  void _detachFromParentNode() {
-    if (_activeNode != null && _activeNode!.parent != null) {
-      setState(() {
-        Node parentNode = _activeNode!.parent!;
-
-        // 親ノードの子リストから削除
-        _nodeMapModel.deleteChildNodeMap(_activeNode!.id);
-        parentNode.children.remove(_activeNode);
-
-        // ランダムな方向と大きさを生成
-        double angle = Random().nextDouble() * 2 * pi;
-
-        // 極座標から直交座標に変換
-        vector_math.Vector2 velocity = vector_math.Vector2(
-          cos(angle) * NodeConstants.touchSpeedMultiplier,
-          sin(angle) * NodeConstants.touchSpeedMultiplier,
-        );
-
-        // アクティブノードと親ノードを反対方向に弾く
-        _activeNode!.velocity = velocity;
-        parentNode.velocity = -velocity; // 反対方向の速度を設定
-
-        // 親ノードへの参照を解除
-        _activeNode!.parent = null;
-
-        // アクティブノードの色を更新（親がない状態の色に）
-        NodeColorUtils.updateNodeColor(_activeNode!);
-
-        // 元の親ノードの色も更新（子が減った状態の色に）
-        for (var node in nodes) {
-          if (node.parent == null) {
-            NodeColorUtils.updateNodeColor(node);
-          }
-        }
-      });
-    }
-  }
-
-  void _deleteActiveNode() async {
-    if (_activeNode != null) {
-      // 子ノードも再帰的に削除
-      await _deleteNodeAndChildren(_activeNode!);
-    }
-    //アクティブ状態を解除
-    setState(() {
-      _activeNode = null;
-    });
-  }
-
-  Future<void> _deleteNodeAndChildren(Node node) async {
-    // 子ノードを逆順に削除
-    for (var i = node.children.length - 1; i >= 0; i--) {
-      await _deleteNodeAndChildren(node.children[i]);
-    }
-
-    // 子ノードを削除
-    node.parent?.children.remove(node);
-
-    // ノードを削除
-    nodes.remove(node);
-
-    // dbから削除
-    await _nodeModel.deleteNode(node.id, widget.projectId);
-    await _nodeMapModel.deleteParentNodeMap(node.id);
-  }
-
-  void _alignNodesVertical() async {
-    if (nodes.isEmpty) return;
-
-    await NodeAlignment.alignNodesVertical(
-      nodes,
-      MediaQuery.of(context).size,
-      setState,
-    );
-  }
-
-  void _alignNodesHorizontal() async {
-    if (nodes.isEmpty) return;
-
-    await NodeAlignment.alignNodesHorizontal(
-      nodes,
-      MediaQuery.of(context).size,
-      setState,
-    );
-  }
-
-  void _stopPhysics() {
-    if (isPhysicsEnabled) {
-      setState(() {
-        isPhysicsEnabled = false;
-      });
-      return;
-    }
-
-    setState(() {
-      isPhysicsEnabled = true;
-    });
-  }
-
-  Future<void> _addNode({
-    int nodeId = 0,
-    String title = '',
-    String contents = '',
-    Color? color,
-  }) async {
-    // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
-    vector_math.Vector2 basePosition;
-
-    if (_activeNode != null) {
-      // 親ノードの位置を基準にする
-      basePosition = _activeNode!.position;
-
-      // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
-      basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-      );
-    } else {
-      // 親ノードがない場合、画面の中心を基準にする
-      basePosition = CoordinateUtils.screenToWorld(
-        MediaQuery.of(context).size.center(Offset.zero),
-        _offset,
-        _scale,
-      );
-
-      // ランダムに少しずらして配置
-      basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-      );
-    }
-
-    // 非同期処理を先に完了させる
-    final newNodeData = await _nodeModel.upsertNode(
-        nodeId, title, contents, color, widget.projectId);
-    int newNodeId = newNodeData['id'] as int;
-
-    if (_activeNode != null) {
-      // 親ノードがある場合、親ノード情報をセットしてノードを追加
-      await _nodeMapModel.insertNodeMap(_activeNode!.id, newNodeId);
-
-      final newNode = NodeOperations.addNode(
-        position: basePosition,
-        parentNode: _activeNode,
-        nodeId: newNodeId,
-        color: color,
-        projectId: widget.projectId,
-      );
-
-      // 非同期処理完了後に setState で状態を更新
-      setState(() {
-        nodes.add(newNode);
-      });
-    } else {
-      // 親ノードがない場合はそのまま新しいノードを追加
-      final newNode = NodeOperations.addNode(
-        position: basePosition,
-        nodeId: newNodeId,
-        title: title,
-        contents: contents,
-        color: color,
-        projectId: widget.projectId,
-      );
-
-      // 非同期処理完了後に setState で状態を更新
-      setState(() {
-        nodes.add(newNode);
-      });
-    }
-  }
-
-  static Color getColorForGeneration(int generation) {
-    double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
-    return HSLColor.fromAHSL(
-      NodeConstants.alpha,
-      hue,
-      NodeConstants.saturation,
-      NodeConstants.lightness,
-    ).toColor();
-  }
-
   void _onPanStart(DragStartDetails details) {
+    final nodes = ref.read(nodeNotifierProvider); // ノードリストを取得
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
       _offset,
@@ -554,17 +203,53 @@ class MindMapScreenState extends State<MindMapScreen>
     });
   }
 
+  void _onPanEnd(DragEndDetails details) {
+    if (_draggedNode != null) {
+      // ドラッグ終了時に最終位置を確実に保存
+      final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
+      nodeNotifier.updateNodeState(_draggedNode!);
+
+      setState(() {
+        _draggedNode = null;
+      });
+    }
+    _isPanning = false;
+  }
+
+  void _onTapUp(TapUpDetails details) {
+    final worldPos = CoordinateUtils.screenToWorld(
+      details.localPosition,
+      _offset,
+      _scale,
+    );
+    _checkForNodeSelection(worldPos);
+  }
+
   void _onPanUpdate(DragUpdateDetails details) {
     if (_draggedNode != null) {
-      // ノードの移動を相対位置で更新
+      // アクティブノードの位置を更新
+      final worldPos = CoordinateUtils.screenToWorld(
+        details.localPosition,
+        _offset,
+        _scale,
+      );
+
+      // ドラッグ中のノードの状態を更新
+      final updatedNode = _draggedNode!.copyWith(
+        position: worldPos,
+        isActive: _draggedNode!.isActive, // アクティブ状態を維持
+      );
+
       setState(() {
-        vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-          details.localPosition,
-          _offset,
-          _scale,
-        );
-        _draggedNode!.position = worldPos;
+        _draggedNode = updatedNode;
+        if (_activeNode?.id == updatedNode.id) {
+          _activeNode = updatedNode;
+        }
       });
+
+      // Riverpodの状態を更新
+      final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
+      nodeNotifier.updateNodeState(updatedNode);
     } else if (_isPanning) {
       setState(() {
         final dragDelta = details.localPosition - _dragStart;
@@ -573,110 +258,92 @@ class MindMapScreenState extends State<MindMapScreen>
     }
   }
 
-// ドラッグ終了時に親子関係をチェックして更新する
-  void _onPanEnd(DragEndDetails details) {
-    if (_draggedNode != null) {
-      setState(() {
-        _checkAndUpdateParentChildRelationship(_draggedNode!);
-
-        // ドラッグ終了時に速度をリセット
-        _draggedNode!.velocity = vector_math.Vector2.zero();
-        _draggedNode = null;
-      });
-    }
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-      details.localPosition,
-      _offset,
-      _scale,
-    );
-    _checkForNodeSelection(worldPos);
-  }
-
   void _onTapDown(TapDownDetails details) {
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
       _offset,
       _scale,
     );
+
     // ノードの選択を確認
     bool isNodeSelected = _checkForNodeSelection(worldPos);
 
-    setState(() {
-      // ノードが選択されていない場合、アクティブ状態を解除
-      if (!isNodeSelected) {
-        if (_activeNode != null) {
-          _activeNode!.isActive = false; // アクティブ状態を解除
-          _activeNode = null;
-        }
-      }
-    });
-  }
-
-  void _checkAndUpdateParentChildRelationship(Node draggedNode) {
-    for (Node node in nodes) {
-      if (node == draggedNode) continue;
-
-      double distance = (draggedNode.position - node.position).length;
-
-      if (distance < NodeConstants.snapDistance) {
-        // 循環参照のチェック
-        if (_wouldCreateCycle(draggedNode, node)) continue;
-
-        if (node != draggedNode.parent) {
-          // 現在の親ノードから子ノードを削除
-          _nodeMapModel.deleteChildNodeMap(draggedNode.id);
-          draggedNode.parent?.children.remove(draggedNode);
-
-          // 新しい親子関係を設定
-          draggedNode.parent = node;
-          _nodeMapModel.insertNodeMap(node.id, draggedNode.id);
-          node.children.add(draggedNode);
-
-          // 色を更新
-          NodeColorUtils.updateNodeColor(node);
-
-          // 物理演算用のフラグをリセット
-          draggedNode.isTemporarilyDetached = false;
-          node.isTemporarilyDetached = false;
-        }
+    // ノードが選択されていない場合、アクティブ状態を解除
+    if (!isNodeSelected) {
+      if (_activeNode != null) {
+        // ノードのアクティブ状態を解除
+        final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
+        nodeNotifier.updateNodeState(
+            _activeNode!.copyWith(isActive: false)); // アクティブ状態を解除
+        _activeNode = null;
       }
     }
-  }
-
-  // 循環参照が発生するかチェックするヘルパーメソッド
-  bool _wouldCreateCycle(Node draggedNode, Node potentialParent) {
-    // ドラッグされているノードが、新しい親の祖先になっているかチェック
-    Node? current = potentialParent;
-    while (current != null) {
-      if (current == draggedNode) return true;
-      current = current.parent;
-    }
-    return false;
   }
 
   bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
-    // Check if the click hit any node
+    final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
+    final nodes = ref.read(nodeNotifierProvider);
+
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      // Node was clicked
       if (distance < node.radius) {
-        setState(() {
-          // Activate the clicked node
-          _activeNode?.isActive = false; // Deactivate the previous active node
-          node.isActive = true; // Activate the clicked node
-          _activeNode = node; // Set the active node
-        });
+        // アクティブノードを設定
+        nodeNotifier.setActiveNode(node);
+
         return true;
       }
     }
 
-    // No node was clicked
     return false;
+  }
+
+  void _onAddNodePressed() async {
+    try {
+      final nodeNotifier = ref.read(nodeNotifierProvider.notifier);
+      final nodeMapNotifier = ref.read(nodeMapNotifierProvider.notifier);
+
+      // 新しいノードを作成（IDやプロパティは適宜設定）
+      final newNode = Node(
+        id: 0,
+        position: vector_math.Vector2(100.0, 100.0),
+        velocity: vector_math.Vector2.zero(),
+        color: Colors.green,
+        radius: 30.0,
+        title: "New Node",
+        contents: "This is a new node",
+        projectId: widget.projectId,
+        createdAt: DateTime.now().toIso8601String(),
+      );
+
+      // ノードを追加（アクティブノードが考慮される）
+      await nodeNotifier.addNode(newNode, nodeMapNotifier);
+    } catch (e) {
+      Logger.error("Error adding node: $e");
+    }
+  }
+
+  void _alignNodesHorizontal() {
+    final nodes = ref.read(nodeNotifierProvider); // ノードリストを取得
+    // ノードを水平方向に整列するロジックを追加
+  }
+
+  void _alignNodesVertical() {
+    final nodes = ref.read(nodeNotifierProvider); // ノードリストを取得
+    // ノードを垂直方向に整列するロジックを追加
+  }
+
+  void _stopPhysics() {
+    setState(() {
+      isPhysicsEnabled = !isPhysicsEnabled;
+    });
+  }
+
+  void _showNodeTitle() {
+    setState(() {
+      isTitleVisible = !isTitleVisible;
+    });
   }
 }

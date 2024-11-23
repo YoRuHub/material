@@ -34,6 +34,15 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
     try {
       final newProject = await _projectModel.upsertProject(0, title);
 
+      // フィールドの存在確認
+      if (newProject['id'] == null ||
+          newProject['title'] == null ||
+          newProject['updated_at'] == null ||
+          newProject['created_at'] == null) {
+        throw Exception(
+            'Unexpected data returned from upsertProject: $newProject');
+      }
+
       final project = Project(
         id: newProject['id'] as int,
         title: newProject['title'] as String,

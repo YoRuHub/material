@@ -1,216 +1,213 @@
-import 'package:flutter/material.dart';
+import 'package:flutter_app/providers/node_map_provider.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vector_math/vector_math.dart' as vector_math;
 import 'package:flutter_app/database/models/node_model.dart';
-import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:flutter_app/utils/node_color_utils.dart';
+import 'package:vector_math/vector_math.dart' as vector_math;
+import 'package:flutter/material.dart';
+import 'package:collection/collection.dart';
 
 class NodeNotifier extends StateNotifier<List<Node>> {
-  NodeNotifier() : super([]);
-  final _nodeModel = NodeModel();
-  final _nodeMapModel = NodeMapModel();
+  late final NodeModel _nodeModel;
+  Node? _activeNode;
 
-  // ノードの読み込み
+  Node? get activeNode => _activeNode;
+
+  Node? _draggedNode; // ドラッグ中のノードを保持する
+
+  Node? get draggedNode => _draggedNode; // ドラッグ中のノードを取得
+
+  NodeNotifier() : super([]) {
+    _nodeModel = NodeModel();
+  }
+
   Future<void> loadNodes(int projectId) async {
     try {
+      // データベースからノードを取得
       final nodesData = await _nodeModel.fetchAllNodes(projectId);
-      List<Node> loadedNodes = nodesData.map((node) {
+      state = nodesData.map((node) {
         return Node(
           id: node['id'] as int,
-          position: vector_math.Vector2(0, 0), // 初期位置は後で更新
-          velocity: vector_math.Vector2(0, 0),
+          position: vector_math.Vector2(
+            (node['x'] as num?)?.toDouble() ?? 100.0,
+            (node['y'] as num?)?.toDouble() ?? 100.0,
+          ),
+          velocity: vector_math.Vector2.zero(),
           color:
               node['color'] != null ? Color(node['color'] as int) : Colors.blue,
-          radius: 30.0, // デフォルト値
+          radius: (node['radius'] as num?)?.toDouble() ?? 30.0,
           title: node['title'] as String,
           contents: node['contents'] as String,
           projectId: projectId,
           createdAt: node['created_at'] as String,
         );
       }).toList();
+    } catch (e) {
+      Logger.error('Error loading nodes: $e');
+    }
+  }
 
-      // ノードの関係性マップを取得して親子関係を設定
-      final nodeMap = await _nodeMapModel.fetchAllNodeMap();
+  Future<void> syncParentChildRelations(
+      List<MapEntry<int, int>> nodeMap) async {
+    try {
+      Logger.debug('Syncing parent-child relations...');
       for (var entry in nodeMap) {
         int parentId = entry.key;
         int childId = entry.value;
 
-        Node? parentNode = loadedNodes.cast<Node?>().firstWhere(
-              (node) => node?.id == parentId,
-              orElse: () => null,
-            );
-
-        Node? childNode = loadedNodes.cast<Node?>().firstWhere(
-              (node) => node?.id == childId,
-              orElse: () => null,
-            );
+        // 親ノードと子ノードを取得
+        final parentNode =
+            state.firstWhereOrNull((node) => node.id == parentId);
+        final childNode = state.firstWhereOrNull((node) => node.id == childId);
 
         if (parentNode != null && childNode != null) {
+          // 子ノードの親を設定
           childNode.parent = parentNode;
+
+          // 親ノードの子リストに追加（重複を防ぐ）
           if (!parentNode.children.contains(childNode)) {
             parentNode.children.add(childNode);
-            NodeColorUtils.updateNodeColor(childNode);
+            NodeColorUtils.updateNodeColor(childNode); // 子ノードの色を更新
           }
         }
+        Logger.debug('Synced parent-child relation: $parentId -> $childId');
       }
 
-      state = loadedNodes;
-      Logger.debug('Nodes loaded successfully for project $projectId');
+      // 状態を更新
+      state = [...state];
     } catch (e) {
-      Logger.error('Error loading nodes: $e');
-      rethrow;
+      Logger.error('Error syncing parent-child relations: $e');
     }
   }
 
-  // ノードの追加
-  Future<Node> addNode({
-    required vector_math.Vector2 position,
-    required int projectId,
-    String title = '',
-    String contents = '',
-    Color? color,
-    Node? parentNode,
-  }) async {
+  Future<void> addNode(Node newNode, NodeMapNotifier nodeMapNotifier) async {
     try {
-      // データベースにノードを追加
-      final nodeData = await _nodeModel.upsertNode(
-        0,
-        title,
-        contents,
-        color,
-        projectId,
-      );
+      Node updatedNode = newNode; // 変更前のノード
 
-      // 新しいノードを作成
-      final newNode = Node(
-        id: nodeData['id'] as int,
-        position: position,
-        velocity: vector_math.Vector2(0, 0),
-        color: color ?? Colors.blue,
-        radius: 30.0,
-        title: title,
-        contents: contents,
-        projectId: projectId,
-        createdAt: nodeData['created_at'] as String,
-        parent: parentNode,
-      );
+      if (activeNode == null) {
+        // アクティブノードがない場合：親ノードとして追加
+        Logger.debug("Adding a parent node");
 
-      // 親ノードが指定されている場合、関係性を設定
-      if (parentNode != null) {
-        await _nodeMapModel.insertNodeMap(parentNode.id, newNode.id);
-        parentNode.children.add(newNode);
-        NodeColorUtils.updateNodeColor(newNode);
+        // ノードIDが0の場合、新規にデータベースに追加しIDを取得
+        final result = await _nodeModel.upsertNode(newNode.id, newNode.title,
+            newNode.contents, newNode.color, newNode.projectId);
+
+        // upsert結果から新しいIDを取得して、更新されたノードを作成
+        updatedNode = updatedNode.copyWith(id: result['id']);
+
+        // 状態を更新
+        state = [...state, updatedNode];
+      } else {
+        // アクティブノードがいる場合：子ノードとして追加
+        Logger.debug("Adding a child node to active node: ${activeNode!.id}");
+
+        // ノードIDが0の場合、新規にデータベースに追加しIDを取得
+        final result = await _nodeModel.upsertNode(newNode.id, newNode.title,
+            newNode.contents, newNode.color, newNode.projectId);
+
+        // upsert結果から新しいIDを取得して、更新されたノードを作成
+        updatedNode = updatedNode.copyWith(id: result['id']);
+
+        // アクティブノードに子ノードを設定
+        updatedNode = updatedNode.copyWith(parent: activeNode);
+        activeNode!.children.add(updatedNode);
+
+        // ノードマップを更新
+        await nodeMapNotifier.addNodeMap(activeNode!.id, updatedNode.id);
+
+        // 状態を更新
+        state = [...state, updatedNode];
       }
-
-      state = [...state, newNode];
-      Logger.debug('Node added successfully: ID: ${newNode.id}');
-      return newNode;
     } catch (e) {
-      Logger.error('Error adding node: $e');
-      rethrow;
+      Logger.error("Error adding node: $e");
     }
   }
 
-  // ノードの更新
-  Future<void> updateNode(Node node) async {
-    try {
-      await _nodeModel.upsertNode(
-        node.id,
-        node.title,
-        node.contents,
-        node.color,
-        node.projectId,
-      );
-
-      state = state.map((n) => n.id == node.id ? node : n).toList();
-      Logger.debug('Node updated successfully: ID: ${node.id}');
-    } catch (e) {
-      Logger.error('Error updating node: $e');
-      rethrow;
+  /// アクティブノードを設定
+  void setActiveNode(Node? node) {
+    if (_activeNode != null) {
+      // 以前のアクティブノードを非アクティブ化
+      updateNodeState(_activeNode!.copyWith(isActive: false));
     }
+
+    // 新しいアクティブノードを設定
+    if (node != null) {
+      updateNodeState(node.copyWith(isActive: true));
+    }
+
+    _activeNode = node;
   }
 
-  // ノードの削除（子ノードも含めて再帰的に削除）
-  Future<void> deleteNode(Node node) async {
-    try {
-      // 子ノードを再帰的に削除
-      for (var child in List.from(node.children)) {
-        await deleteNode(child);
-      }
-
-      // 親子関係を削除
-      if (node.parent != null) {
-        node.parent!.children.remove(node);
-        await _nodeMapModel.deleteChildNodeMap(node.id);
-      }
-      await _nodeMapModel.deleteParentNodeMap(node.id);
-
-      // ノードを削除
-      await _nodeModel.deleteNode(node.id, node.projectId);
-      state = state.where((n) => n.id != node.id).toList();
-
-      Logger.debug('Node deleted successfully: ID: ${node.id}');
-    } catch (e) {
-      Logger.error('Error deleting node: $e');
-      rethrow;
-    }
+  void updateNodeState(Node updatedNode) {
+    state = [
+      for (final node in state)
+        if (node.id == updatedNode.id) updatedNode else node
+    ];
   }
 
-  // ノードの位置を更新
-  void updateNodePosition(int nodeId, vector_math.Vector2 newPosition) {
-    state = state.map((node) {
-      if (node.id == nodeId) {
-        return Node(
-          id: node.id,
-          position: newPosition,
-          velocity: node.velocity,
-          color: node.color,
-          radius: node.radius,
-          title: node.title,
-          contents: node.contents,
-          projectId: node.projectId,
-          createdAt: node.createdAt,
-          parent: node.parent,
-          children: node.children,
-          isActive: node.isActive,
-          isTemporarilyDetached: node.isTemporarilyDetached,
-        );
-      }
-      return node;
-    }).toList();
+  void updateNodeData(Node updatedNode) {
+    // DBに保存し、状態も更新
+    _nodeModel.upsertNode(
+      updatedNode.id,
+      updatedNode.title,
+      updatedNode.contents,
+      updatedNode.color,
+      updatedNode.projectId,
+    );
+    state = [
+      for (var node in state)
+        if (node.id == updatedNode.id) updatedNode else node
+    ];
   }
 
-  // 親子関係の更新
-  Future<void> updateNodeRelationship(
-      Node childNode, Node? newParentNode) async {
-    try {
-      // 古い親子関係を削除
-      if (childNode.parent != null) {
-        childNode.parent!.children.remove(childNode);
-        await _nodeMapModel.deleteChildNodeMap(childNode.id);
-      }
+  void removeNode(Node node) {
+    // dbから削除
+    _nodeModel.deleteNode(node.id, node.projectId);
+    state = state.where((existingNode) => existingNode.id != node.id).toList();
+  }
 
-      // 新しい親子関係を設定
-      if (newParentNode != null) {
-        await _nodeMapModel.insertNodeMap(newParentNode.id, childNode.id);
-        childNode.parent = newParentNode;
-        newParentNode.children.add(childNode);
-        NodeColorUtils.updateNodeColor(childNode);
-      }
+  void updateParentChildRelationships(Map<int, int> nodeMap) {
+    final updatedNodes = [...state];
 
-      state = [...state]; // 状態を更新して再描画をトリガー
-      Logger.debug('Node relationship updated successfully');
-    } catch (e) {
-      Logger.error('Error updating node relationship: $e');
-      rethrow;
+    for (var entry in nodeMap.entries) {
+      final parentId = entry.key;
+      final childId = entry.value;
+
+      final parentNode = updatedNodes
+          .cast<Node?>()
+          .firstWhere((node) => node?.id == parentId, orElse: () => null);
+      final childNode = updatedNodes
+          .cast<Node?>()
+          .firstWhere((node) => node?.id == childId, orElse: () => null);
+
+      if (parentNode != null && childNode != null) {
+        // 子ノードの親を設定
+        childNode.parent = parentNode;
+
+        // 親ノードの子リストに追加（重複を防ぐ）
+        if (!parentNode.children.contains(childNode)) {
+          parentNode.children.add(childNode);
+          NodeColorUtils.updateNodeColor(childNode); // 子ノードの色を更新
+        }
+      }
     }
+
+    // 状態を更新
+    state = updatedNodes;
+  }
+
+  // ドラッグ中のノードを設定
+  void setDraggedNode(Node node) {
+    _draggedNode = node;
+  }
+
+  // ドラッグ中のノードをクリア
+  void clearDraggedNode() {
+    _draggedNode = null;
   }
 }
 
-// プロバイダーの定義
-final nodeNotifierProvider =
-    StateNotifierProvider<NodeNotifier, List<Node>>((ref) {
-  return NodeNotifier();
-});
+final nodeNotifierProvider = StateNotifierProvider<NodeNotifier, List<Node>>(
+  (ref) => NodeNotifier(), // NodeNotifierをインスタンス化
+);

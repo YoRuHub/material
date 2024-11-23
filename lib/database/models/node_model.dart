@@ -88,22 +88,14 @@ class NodeModel extends BaseModel {
     };
 
     try {
-      if (id != 0) {
-        // 更新処理
-        final updatedData = await upsert(
-          table,
-          data,
-          '$columnId = ? AND $columnProjectId = ?',
-          [id, projectId],
-        );
-        Logger.debug('Node updated successfully: $updatedData');
-        return updatedData;
-      } else {
-        // 新規挿入処理
-        final insertedData = await insert(table, data);
-        Logger.debug('Node inserted successfully: $insertedData');
-        return insertedData;
-      }
+      // upsertを使ってデータを挿入または更新し、その結果を返す
+      final result = await upsert(
+        table,
+        data,
+        [columnId, columnProjectId], // 条件カラムのリスト
+      );
+      Logger.debug('Node upserted successfully: $result');
+      return result; // 処理後のデータを返す
     } catch (e) {
       Logger.error('Error upserting node: $e');
       rethrow;

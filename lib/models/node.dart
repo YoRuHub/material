@@ -32,4 +32,38 @@ class Node {
   final int projectId;
   final String createdAt;
   List<Node> children;
+
+  // copyWithをカスタマイズして、必要なフィールドのみを変更
+  Node copyWith({
+    vector_math.Vector2? position,
+    vector_math.Vector2? velocity,
+    Color? color,
+    double? radius,
+    bool? isActive,
+    bool? isTemporarilyDetached,
+    Node? parent,
+    int? id,
+    String? title,
+    String? contents,
+    int? projectId,
+    String? createdAt,
+    List<Node>? children,
+  }) {
+    return Node(
+      position: position ?? this.position,
+      velocity: velocity ?? this.velocity,
+      color: color ?? this.color,
+      radius: radius ?? this.radius,
+      isActive: isActive ?? this.isActive,
+      isTemporarilyDetached:
+          isTemporarilyDetached ?? this.isTemporarilyDetached,
+      parent: parent ?? this.parent,
+      id: id ?? this.id,
+      title: title ?? this.title,
+      contents: contents ?? this.contents,
+      projectId: projectId ?? this.projectId,
+      createdAt: createdAt ?? this.createdAt,
+      children: children ?? this.children,
+    );
+  }
 }

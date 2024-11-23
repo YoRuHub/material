@@ -37,16 +37,17 @@ class ProjectModel extends BaseModel {
     };
 
     try {
-      if (id != 0) {
-        await upsert(table, data, '$columnId = ?', [id]);
-      } else {
-        final newId = await insert(table, data);
-        data[columnId] = newId;
-      }
-      return data;
+      // upsertを使ってデータを挿入または更新し、その結果を返す
+      final result = await upsert(
+        table,
+        data,
+        [columnId], // 条件カラムとしてidを指定
+      );
+      Logger.debug('Project upserted successfully: $result');
+      return result; // 処理後のデータを返す
     } catch (e) {
-      Logger.error('Error upserting project. Data: $data, Error: $e');
-      throw Exception('Failed to upsert project');
+      Logger.error('Error in upsertProject. Data: $data, Error: $e');
+      rethrow;
     }
   }
 

@@ -1,6 +1,8 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
+import '../utils/node_utils.dart';
 
 /// ノードの描画を行うクラス
 class NodePainter extends CustomPainter {
@@ -9,107 +11,22 @@ class NodePainter extends CustomPainter {
   final double scale;
   final Offset offset;
   final bool isTitleVisible;
-  final BuildContext context; // BuildContextを追加
+  final BuildContext context;
 
-  /// コンストラクタ
-  ///
-  /// [nodes] 描画対象のノード
-  /// [signalProgress] 信号の進行割合
-  /// [scale] スケールの倍率
-  /// [offset] オフセット位置
-  NodePainter(this.nodes, this.signalProgress, this.scale, this.offset,
-      this.isTitleVisible, this.context); // コンストラクタにBuildContextを追加
+  NodePainter(
+    this.nodes,
+    this.signalProgress,
+    this.scale,
+    this.offset,
+    this.isTitleVisible,
+    this.context,
+  );
 
-  /// 座標をスケールとオフセットで変換する
-  ///
-  /// [x] X座標
-  /// [y] Y座標
   Offset transformPoint(double x, double y) {
-    return Offset(
-      x * scale + offset.dx,
-      y * scale + offset.dy,
-    );
+    return Offset(x * scale + offset.dx, y * scale + offset.dy);
   }
 
-  // ノードが共通の祖先を持つかチェック
-  bool hasCommonAncestor(Node node1, Node node2) {
-    // 両方のノードの全祖先を取得
-    Set<Node> ancestors1 = getAllAncestors(node1);
-    Set<Node> ancestors2 = getAllAncestors(node2);
-
-    // 共通の祖先が存在するかチェック
-    return ancestors1.intersection(ancestors2).isNotEmpty;
-  }
-
-  // ノードの全祖先を取得
-  Set<Node> getAllAncestors(Node node) {
-    Set<Node> ancestors = {};
-    Node? current = node.parent;
-    while (current != null) {
-      ancestors.add(current);
-      current = current.parent;
-    }
-    return ancestors;
-  }
-
-  // 全ての子孫ノードを取得
-  Set<Node> getAllDescendants(Node node) {
-    Set<Node> descendants = {};
-    for (var child in node.children) {
-      descendants.add(child);
-      descendants.addAll(getAllDescendants(child));
-    }
-    return descendants;
-  }
-
-  /// ノードがアクティブノードの系統に含まれるかを確認する
-  ///
-  /// [node] 判定対象のノード
-  /// [activeNode] アクティブなノード
-  // アクティブノードの系統かどうかをチェック（改善版）
-  bool isNodeInActiveLineage(Node node, Node? activeNode) {
-    if (activeNode == null) return false;
-    if (node == activeNode) return true;
-
-    // 1. 直系の親子関係チェック
-    Set<Node> activeAncestors = getAllAncestors(activeNode);
-    if (activeAncestors.contains(node)) return true;
-
-    Set<Node> activeDescendants = getAllDescendants(activeNode);
-    if (activeDescendants.contains(node)) return true;
-
-    // 2. 兄弟関係チェック（共通の親を持つノード同士）
-    if (node.parent != null && activeNode.parent != null) {
-      if (node.parent == activeNode.parent) return true;
-    }
-
-    // 3. 従兄弟関係チェック（共通の祖先を持つノード同士）
-    if (hasCommonAncestor(node, activeNode)) return true;
-
-    // 4. 子孫同士の関係チェック
-    Set<Node> nodeDescendants = getAllDescendants(node);
-    if (nodeDescendants.any(
-        (descendant) => hasCommonAncestor(descendant, activeNode))) return true;
-
-    return false;
-  }
-
-  /// 指定したノードが特定の祖先ノードの子孫かどうかを再帰的にチェックする
-  ///
-  /// [node] 判定対象のノード
-  /// [ancestor] 祖先とするノード
-  bool isDescendantOfNode(Node node, Node ancestor) {
-    for (var child in ancestor.children) {
-      if (child == node) return true;
-      if (isDescendantOfNode(node, child)) return true;
-    }
-    return false;
-  }
-
-  /// ノードの描画を行う。
-  ///
-  /// [canvas] 描画するキャンバス
-  /// [size]  キャンバスのサイズ
+  // ノード間の接続線の描画
   @override
   void paint(Canvas canvas, Size size) {
     Node? activeNode;
@@ -119,31 +36,23 @@ class NodePainter extends CustomPainter {
       activeNode = null;
     }
 
-    // ノード間の接続線の描画
     for (var node in nodes) {
       if (node.parent != null) {
-        // アクティブノードの系統かどうかをチェック
-        bool isActiveLineage = isNodeInActiveLineage(node, activeNode) ||
-            isNodeInActiveLineage(node.parent!, activeNode);
+        // アクティブ系統のチェック
+        bool isActiveLineage = isNodeInActiveLineage(node, activeNode);
 
         // 線の設定
         final Paint linePaint = Paint()
           ..color = isActiveLineage
-              ? Colors.yellow // アクティブ系統の線は黄色
-              : Theme.of(context).colorScheme.onSurface // 通常の線は白
-          ..strokeWidth = scale // 線の太さをスケールに基づいて設定
+              ? Colors.yellow
+              : Theme.of(context).colorScheme.onSurface
+          ..strokeWidth = scale
           ..style = PaintingStyle.stroke
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
-        // 開始点と終了点の座標を取得
-        final Offset start = transformPoint(
-          node.parent!.position.x,
-          node.parent!.position.y,
-        );
-        final Offset end = transformPoint(
-          node.position.x,
-          node.position.y,
-        );
+        final Offset start =
+            transformPoint(node.parent!.position.x, node.parent!.position.y);
+        final Offset end = transformPoint(node.position.x, node.position.y);
 
         canvas.drawLine(start, end, linePaint);
 
@@ -151,19 +60,16 @@ class NodePainter extends CustomPainter {
         double opacity = 1 * (0.6 + 0.4 * sin(signalProgress * 3.14159 * 5));
         final Paint signalPaint = Paint()
           ..color = isActiveLineage
-              ? Colors.yellow.withOpacity(opacity) // アクティブ系統の信号は黄色
-              : Colors.white.withOpacity(opacity) // 通常の信号は白
+              ? Colors.yellow.withOpacity(opacity)
+              : Colors.white.withOpacity(opacity)
           ..style = PaintingStyle.fill
           ..maskFilter = MaskFilter.blur(
               BlurStyle.normal, isActiveLineage ? scale * 1.5 : scale);
 
-        // 信号位置を計算
         final double signalX = start.dx + (end.dx - start.dx) * signalProgress;
         final double signalY = start.dy + (end.dy - start.dy) * signalProgress;
-        canvas.drawCircle(
-            Offset(signalX, signalY),
-            isActiveLineage ? 3 * scale : 2 * scale, // アクティブ系統の信号は大きく
-            signalPaint);
+        canvas.drawCircle(Offset(signalX, signalY),
+            isActiveLineage ? 3 * scale : 2 * scale, signalPaint);
       }
     }
 
@@ -171,28 +77,28 @@ class NodePainter extends CustomPainter {
     for (var node in nodes) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
-      // ノードのタイトルを表示
+
+      // タイトルの描画
       if (isTitleVisible) {
-        // isTitleVisibleがtrueの時
         final TextPainter textPainter = TextPainter(
           text: TextSpan(
             text: node.title,
             style: TextStyle(
               color: Theme.of(context).colorScheme.onSurface,
               fontWeight: FontWeight.bold,
-              fontSize: 16 * scale, // スケールに基づいてフォントサイズを調整
+              fontSize: 16 * scale,
             ),
           ),
           textDirection: TextDirection.ltr,
         );
         textPainter.layout();
-        // タイトルの位置をノードの下に設定
         textPainter.paint(
             canvas,
             Offset(center.dx - textPainter.width / 2,
                 center.dy + scaledRadius + 5));
       }
-      // 細胞膜のグロー効果
+
+      // ノードのグロー効果
       if (node.isActive) {
         final Paint glowPaint = Paint()
           ..color = node.color.withOpacity(0.9)
@@ -204,8 +110,6 @@ class NodePainter extends CustomPainter {
       final Paint texturePaint = Paint()
         ..color = Colors.white.withOpacity(0.2)
         ..strokeWidth = 0.5 * scale;
-
-      // 細胞膜に配置する円形テクスチャ
       for (double i = 0; i < 360; i += 15) {
         final double angle = i * 3.14159 / 180;
         final double x1 = center.dx + scaledRadius * 1.5 * cos(angle);
@@ -215,34 +119,27 @@ class NodePainter extends CustomPainter {
 
       // 細胞質のグラデーション表現
       final gradient = RadialGradient(
-        center: const Alignment(0.0, 0.0),
+        center: Alignment(0.0, 0.0),
         radius: 0.9,
         colors: [
           Colors.white.withOpacity(0.2),
           node.color.withOpacity(0.7),
           node.color.withOpacity(0.6),
         ],
-        stops: const [0.0, 0.5, 1.0],
+        stops: [0.0, 0.5, 1.0],
       );
-
       final Paint spherePaint = Paint()
         ..shader = gradient.createShader(
-          Rect.fromCircle(center: center, radius: scaledRadius),
-        );
-
+            Rect.fromCircle(center: center, radius: scaledRadius));
       canvas.drawCircle(center, scaledRadius, spherePaint);
 
       // 核の描画
       final double nucleusRadius = scaledRadius * 0.6;
-
-      // 核膜の二重構造表現
       final Paint nuclearEnvelopePaint = Paint()
         ..shader = gradient.createShader(
             Rect.fromCircle(center: center, radius: nucleusRadius))
         ..style = PaintingStyle.stroke
         ..strokeWidth = scale * 0.1;
-
-      // 核膜の内側の構造を描画
       canvas.drawCircle(
           center, nucleusRadius - scale * 2, nuclearEnvelopePaint);
 
@@ -250,14 +147,11 @@ class NodePainter extends CustomPainter {
       final Paint nucleolusPaint = Paint()
         ..color = node.color.withOpacity(1)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
-
       for (int i = 0; i < 3; i++) {
         final double angle = Random().nextDouble() * 2 * pi;
         final double radius = nucleusRadius * 0.3 * Random().nextDouble();
         final Offset nucleolusPosition = Offset(
-          center.dx + cos(angle) * radius,
-          center.dy + sin(angle) * radius,
-        );
+            center.dx + cos(angle) * radius, center.dy + sin(angle) * radius);
         canvas.drawCircle(nucleolusPosition, scale * 2, nucleolusPaint);
       }
 
@@ -265,37 +159,80 @@ class NodePainter extends CustomPainter {
       final Paint nucleoplasmPaint = Paint()
         ..color = Colors.white.withOpacity(0.1)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
-
       for (int i = 0; i < 20; i++) {
         final double angle = Random().nextDouble() * 2 * pi;
         final double radius = nucleusRadius * Random().nextDouble() * 0.8;
         final Offset specklePosition = Offset(
-          center.dx + cos(angle) * radius,
-          center.dy + sin(angle) * radius,
-        );
+            center.dx + cos(angle) * radius, center.dy + sin(angle) * radius);
         canvas.drawCircle(specklePosition, scale * 0.5, nucleoplasmPaint);
       }
 
       // 光沢の表現
       final Paint highlightPaint = Paint()
         ..shader = RadialGradient(
-          center: const Alignment(-0.3, -0.3),
+          center: Alignment(-0.3, -0.3),
           radius: 0.2,
           colors: [
             Colors.white.withOpacity(0.4),
             Colors.white.withOpacity(0.0),
           ],
         ).createShader(Rect.fromCircle(center: center, radius: nucleusRadius));
-
       canvas.drawCircle(center, nucleusRadius, highlightPaint);
     }
   }
 
-  /// 更新判定
-  ///
-  /// [oldDelegate] 更新前のインスタンス
   @override
   bool shouldRepaint(NodePainter oldDelegate) {
     return true;
+  }
+
+  // ノードの系統（親ノード）をセットとして返す
+  Set<Node> getAncestors(Node node) {
+    Set<Node> ancestors = {};
+    Node? currentNode = node.parent;
+    while (currentNode != null) {
+      ancestors.add(currentNode);
+      currentNode = currentNode.parent;
+    }
+    return ancestors;
+  }
+
+  // ノードの子孫ノードをセットとして返す
+  Set<Node> getAllDescendants(Node node) {
+    Set<Node> descendants = {};
+    void traverse(Node n) {
+      descendants.add(n);
+      for (var child in n.children) {
+        traverse(child);
+      }
+    }
+
+    traverse(node);
+    return descendants;
+  }
+
+  // 修正されたisNodeInActiveLineageメソッド
+  bool isNodeInActiveLineage(Node node, Node? activeNode) {
+    if (activeNode == null) return false;
+    if (node == activeNode) return true;
+
+    // 親系統をセットとして取得
+    Set<Node> activeAncestors = getAncestors(activeNode);
+
+    // ノードがアクティブ系統に含まれているか確認
+    if (activeAncestors.contains(node)) return true;
+
+    // 子孫系統をセットとして取得
+    Set<Node> activeDescendants = getAllDescendants(activeNode);
+
+    // ノードがアクティブ系統の子孫に含まれているか確認
+    if (activeDescendants.contains(node)) return true;
+
+    // 親が同じかを確認
+    if (node.parent != null && activeNode.parent != null) {
+      if (node.parent == activeNode.parent) return true;
+    }
+
+    return false;
   }
 }

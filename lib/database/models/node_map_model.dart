@@ -32,10 +32,7 @@ class NodeMapModel extends BaseModel {
   /// ノードマップを追加
   Future<void> insertNodeMap(int parentId, int childId) async {
     try {
-      await insert(
-        table,
-        {columnParentId: parentId, columnChildId: childId},
-      );
+      await insert(table, {columnParentId: parentId, columnChildId: childId});
     } catch (e) {
       Logger.error('Error inserting node map: $e');
       rethrow;
@@ -56,6 +53,19 @@ class NodeMapModel extends BaseModel {
   Future<void> deleteChildNodeMap(int childId) async {
     try {
       await delete(table, '$columnChildId = ?', [childId]);
+    } catch (e) {
+      Logger.error('Error deleting node map: $e');
+      rethrow;
+    }
+  }
+
+  Future<void> deleteAllNodeMap() async {
+    try {
+      final nodeMaps = await fetchAllNodeMap();
+      for (var nodeMap in nodeMaps) {
+        await delete(table, '$columnParentId = ? AND $columnChildId = ?',
+            [nodeMap.key, nodeMap.value]);
+      }
     } catch (e) {
       Logger.error('Error deleting node map: $e');
       rethrow;
