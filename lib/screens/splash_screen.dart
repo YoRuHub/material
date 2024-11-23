@@ -4,7 +4,6 @@ import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../models/custom_icon.dart'; // CustomIcons のインポート
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -28,8 +27,6 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       // ロガーの読み込み
       await Logger.initialize(true);
-      // SVGIconのプリロード処理
-      await CustomIcons.preloadIcons();
       // データベースの初期化
       await _initDatabase();
       // プロジェクトデータの読み込み

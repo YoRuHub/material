@@ -29,46 +29,58 @@ Todo
 ・projectの削除
 ・addボタンのデザイン修正&常にリストのうえに表示
 
-
 lib/
-├── constants/
-│   ├── node_constants.dart         # ノード関連の定数
-│   └── theme_constants.dart        # テーマ関連の定数
-│
-├── database/
-│   ├── database_helper.dart        # データベースヘルパー
-│   └── models/
-│       ├── node_map_model.dart     # ノードマップモデル
-│       └── node_model.dart         # ノードモデル
+├── screens/
+│   ├── mind_map_screen.dart             # メインの画面UI
+│   └── mind_map_screen/
+│       ├── mind_map_gesture_handler.dart # ジェスチャー処理
+│       └── mind_map_node_handler.dart    # ノード操作の処理
 │
 ├── features/
-│   └── mind_map/
-│       ├── screens/
-│       │   └── mind_map_screen.dart    # メインスクリーン
-│       ├── controllers/
-│       │   ├── node_controller.dart     # ノード操作のコントローラー
-│       │   └── physics_controller.dart  # 物理演算のコントローラー
-│       ├── widgets/
-│       │   ├── add_node_button.dart    # ノード追加ボタン
-│       │   ├── node_contents_modal.dart # ノードコンテンツモーダル
-│       │   ├── positioned_text.dart     # 配置されたテキスト
-│       │   └── tool_bar.dart           # ツールバー
-│       └── services/
-│           ├── node_service.dart        # ノード操作のサービス
-│           └── layout_service.dart      # レイアウト調整サービス
+│   ├── node_management/
+│   │   ├── node_creator.dart            # ノード作成ロジック
+│   │   ├── node_updater.dart            # ノード更新ロジック
+│   │   └── node_deleter.dart            # ノード削除ロジック
+│   │
+│   ├── node_relationship/
+│   │   ├── parent_child_handler.dart     # 親子関係の処理
+│   │   └── node_alignment.dart          # ノードの配置処理
+│   │
+│   └── node_physics/
+│       ├── physics_controller.dart       # 物理演算のコントローラー
+│       └── physics_calculator.dart       # 物理計算ロジック
 │
 ├── models/
-│   └── node.dart                   # ノードモデル
+│   ├── node.dart                        # ノードモデル (既存)
+│   └── node_state.dart                  # ノードの状態管理
+│
+├── database/
+│   ├── models/
+│   │   ├── node_map_model.dart          # ノードマップモデル (既存)
+│   │   └── node_model.dart              # ノードモデル (既存)
+│   │
+│   └── repositories/
+│       ├── node_repository.dart         # ノードのデータ操作
+│       └── node_map_repository.dart     # ノードマップのデータ操作
+│
+├── widgets/
+│   ├── add_node_button.dart            # ノード追加ボタン (既存)
+│   ├── node_contents_modal.dart         # ノードコンテンツモーダル (既存)
+│   ├── positioned_text.dart             # 位置指定テキスト (既存)
+│   ├── tool_bar.dart                    # ツールバー (既存)
+│   └── node_display/
+│       ├── node_renderer.dart           # ノード描画
+│       └── node_painter.dart            # ノードペインター (既存)
 │
 ├── utils/
-│   ├── coordinate_utils.dart       # 座標変換ユーティリティ
-│   ├── node_alignment.dart         # ノード配置ユーティリティ
-│   ├── node_operations.dart        # ノード操作ユーティリティ
-│   └── node_physics.dart          # 物理演算ユーティリティ
+│   ├── coordinate_utils.dart            # 座標変換 (既存)
+│   ├── node_alignment.dart              # ノード配置 (既存)
+│   ├── node_color_utils.dart            # ノード色管理 (既存)
+│   ├── node_operations.dart             # ノード操作 (既存)
+│   └── node_physics.dart                # ノード物理演算 (既存)
 │
-└── painters/
-    └── node_painter.dart           # ノード描画クラス
-
+└── constants/
+    └── node_constants.dart              # 定数定義 (既存)
 
     . 概要
 
