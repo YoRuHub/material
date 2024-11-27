@@ -96,6 +96,8 @@ class NodeNotifier extends StateNotifier<List<Node>> {
         // upsert結果から新しいIDを取得して、更新されたノードを作成
         updatedNode = updatedNode.copyWith(id: result['id']);
 
+        // アクティブノードに子ノードを設定
+        updatedNode = updatedNode.copyWith(parent: activeNode);
         // 状態を更新
         state = [...state, updatedNode];
       } else {
@@ -207,74 +209,6 @@ class NodeNotifier extends StateNotifier<List<Node>> {
   // ドラッグ中のノードをクリア
   void clearDraggedNode() {
     _draggedNode = null;
-  }
-
-  void updateNodePosition(Node node, vector_math.Vector2 newPosition,
-      {bool adjustParent = true}) {
-    // 子ノードの位置を更新
-    final updatedNode = node.copyWith(position: newPosition);
-
-    if (adjustParent && node.parent != null) {
-      // 親ノードの位置を再計算
-      final parentNode = node.parent!;
-      final siblings = parentNode.children;
-
-      if (siblings.isNotEmpty) {
-        final avgX =
-            siblings.map((child) => child.position.x).reduce((a, b) => a + b) /
-                siblings.length;
-        final avgY =
-            siblings.map((child) => child.position.y).reduce((a, b) => a + b) /
-                siblings.length;
-
-        final updatedParentNode =
-            parentNode.copyWith(position: vector_math.Vector2(avgX, avgY));
-
-        // 親ノードの状態を更新
-        state = [
-          for (final existingNode in state)
-            if (existingNode.id == updatedNode.id)
-              updatedNode
-            else if (existingNode.id == updatedParentNode.id)
-              updatedParentNode
-            else
-              existingNode
-        ];
-      }
-    } else {
-      // 親ノードの調整が不要な場合
-      state = [
-        for (final existingNode in state)
-          if (existingNode.id == updatedNode.id) updatedNode else existingNode
-      ];
-    }
-  }
-
-  void updateNodePositionWithParentAdjustment(
-      Node node, vector_math.Vector2 newPosition,
-      {bool adjustParent = true}) {
-    // Update current node's position
-    node.position = newPosition;
-
-    if (adjustParent && node.parent != null) {
-      // Optional: More sophisticated parent position calculation
-      node.parent!.position = _calculateOptimalParentPosition(node);
-    }
-  }
-
-  vector_math.Vector2 _calculateOptimalParentPosition(Node childNode) {
-    // Example logic: Place parent at a midpoint between children
-    Node parentNode = childNode.parent!;
-    List<Node> siblings = parentNode.children;
-
-    double avgX =
-        siblings.map((child) => child.position.x).reduce((a, b) => a + b) /
-            siblings.length;
-    double avgY =
-        siblings.map((child) => child.position.y).reduce((a, b) => a + b) /
-            siblings.length;
-
-    return vector_math.Vector2(avgX, avgY);
   }
 }
 

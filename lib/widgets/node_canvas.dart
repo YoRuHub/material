@@ -16,12 +16,12 @@ class NodeCanvas extends ConsumerStatefulWidget {
   final bool isTitleVisible;
 
   const NodeCanvas({
-    Key? key,
+    super.key,
     required this.signalAnimationValue,
     required this.initialScale,
     required this.initialOffset,
     required this.isTitleVisible,
-  }) : super(key: key);
+  });
 
   @override
   NodeCanvasState createState() => NodeCanvasState();

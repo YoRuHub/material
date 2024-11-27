@@ -1,9 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
-import '../utils/node_utils.dart';
 
 /// ノードの描画を行うクラス
 class NodePainter extends CustomPainter {
@@ -123,14 +121,14 @@ class NodePainter extends CustomPainter {
 
       // 細胞質のグラデーション表現
       final gradient = RadialGradient(
-        center: Alignment(0.0, 0.0),
+        center: const Alignment(0.0, 0.0),
         radius: 0.9,
         colors: [
           Colors.white.withOpacity(0.2),
           node.color.withOpacity(0.7),
           node.color.withOpacity(0.6),
         ],
-        stops: [0.0, 0.5, 1.0],
+        stops: const [0.0, 0.5, 1.0],
       );
       final Paint spherePaint = Paint()
         ..shader = gradient.createShader(
@@ -174,7 +172,7 @@ class NodePainter extends CustomPainter {
       // 光沢の表現
       final Paint highlightPaint = Paint()
         ..shader = RadialGradient(
-          center: Alignment(-0.3, -0.3),
+          center: const Alignment(-0.3, -0.3),
           radius: 0.2,
           colors: [
             Colors.white.withOpacity(0.4),

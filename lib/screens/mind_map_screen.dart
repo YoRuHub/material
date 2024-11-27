@@ -1,19 +1,12 @@
-import 'dart:math';
-
-import 'package:flutter/gestures.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/providers/node_map_provider.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/node_canvas.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/models/node.dart';
-import 'package:flutter_app/painters/node_painter.dart';
-import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/widgets/add_node_button.dart';
 import 'package:flutter_app/widgets/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positioned_text.dart';
@@ -39,16 +32,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late Animation<double> _signalAnimation;
 
   Node? _draggedNode;
-  Node? _activeNode;
   bool isPhysicsEnabled = true;
   bool isTitleVisible = true;
   bool isFocusMode = false;
-  bool _isPanning = false;
-  Offset _offset = Offset.zero;
-  Offset _offsetStart = Offset.zero;
-  Offset _dragStart = Offset.zero;
-
-  double _scale = 1.0;
+  final Offset _offset = Offset.zero;
+  final double _scale = 1.0;
   late NodeModel _nodeModel;
 
   @override
@@ -200,12 +188,12 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   void _alignNodesHorizontal() {
-    final nodes = ref.read(nodeNotifierProvider); // ノードリストを取得
+    ref.read(nodeNotifierProvider); // ノードリストを取得
     // ノードを水平方向に整列するロジックを追加
   }
 
   void _alignNodesVertical() {
-    final nodes = ref.read(nodeNotifierProvider); // ノードリストを取得
+    ref.read(nodeNotifierProvider); // ノードリストを取得
     // ノードを垂直方向に整列するロジックを追加
   }
 
