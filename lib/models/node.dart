@@ -66,4 +66,17 @@ class Node {
       children: children ?? this.children,
     );
   }
+
+  void updatePosition(vector_math.Vector2 newPosition) {
+    position = newPosition;
+
+    // 子ノードの位置を更新
+    for (var child in children) {
+      child.position = vector_math.Vector2(
+        child.position.x + (newPosition.x - position.x),
+        child.position.y + (newPosition.y - position.y),
+      );
+      child.parent = this;
+    }
+  }
 }

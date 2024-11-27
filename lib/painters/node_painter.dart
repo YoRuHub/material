@@ -53,9 +53,6 @@ class NodePainter extends CustomPainter {
             transformPoint(node.parent!.position.x, node.parent!.position.y);
         final Offset end = transformPoint(node.position.x, node.position.y);
 
-        Logger.debug(
-            'start: $start, node.parent!.position.x : ${node.parent!.position.x}, node.parent!.position.y : ${node.parent!.position.y}');
-
         canvas.drawLine(start, end, linePaint);
 
         // 信号エフェクト

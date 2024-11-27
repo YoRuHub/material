@@ -144,10 +144,45 @@ class NodeNotifier extends StateNotifier<List<Node>> {
   }
 
   void updateNodeState(Node updatedNode) {
+    // 更新されたノードの親がいる場合、子ノードのリストを更新
+    if (updatedNode.parent != null) {
+      final parentNode =
+          state.firstWhereOrNull((node) => node.id == updatedNode.parent!.id);
+      if (parentNode != null && !parentNode.children.contains(updatedNode)) {
+        parentNode.children.add(updatedNode);
+      }
+    }
+
+    // 更新されたノードの子ノードを親から削除
+    for (var node in state) {
+      if (node.children.contains(updatedNode)) {
+        node.children.remove(updatedNode);
+      }
+    }
+
+    // 状態を更新
     state = [
       for (final node in state)
         if (node.id == updatedNode.id) updatedNode else node
     ];
+  }
+
+  void syncChildNodesPositions(Node parentNode) {
+    for (var childNode in parentNode.children) {
+      // Calculate the relative position of the child to the parent
+      final relativePosition = childNode.position - parentNode.position;
+
+      // Update child node position based on parent's new position
+      childNode.updatePosition(parentNode.position + relativePosition);
+    }
+
+    // Trigger state update
+    state = [...state];
+  }
+
+  void moveParentNode(Node parentNode, vector_math.Vector2 newPosition) {
+    parentNode.updatePosition(newPosition);
+    syncChildNodesPositions(parentNode);
   }
 
   void updateNodeData(Node updatedNode) {

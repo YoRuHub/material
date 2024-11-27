@@ -105,7 +105,6 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
     });
   }
 
-  // ドラッグ更新時の処理
   void _onPanUpdate(DragUpdateDetails details) {
     if (_draggedNode != null) {
       vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
@@ -114,16 +113,25 @@ class NodeCanvasState extends ConsumerState<NodeCanvas> {
         _scale,
       );
 
-      final updatedNode = _draggedNode!.copyWith(
-        position: worldPos,
-        isActive: _draggedNode!.isActive,
-      );
+      // ノードが親ノードであるかを確認
+      if (_draggedNode!.children.isNotEmpty) {
+        // 親ノードを移動
+        ref
+            .read(nodeNotifierProvider.notifier)
+            .moveParentNode(_draggedNode!, worldPos);
+      } else {
+        // 子ノードの場合は位置を更新
+        final updatedNode = _draggedNode!.copyWith(
+          position: worldPos,
+          isActive: _draggedNode!.isActive,
+        );
 
-      setState(() {
-        _draggedNode = updatedNode;
-      });
+        setState(() {
+          _draggedNode = updatedNode;
+        });
 
-      ref.read(nodeNotifierProvider.notifier).updateNodeState(updatedNode);
+        ref.read(nodeNotifierProvider.notifier).updateNodeState(updatedNode);
+      }
     } else if (_isPanning) {
       Offset delta = details.localPosition - _dragStart;
 
