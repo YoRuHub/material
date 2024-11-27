@@ -34,7 +34,29 @@ List<Node> getAncestors(Node node) {
 
 /// ノードの位置を更新する関数
 void updateNodePosition(Node node, vector_math.Vector2 newPosition) {
+  // Update current node's position
   node.position = newPosition;
+
+  // If this node has a parent, adjust parent's position relative to this node
+  if (node.parent != null) {
+    // Example: Keep parent centered between its children
+    List<Node> siblings = node.parent!.children;
+    vector_math.Vector2 parentCenter = _calculateParentCenter(siblings);
+    node.parent!.position = parentCenter;
+  }
+}
+
+vector_math.Vector2 _calculateParentCenter(List<Node> children) {
+  if (children.isEmpty) return vector_math.Vector2.zero();
+
+  double avgX =
+      children.map((child) => child.position.x).reduce((a, b) => a + b) /
+          children.length;
+  double avgY =
+      children.map((child) => child.position.y).reduce((a, b) => a + b) /
+          children.length;
+
+  return vector_math.Vector2(avgX, avgY);
 }
 
 /// ノードが特定の親に属しているか確認する関数

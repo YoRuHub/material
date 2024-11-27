@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../utils/node_utils.dart';
@@ -53,6 +54,9 @@ class NodePainter extends CustomPainter {
         final Offset start =
             transformPoint(node.parent!.position.x, node.parent!.position.y);
         final Offset end = transformPoint(node.position.x, node.position.y);
+
+        Logger.debug(
+            'start: $start, node.parent!.position.x : ${node.parent!.position.x}, node.parent!.position.y : ${node.parent!.position.y}');
 
         canvas.drawLine(start, end, linePaint);
 
