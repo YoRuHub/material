@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/widgets/project_dialog.dart';
+import 'package:flutter_app/widgets/snackbar/snackbar_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/providers/project_provider.dart';
-import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/models/project.dart';
 import 'package:flutter_app/widgets/add_project_button.dart';
 import 'package:flutter_app/widgets/project_list.dart';
