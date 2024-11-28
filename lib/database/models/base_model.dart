@@ -16,9 +16,10 @@ abstract class BaseModel {
       final id = await db.insert(table, values);
 
       // 挿入後にデータを取得
+      // 'id'がない場合は、SQLiteのrowidを利用して挿入データを取得
       final insertedData = await db.query(
         table,
-        where: 'id = ?',
+        where: 'rowid = ?', // 'id'ではなく、SQLiteのrowidを使用
         whereArgs: [id],
       );
 
@@ -27,7 +28,9 @@ abstract class BaseModel {
             'Successfully inserted into $table with data: ${insertedData.first}');
         return insertedData.first; // 挿入されたデータを返す
       } else {
-        throw Exception('Failed to retrieve the inserted data from $table');
+        Logger.debug('No data returned after insertion.');
+        // rowidが返されない場合でも、挿入した値を返す
+        return values;
       }
     } catch (e) {
       Logger.error('Error inserting data into $table: $e');

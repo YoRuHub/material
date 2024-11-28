@@ -455,7 +455,8 @@ class MindMapScreenState extends State<MindMapScreen>
     if (_activeNode != null) {
       // 親ノードの位置を基準にする
       basePosition = _activeNode!.position;
-
+      // colorがnullの場合はNodeColorUtilsで計算された階層の色を使用する
+      color ??= NodeColorUtils.getColorForNextGeneration(_activeNode);
       // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
       basePosition += vector_math.Vector2(
         (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
