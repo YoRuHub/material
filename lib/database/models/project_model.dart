@@ -40,8 +40,8 @@ class ProjectModel extends BaseModel {
       if (id != 0) {
         await upsert(table, data, '$columnId = ?', [id]);
       } else {
-        final newId = await insert(table, data);
-        data[columnId] = newId;
+        final newProject = await insert(table, data);
+        data[columnId] = newProject[columnId];
       }
       return data;
     } catch (e) {

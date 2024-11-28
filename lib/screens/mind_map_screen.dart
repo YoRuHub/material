@@ -636,6 +636,9 @@ class MindMapScreenState extends State<MindMapScreen>
           _nodeMapModel.insertNodeMap(node.id, draggedNode.id);
           node.children.add(draggedNode);
 
+          // 孫ノードも再帰的に更新
+          _updateGrandchildren(node, draggedNode);
+
           // 色を更新
           NodeColorUtils.updateNodeColor(node);
 
@@ -643,6 +646,16 @@ class MindMapScreenState extends State<MindMapScreen>
           draggedNode.isTemporarilyDetached = false;
           node.isTemporarilyDetached = false;
         }
+      }
+    }
+  }
+
+  void _updateGrandchildren(Node parent, Node draggedNode) {
+    for (var child in parent.children) {
+      for (var grandchild in child.children) {
+        // 孫ノードが親の変更に従うように更新
+        grandchild.parent = parent; // 親を新しい親に更新
+        _nodeMapModel.insertNodeMap(parent.id, grandchild.id); // 親子関係をデータベースに保存
       }
     }
   }
