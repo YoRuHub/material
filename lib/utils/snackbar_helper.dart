@@ -1,7 +1,8 @@
+//lib\utils\snackbar_helper.dart
 import 'package:flutter/material.dart';
-import 'snackbar_position.dart';
-import 'snackbar_widget.dart';
-import 'snackbar_type.dart';
+import '../widgets/snackbar/snackbar_position.dart';
+import '../widgets/snackbar/snackbar_widget.dart';
+import '../widgets/snackbar/snackbar_type.dart';
 
 class SnackBarHelper {
   static final List<OverlayEntry> _snackBars = [];

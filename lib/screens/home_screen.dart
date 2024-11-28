@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/widgets/project_manager_widget.dart';
+import 'package:flutter_app/widgets/project/project_manager_widget.dart';
 
 class HomeScreen extends StatelessWidget {
   const HomeScreen({super.key});

@@ -1,12 +1,12 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/widgets/project_dialog.dart';
-import 'package:flutter_app/widgets/snackbar/snackbar_helper.dart';
+import 'package:flutter_app/widgets/project/project_dialog.dart';
+import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/models/project.dart';
-import 'package:flutter_app/widgets/add_project_button.dart';
-import 'package:flutter_app/widgets/project_list.dart';
-import 'package:flutter_app/widgets/project_search_field.dart';
+import 'package:flutter_app/widgets/project/add_project_button.dart';
+import 'package:flutter_app/widgets/project/project_list.dart';
+import 'package:flutter_app/widgets/project/project_search_field.dart';
 
 class ProjectManagerWidget extends ConsumerStatefulWidget {
   const ProjectManagerWidget({super.key});
@@ -25,25 +25,9 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
     super.dispose();
   }
 
-  Future<void> _handleProjectOperation(
-    Future<void> Function() operation,
-    String successMessage,
-  ) async {
-    try {
-      await operation();
-      if (!mounted) return; // mounted をチェック
-      SnackBarHelper.success(context, successMessage);
-    } catch (e) {
-      if (!mounted) return; // mounted をチェック
-      SnackBarHelper.error(context, "Operation failed: $e");
-    }
-  }
-
   Future<void> _addProject(String name) async {
     if (name.isEmpty) {
-      if (mounted) {
-        SnackBarHelper.warning(context, "Project name cannot be empty.");
-      }
+      _showWarning("Project name cannot be empty.");
       return;
     }
 
@@ -51,9 +35,7 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
       () => ref.read(projectNotifierProvider.notifier).addProject(name),
       'Project added successfully!',
     );
-    if (mounted) {
-      _nameController.clear();
-    }
+    if (mounted) _nameController.clear();
   }
 
   Future<void> _editProject(Project project) async {
@@ -70,8 +52,8 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             .editProject(project.id, newName),
         'Project edited successfully!',
       );
-    } else if (newName != null && newName.isEmpty && mounted) {
-      SnackBarHelper.warning(context, "Project name cannot be empty.");
+    } else if (newName?.isEmpty ?? false) {
+      _showWarning("Project name cannot be empty.");
     }
   }
 
@@ -89,6 +71,22 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
         'Project deleted successfully!',
       );
     }
+  }
+
+  Future<void> _handleProjectOperation(
+    Future<void> Function() operation,
+    String successMessage,
+  ) async {
+    try {
+      await operation();
+      if (mounted) SnackBarHelper.success(context, successMessage);
+    } catch (e) {
+      if (mounted) SnackBarHelper.error(context, "Operation failed: $e");
+    }
+  }
+
+  void _showWarning(String message) {
+    if (mounted) SnackBarHelper.warning(context, message);
   }
 
   @override
