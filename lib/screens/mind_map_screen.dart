@@ -7,6 +7,7 @@ import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_operations.dart';
@@ -310,36 +311,30 @@ class MindMapScreenState extends State<MindMapScreen>
 
   void _detachFromChildrenNode() {
     if (_activeNode != null) {
+      // 1. アクティブノードから子ノードの関係を削除
       _nodeMapModel.deleteParentNodeMap(_activeNode!.id);
+
       setState(() {
-        // 子ノードを切り離す
+        // 2. 子ノードを切り離す処理
         for (var child in _activeNode!.children) {
-          child.parent = null; // 親ノードをnullに設定
+          child.parent = null; // 子ノードの親をリセット
 
-          // ランダムな方向と大きさを生成
+          // 3. ランダムな方向に弾く
           double angle = Random().nextDouble() * 2 * pi;
-
-          // 極座標から直交座標に変換
-          vector_math.Vector2 velocity = vector_math.Vector2(
+          child.velocity = vector_math.Vector2(
             cos(angle) * NodeConstants.touchSpeedMultiplier,
             sin(angle) * NodeConstants.touchSpeedMultiplier,
           );
 
-          // 切り離した子ノードにランダムな初速度を与える
-          child.velocity = velocity;
-        }
-        _activeNode!.children.clear(); // 子ノードリストを空にする
+          // 4. 子ノードの色をリセット
+          NodeColorUtils.updateNodeColor(child);
 
-        // アクティブノードの色を更新
-        NodeColorUtils.updateNodeColor(_activeNode!);
-
-        // 切り離した後、ノードの色を再計算
-        for (var node in nodes) {
-          if (node.parent == null) {
-            // 親がないノード（独立したノード）の色をリセット
-            NodeColorUtils.updateNodeColor(node);
-          }
+          // 5. データモデルからも削除
+          _nodeMapModel.deleteParentNodeMap(child.id);
         }
+
+        // 6. アクティブノードの子リストをクリア
+        _activeNode!.children.clear();
       });
     }
   }
@@ -347,36 +342,38 @@ class MindMapScreenState extends State<MindMapScreen>
   void _detachFromParentNode() {
     if (_activeNode != null && _activeNode!.parent != null) {
       setState(() {
-        Node parentNode = _activeNode!.parent!;
+        try {
+          // 親ノードを取得
+          Node parentNode = _activeNode!.parent!;
 
-        // 親ノードの子リストから削除
-        _nodeMapModel.deleteChildNodeMap(_activeNode!.id);
-        parentNode.children.remove(_activeNode);
-
-        // ランダムな方向と大きさを生成
-        double angle = Random().nextDouble() * 2 * pi;
-
-        // 極座標から直交座標に変換
-        vector_math.Vector2 velocity = vector_math.Vector2(
-          cos(angle) * NodeConstants.touchSpeedMultiplier,
-          sin(angle) * NodeConstants.touchSpeedMultiplier,
-        );
-
-        // アクティブノードと親ノードを反対方向に弾く
-        _activeNode!.velocity = velocity;
-        parentNode.velocity = -velocity; // 反対方向の速度を設定
-
-        // 親ノードへの参照を解除
-        _activeNode!.parent = null;
-
-        // アクティブノードの色を更新（親がない状態の色に）
-        NodeColorUtils.updateNodeColor(_activeNode!);
-
-        // 元の親ノードの色も更新（子が減った状態の色に）
-        for (var node in nodes) {
-          if (node.parent == null) {
-            NodeColorUtils.updateNodeColor(node);
+          // 子リストから削除
+          if (parentNode.children.contains(_activeNode)) {
+            _nodeMapModel.deleteChildNodeMap(_activeNode!.id);
+            parentNode.children.remove(_activeNode);
           }
+
+          // ランダムな方向に速度を設定
+          double angle = Random().nextDouble() * 2 * pi;
+          vector_math.Vector2 velocity = vector_math.Vector2(
+            cos(angle) * NodeConstants.touchSpeedMultiplier,
+            sin(angle) * NodeConstants.touchSpeedMultiplier,
+          );
+
+          // アクティブノードと親ノードに反対方向の速度を設定
+          _activeNode!.velocity = velocity;
+          parentNode.velocity = -velocity;
+
+          // 親ノード参照を解除
+          _activeNode!.parent = null;
+
+          // アクティブノードの色を更新
+          NodeColorUtils.updateNodeColor(_activeNode!);
+
+          // 元の親ノードの色を更新（影響範囲を限定）
+          NodeColorUtils.updateNodeColor(parentNode);
+        } catch (e) {
+          // エラーログを出力
+          Logger.error('Error detaching node: $e');
         }
       });
     }
@@ -620,42 +617,41 @@ class MindMapScreenState extends State<MindMapScreen>
     for (Node node in nodes) {
       if (node == draggedNode) continue;
 
+      // ドラッグされたノードと他のノードとの距離を計算
       double distance = (draggedNode.position - node.position).length;
 
+      // 規定のスナップ距離内の場合のみ処理を実行
       if (distance < NodeConstants.snapDistance) {
-        // 循環参照のチェック
+        // 循環参照が発生するか確認
         if (_wouldCreateCycle(draggedNode, node)) continue;
 
+        // 新しい親子関係を形成
         if (node != draggedNode.parent) {
-          // 現在の親ノードから子ノードを削除
-          _nodeMapModel.deleteChildNodeMap(draggedNode.id);
-          draggedNode.parent?.children.remove(draggedNode);
+          // 現在の親ノードからこのノードを削除
+          if (draggedNode.parent != null) {
+            _nodeMapModel.deleteChildNodeMap(draggedNode.id);
+            draggedNode.parent!.children.remove(draggedNode);
+          }
 
-          // 新しい親子関係を設定
+          // ノードを新しい親ノードに紐づける
           draggedNode.parent = node;
           _nodeMapModel.insertNodeMap(node.id, draggedNode.id);
           node.children.add(draggedNode);
 
-          // 孫ノードも再帰的に更新
-          _updateGrandchildren(node, draggedNode);
-
           // 色を更新
           NodeColorUtils.updateNodeColor(node);
+
+          // **孫ノードを子ノードに正しく紐づける**
+          for (Node child in draggedNode.children) {
+            child.parent = draggedNode; // 子ノードとして再設定
+            _nodeMapModel.insertNodeMap(draggedNode.id, child.id);
+            NodeColorUtils.updateNodeColor(child); // 子ノードの色も更新
+          }
 
           // 物理演算用のフラグをリセット
           draggedNode.isTemporarilyDetached = false;
           node.isTemporarilyDetached = false;
         }
-      }
-    }
-  }
-
-  void _updateGrandchildren(Node parent, Node draggedNode) {
-    for (var child in parent.children) {
-      for (var grandchild in child.children) {
-        // 孫ノードが親の変更に従うように更新
-        grandchild.parent = parent; // 親を新しい親に更新
-        _nodeMapModel.insertNodeMap(parent.id, grandchild.id); // 親子関係をデータベースに保存
       }
     }
   }
