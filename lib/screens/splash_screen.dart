@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/db/database_helper.dart';
+import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/screens/home_screen.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -28,7 +29,8 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await Logger.initialize(true);
       // データベースの初期化
       await _initDatabase();
-
+      // プロジェクトデータの読み込み
+      await _loadProjects();
       // 初期化処理が終わったら、HomeScreenに遷移
       if (mounted) {
         Navigator.pushReplacement(
@@ -62,6 +64,16 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       Logger.info('Database initialized.');
     } catch (e) {
       Logger.error('Error initializing database: ${e.toString()}');
+    }
+  }
+
+  // プロジェクトデータの読み込み
+  Future<void> _loadProjects() async {
+    try {
+      final projectNotifier = ref.read(projectNotifierProvider.notifier);
+      await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
+    } catch (e) {
+      Logger.error('Error loading projects: ${e.toString()}');
     }
   }
 }
