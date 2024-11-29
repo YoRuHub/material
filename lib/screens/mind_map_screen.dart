@@ -576,7 +576,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   void _onPanEnd(DragEndDetails details) {
     final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
-    Logger.debug('draggedNode_id = ${draggedNode?.id}');
     if (draggedNode != null) {
       setState(() {
         _checkAndUpdateParentChildRelationship(draggedNode);

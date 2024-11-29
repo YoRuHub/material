@@ -1,4 +1,3 @@
-import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/models/node.dart';
 
