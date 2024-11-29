@@ -6,6 +6,7 @@ import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
+import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
@@ -15,11 +16,12 @@ import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/toolbar/tool_bar.dart';
 
-class MindMapScreen extends StatefulWidget {
-  final int projectId; // プロジェクトIDを保持
+class MindMapScreen extends ConsumerStatefulWidget {
+  final int projectId;
   final String projectTitle;
 
   const MindMapScreen(
@@ -29,13 +31,11 @@ class MindMapScreen extends StatefulWidget {
   MindMapScreenState createState() => MindMapScreenState();
 }
 
-class MindMapScreenState extends State<MindMapScreen>
+class MindMapScreenState extends ConsumerState<MindMapScreen>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _signalAnimation;
   late List<Node> nodes;
-  Node? _draggedNode;
-  Node? _activeNode;
 
   bool isPhysicsEnabled = true;
   bool isTitleVisible = true;
@@ -116,6 +116,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final nodeState = ref.watch(nodeStateNotifierProvider);
     return Scaffold(
       appBar: AppBar(
         title: Text(
@@ -157,24 +158,12 @@ class MindMapScreenState extends State<MindMapScreen>
                     onPanUpdate: _onPanUpdate,
                     onPanEnd: _onPanEnd,
                     onTapUp: _onTapUp,
-                    onTapDown: _onTapDown,
-                    onSecondaryTapDown: (details) =>
-                        setState(() => _isPanning = true),
-                    onSecondaryTapUp: (details) =>
-                        setState(() => _isPanning = false),
-                    onSecondaryTapCancel: () =>
-                        setState(() => _isPanning = false),
-                    onSecondaryLongPressMoveUpdate: (details) {
-                      if (_isPanning) {
-                        setState(() => _offset += details.offsetFromOrigin);
-                      }
-                    },
                     child: AnimatedBuilder(
                       animation: _controller,
                       builder: (context, child) {
                         NodePhysics.updatePhysics(
                           nodes: nodes,
-                          draggedNode: _draggedNode,
+                          draggedNode: nodeState.draggedNode,
                           isPhysicsEnabled: isPhysicsEnabled,
                         );
                         return CustomPaint(
@@ -184,7 +173,7 @@ class MindMapScreenState extends State<MindMapScreen>
                                 AppBar().preferredSize.height,
                           ),
                           painter: NodePainter(nodes, _signalAnimation.value,
-                              _scale, _offset, isTitleVisible, context),
+                              _scale, _offset, isTitleVisible, context, ref),
                         );
                       },
                     ),
@@ -216,17 +205,17 @@ class MindMapScreenState extends State<MindMapScreen>
               AddNodeButton(onPressed: _addNode),
             ],
           ),
-          if (_activeNode != null)
+          if (nodeState.activeNode != null)
             Builder(
-              key: ValueKey(_activeNode!.id), // ここでキーを設定
+              key: ValueKey(nodeState.activeNode!.id),
               builder: (context) {
                 return NodeContentsPanel(
-                  node: _activeNode!,
+                  node: nodeState.activeNode!,
                   nodeModel: _nodeModel,
                   onNodeUpdated: (updatedNode) {
-                    setState(() {
-                      _activeNode = updatedNode;
-                    });
+                    ref
+                        .read(nodeStateNotifierProvider.notifier)
+                        .setActiveNode(updatedNode);
                   },
                 );
               },
@@ -284,9 +273,10 @@ class MindMapScreenState extends State<MindMapScreen>
 
   // アクティブノードとその子孫をコピーする関数
   Future<void> _duplicateActiveNode() async {
-    if (_activeNode != null) {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    if (nodeState.activeNode != null) {
       // Perform the asynchronous work
-      Node copiedNode = await _copyNodeWithChildren(_activeNode!);
+      Node copiedNode = await _copyNodeWithChildren(nodeState.activeNode!);
 
       // Update the widget state
       setState(() {
@@ -311,13 +301,14 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   void _detachFromChildrenNode() {
-    if (_activeNode != null) {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    if (nodeState.activeNode != null) {
       // 1. アクティブノードから子ノードの関係を削除
-      _nodeMapModel.deleteParentNodeMap(_activeNode!.id);
+      _nodeMapModel.deleteParentNodeMap(nodeState.activeNode!.id);
 
       setState(() {
         // 2. 子ノードを切り離す処理
-        for (var child in _activeNode!.children) {
+        for (var child in nodeState.activeNode!.children) {
           child.parent = null; // 子ノードの親をリセット
 
           // 3. ランダムな方向に弾く
@@ -335,22 +326,23 @@ class MindMapScreenState extends State<MindMapScreen>
         }
 
         // 6. アクティブノードの子リストをクリア
-        _activeNode!.children.clear();
+        nodeState.activeNode!.children.clear();
       });
     }
   }
 
   void _detachFromParentNode() {
-    if (_activeNode != null && _activeNode!.parent != null) {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    if (nodeState.activeNode != null && nodeState.activeNode!.parent != null) {
       setState(() {
         try {
           // 親ノードを取得
-          Node parentNode = _activeNode!.parent!;
+          Node parentNode = nodeState.activeNode!.parent!;
 
           // 子リストから削除
-          if (parentNode.children.contains(_activeNode)) {
-            _nodeMapModel.deleteChildNodeMap(_activeNode!.id);
-            parentNode.children.remove(_activeNode);
+          if (parentNode.children.contains(nodeState.activeNode)) {
+            _nodeMapModel.deleteChildNodeMap(nodeState.activeNode!.id);
+            parentNode.children.remove(nodeState.activeNode);
           }
 
           // ランダムな方向に速度を設定
@@ -361,14 +353,15 @@ class MindMapScreenState extends State<MindMapScreen>
           );
 
           // アクティブノードと親ノードに反対方向の速度を設定
-          _activeNode!.velocity = velocity;
+          nodeState.activeNode!.velocity = velocity;
           parentNode.velocity = -velocity;
 
           // 親ノード参照を解除
-          _activeNode!.parent = null;
+          nodeState.activeNode!.parent = null;
 
           // アクティブノードの色を更新
-          NodeColorUtils.updateNodeColor(_activeNode!, widget.projectId);
+          NodeColorUtils.updateNodeColor(
+              nodeState.activeNode!, widget.projectId);
 
           // 元の親ノードの色を更新（影響範囲を限定）
           NodeColorUtils.updateNodeColor(parentNode, widget.projectId);
@@ -381,14 +374,13 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   void _deleteActiveNode() async {
-    if (_activeNode != null) {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    if (nodeState.activeNode != null) {
       // 子ノードも再帰的に削除
-      await _deleteNodeAndChildren(_activeNode!);
+      await _deleteNodeAndChildren(nodeState.activeNode!);
     }
     //アクティブ状態を解除
-    setState(() {
-      _activeNode = null;
-    });
+    ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
   }
 
   Future<void> _deleteNodeAndChildren(Node node) async {
@@ -447,14 +439,15 @@ class MindMapScreenState extends State<MindMapScreen>
     String contents = '',
     Color? color,
   }) async {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
     // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
     vector_math.Vector2 basePosition;
 
-    if (_activeNode != null) {
+    if (nodeState.activeNode != null) {
       // 親ノードの位置を基準にする
-      basePosition = _activeNode!.position;
+      basePosition = nodeState.activeNode!.position;
       // colorがnullの場合はNodeColorUtilsで計算された階層の色を使用する
-      color ??= NodeColorUtils.getColorForNextGeneration(_activeNode);
+      color ??= NodeColorUtils.getColorForNextGeneration(nodeState.activeNode);
       // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
       basePosition += vector_math.Vector2(
         (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
@@ -480,13 +473,13 @@ class MindMapScreenState extends State<MindMapScreen>
         nodeId, title, contents, color, widget.projectId);
     int newNodeId = newNodeData['id'] as int;
 
-    if (_activeNode != null) {
+    if (nodeState.activeNode != null) {
       // 親ノードがある場合、親ノード情報をセットしてノードを追加
-      await _nodeMapModel.insertNodeMap(_activeNode!.id, newNodeId);
+      await _nodeMapModel.insertNodeMap(nodeState.activeNode!.id, newNodeId);
 
       final newNode = NodeOperations.addNode(
         position: basePosition,
-        parentNode: _activeNode,
+        parentNode: nodeState.activeNode,
         nodeId: newNodeId,
         color: color,
         projectId: widget.projectId,
@@ -531,15 +524,18 @@ class MindMapScreenState extends State<MindMapScreen>
       _scale,
     );
 
+    // ドラッグされるノードを設定
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
+        // ドラッグを開始したノードを設定
+        ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(node);
         setState(() {
-          _draggedNode = node;
           _isPanning = false;
+          _dragStart = details.localPosition; // ドラッグ開始位置を記録
         });
         return;
       }
@@ -549,22 +545,25 @@ class MindMapScreenState extends State<MindMapScreen>
       _isPanning = true;
       _offsetStart = _offset;
       _dragStart = details.localPosition;
-      _draggedNode = null;
+      ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(null);
     });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    if (_draggedNode != null) {
-      // ノードの移動を相対位置で更新
+    final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
+
+    if (draggedNode != null) {
+      // ノードをドラッグしているときは、アクティブノードの状態は変更しない
       setState(() {
         vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
           details.localPosition,
           _offset,
           _scale,
         );
-        _draggedNode!.position = worldPos;
+        draggedNode.position = worldPos;
       });
     } else if (_isPanning) {
+      // 背景のドラッグ（ビューの移動）
       setState(() {
         final dragDelta = details.localPosition - _dragStart;
         _offset = _offsetStart + dragDelta;
@@ -572,17 +571,22 @@ class MindMapScreenState extends State<MindMapScreen>
     }
   }
 
-// ドラッグ終了時に親子関係をチェックして更新する
   void _onPanEnd(DragEndDetails details) {
-    if (_draggedNode != null) {
+    final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
+    if (draggedNode != null) {
       setState(() {
-        _checkAndUpdateParentChildRelationship(_draggedNode!);
+        _checkAndUpdateParentChildRelationship(draggedNode);
 
         // ドラッグ終了時に速度をリセット
-        _draggedNode!.velocity = vector_math.Vector2.zero();
-        _draggedNode = null;
+        draggedNode.velocity = vector_math.Vector2.zero();
+        ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(null);
       });
     }
+
+    // ドラッグ終了後にpanningフラグをリセット
+    setState(() {
+      _isPanning = false;
+    });
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -594,24 +598,62 @@ class MindMapScreenState extends State<MindMapScreen>
     _checkForNodeSelection(worldPos);
   }
 
-  void _onTapDown(TapDownDetails details) {
-    vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-      details.localPosition,
-      _offset,
-      _scale,
-    );
-    // ノードの選択を確認
-    bool isNodeSelected = _checkForNodeSelection(worldPos);
+  bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
+    bool isNodeSelected = false;
 
-    setState(() {
-      // ノードが選択されていない場合、アクティブ状態を解除
-      if (!isNodeSelected) {
-        if (_activeNode != null) {
-          _activeNode!.isActive = false; // アクティブ状態を解除
-          _activeNode = null;
-        }
+    // クリックで選択されるノードを探す
+    for (var node in nodes) {
+      double dx = node.position.x - worldPos.x;
+      double dy = node.position.y - worldPos.y;
+      double distance = sqrt(dx * dx + dy * dy);
+
+      if (distance < node.radius) {
+        setState(() {
+          final currentActiveNode =
+              ref.read(nodeStateNotifierProvider).activeNode;
+
+          // タップされたノードがすでにアクティブなら、アクティブ状態を解除
+          if (node == currentActiveNode) {
+            node.isActive = false;
+            ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+          } else {
+            // 新しいノードをアクティブにする
+            _toggleActiveNode(node);
+          }
+        });
+        isNodeSelected = true;
+        break; // ノードが選択されたのでループを抜ける
       }
-    });
+    }
+
+    // ノードが選択されていない場合（背景をタップした場合）
+    if (!isNodeSelected) {
+      setState(() {
+        final currentActiveNode =
+            ref.read(nodeStateNotifierProvider).activeNode;
+        if (currentActiveNode != null) {
+          currentActiveNode.isActive = false;
+          ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+        }
+      });
+    }
+
+    return isNodeSelected;
+  }
+
+  void _toggleActiveNode(Node newNode) {
+    // 現在アクティブなノードを取得
+    final currentActiveNode = ref.read(nodeStateNotifierProvider).activeNode;
+
+    if (currentActiveNode != null) {
+      // 現在アクティブなノードを非アクティブにする
+      currentActiveNode.isActive = false;
+      ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+    }
+
+    // 新しいノードをアクティブにする
+    newNode.isActive = true;
+    ref.read(nodeStateNotifierProvider.notifier).setActiveNode(newNode);
   }
 
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {
@@ -658,10 +700,11 @@ class MindMapScreenState extends State<MindMapScreen>
   }
 
   void _resetNodeColor() {
-    if (_activeNode == null) return;
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    if (nodeState.activeNode == null) return;
 
     // 最上位の祖先を取得
-    Node? rootAncestor = _activeNode;
+    Node? rootAncestor = nodeState.activeNode;
     while (rootAncestor?.parent != null) {
       rootAncestor = rootAncestor!.parent;
     }
@@ -680,29 +723,6 @@ class MindMapScreenState extends State<MindMapScreen>
       if (current == draggedNode) return true;
       current = current.parent;
     }
-    return false;
-  }
-
-  bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
-    // Check if the click hit any node
-    for (var node in nodes) {
-      double dx = node.position.x - worldPos.x;
-      double dy = node.position.y - worldPos.y;
-      double distance = sqrt(dx * dx + dy * dy);
-
-      // Node was clicked
-      if (distance < node.radius) {
-        setState(() {
-          // Activate the clicked node
-          _activeNode?.isActive = false; // Deactivate the previous active node
-          node.isActive = true; // Activate the clicked node
-          _activeNode = node; // Set the active node
-        });
-        return true;
-      }
-    }
-
-    // No node was clicked
     return false;
   }
 }
