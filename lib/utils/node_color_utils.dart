@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
+import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 
 class NodeColorUtils {
@@ -14,17 +15,29 @@ class NodeColorUtils {
     return _getColorForGeneration(_calculateGeneration(node));
   }
 
-  /// 再帰的にノードの色を更新
-  static void updateNodeColor(Node node) {
-    // ノードに色が設定されていない場合のみ更新
+  /// 再帰的にノードの色を更新（非同期対応）
+  static Future<void> updateNodeColor(Node node, int projectId) async {
     if (node.color == Colors.transparent) {
-      // 世代に基づいて色を設定
       node.color = _getColorForGeneration(_calculateGeneration(node));
+      final nodeModel = NodeModel();
+      await nodeModel.upsertNode(
+          node.id, node.title, node.contents, node.color, projectId);
     }
 
-    // 子ノードに対しても再帰的に色を更新
     for (Node child in node.children) {
-      updateNodeColor(child); // 子ノードの色も更新
+      await updateNodeColor(child, projectId);
+    }
+  }
+
+  /// 再帰的にノードの色を更新（強制更新バージョン・非同期対応）
+  static Future<void> forceUpdateNodeColor(Node node, int projectId) async {
+    node.color = _getColorForGeneration(_calculateGeneration(node));
+    final nodeModel = NodeModel();
+    await nodeModel.upsertNode(
+        node.id, node.title, node.contents, node.color, projectId);
+
+    for (Node child in node.children) {
+      await forceUpdateNodeColor(child, projectId);
     }
   }
 
@@ -41,7 +54,7 @@ class NodeColorUtils {
 
   /// ノードの世代を計算
   static int _calculateGeneration(Node? node) {
-    if (node == null) return 0; // nodeがnullの場合、世代0
+    if (node == null) return 0;
     int generation = 0;
     Node? current = node;
     while (current?.parent != null) {

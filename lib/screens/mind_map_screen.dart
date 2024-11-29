@@ -101,7 +101,7 @@ class MindMapScreenState extends State<MindMapScreen>
           childNode.parent = parentNode;
           if (!parentNode.children.contains(childNode)) {
             parentNode.children.add(childNode);
-            NodeColorUtils.updateNodeColor(childNode);
+            NodeColorUtils.updateNodeColor(childNode, widget.projectId);
           }
         });
       }
@@ -297,7 +297,7 @@ class MindMapScreenState extends State<MindMapScreen>
         _addChildrenToNodesList(copiedNode);
 
         // Update the node color
-        NodeColorUtils.updateNodeColor(copiedNode);
+        NodeColorUtils.updateNodeColor(copiedNode, widget.projectId);
       });
     }
   }
@@ -328,7 +328,7 @@ class MindMapScreenState extends State<MindMapScreen>
           );
 
           // 4. 子ノードの色をリセット
-          NodeColorUtils.updateNodeColor(child);
+          NodeColorUtils.updateNodeColor(child, widget.projectId);
 
           // 5. データモデルからも削除
           _nodeMapModel.deleteParentNodeMap(child.id);
@@ -368,10 +368,10 @@ class MindMapScreenState extends State<MindMapScreen>
           _activeNode!.parent = null;
 
           // アクティブノードの色を更新
-          NodeColorUtils.updateNodeColor(_activeNode!);
+          NodeColorUtils.updateNodeColor(_activeNode!, widget.projectId);
 
           // 元の親ノードの色を更新（影響範囲を限定）
-          NodeColorUtils.updateNodeColor(parentNode);
+          NodeColorUtils.updateNodeColor(parentNode, widget.projectId);
         } catch (e) {
           // エラーログを出力
           Logger.error('Error detaching node: $e');
@@ -640,13 +640,13 @@ class MindMapScreenState extends State<MindMapScreen>
           node.children.add(draggedNode);
 
           // 色を更新
-          NodeColorUtils.updateNodeColor(node);
+          NodeColorUtils.updateNodeColor(node, widget.projectId);
 
           // **孫ノードを子ノードに正しく紐づける**
           for (Node child in draggedNode.children) {
             child.parent = draggedNode; // 子ノードとして再設定
             _nodeMapModel.insertNodeMap(draggedNode.id, child.id);
-            NodeColorUtils.updateNodeColor(child); // 子ノードの色も更新
+            NodeColorUtils.updateNodeColor(child, widget.projectId);
           }
 
           // 物理演算用のフラグをリセット
@@ -660,38 +660,6 @@ class MindMapScreenState extends State<MindMapScreen>
   void _resetNodeColor() {
     if (_activeNode == null) return;
 
-    // 階層ごとの色を計算するヘルパーメソッド
-    Color getColorForGeneration(int generation) {
-      double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
-      return HSLColor.fromAHSL(
-        NodeConstants.alpha,
-        hue,
-        NodeConstants.saturation,
-        NodeConstants.lightness,
-      ).toColor();
-    }
-
-    // 再帰的に子孫ノードの色を更新するヘルパーメソッド
-    void updateColorsRecursive(Node node, int generation) {
-      // 現在のノードの色を更新
-      node.color = getColorForGeneration(generation);
-
-      // 子ノードの色を再帰的に更新
-      for (var child in node.children) {
-        updateColorsRecursive(child, generation + 1);
-      }
-    }
-
-    // アクティブノードの祖先を遡ってすべての親ノードの色を更新
-    Node? ancestorNode = _activeNode;
-    int generation = 0;
-
-    while (ancestorNode != null) {
-      ancestorNode.color = getColorForGeneration(generation);
-      ancestorNode = ancestorNode.parent;
-      generation--;
-    }
-
     // 最上位の祖先を取得
     Node? rootAncestor = _activeNode;
     while (rootAncestor?.parent != null) {
@@ -700,7 +668,7 @@ class MindMapScreenState extends State<MindMapScreen>
 
     // 最上位の祖先を基準に子孫ノードの色を更新
     if (rootAncestor != null) {
-      updateColorsRecursive(rootAncestor, 0);
+      NodeColorUtils.forceUpdateNodeColor(rootAncestor, widget.projectId);
     }
   }
 
