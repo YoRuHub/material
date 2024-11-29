@@ -2,9 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
-import 'package:flutter_app/widgets/color_picker_dialog.dart';
+import 'package:flutter_app/widgets/nodeContentsModal/colorPickerDialog/color_picker_dialog.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
-import 'package:flutter_app/widgets/spherical_color_widget.dart';
+import 'package:flutter_app/widgets/nodeContentsModal/colorPickerDialog/spherical_color_widget.dart';
 
 class NodeContentsPanel extends StatefulWidget {
   final Node node;

@@ -12,11 +12,11 @@ import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
-import 'package:flutter_app/widgets/add_node_button.dart';
-import 'package:flutter_app/widgets/node_contents_modal.dart';
-import 'package:flutter_app/widgets/positioned_text.dart';
+import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
+import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
+import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
-import '../widgets/tool_bar.dart';
+import '../widgets/toolbar/tool_bar.dart';
 
 class MindMapScreen extends StatefulWidget {
   final int projectId; // プロジェクトIDを保持

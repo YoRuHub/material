@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/widgets/spherical_color_widget.dart';
+import 'package:flutter_app/widgets/nodeContentsModal/colorPickerDialog/spherical_color_widget.dart';
 
 class ColorPickerDialog extends StatelessWidget {
   final List<Color> availableColors;
