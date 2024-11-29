@@ -5,6 +5,7 @@ class ToolBarWidget extends StatefulWidget {
   final VoidCallback alignNodesVertical;
   final VoidCallback detachChildren;
   final VoidCallback detachParent;
+  final VoidCallback resetNodeColor;
   final VoidCallback stopPhysics;
   final VoidCallback showNodeTitle;
   final VoidCallback deleteActiveNode;
@@ -19,6 +20,7 @@ class ToolBarWidget extends StatefulWidget {
     required this.alignNodesVertical,
     required this.detachChildren,
     required this.detachParent,
+    required this.resetNodeColor,
     required this.stopPhysics,
     required this.showNodeTitle,
     required this.deleteActiveNode,
@@ -34,11 +36,12 @@ class ToolBarWidget extends StatefulWidget {
 class ToolBarWidgetState extends State<ToolBarWidget> {
   // ホバー状態を管理するマップ
   final Map<String, bool> _isHovered = {
-    'alignHorizontal': false,
-    'alignVertical': false,
+    'alignNodesHorizontal': false,
+    'alignNodesVertical': false,
     'detachChildren': false,
     'detachParent': false,
     'duplicate': false,
+    'resetNodeColor': false,
     'lock': false,
     'showTitle': false,
     'delete': false,
@@ -107,16 +110,16 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
               buildIconButton(
                 icon: Icons.share,
                 onPressed: widget.alignNodesHorizontal,
-                action: 'alignHorizontal',
-                isHovered: _isHovered['alignHorizontal'] ?? false,
+                action: 'alignNodesHorizontal',
+                isHovered: _isHovered['alignNodesHorizontal'] ?? false,
                 rotated: false,
               ),
               // 縦整列
               buildIconButton(
                 icon: Icons.share,
                 onPressed: widget.alignNodesVertical,
-                action: 'alignVertical',
-                isHovered: _isHovered['alignVertical'] ?? false,
+                action: 'alignNodesVertical',
+                isHovered: _isHovered['alignNodesVertical'] ?? false,
                 rotated: true,
               ),
               // 子ノード切り離し
@@ -151,6 +154,14 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   action: 'showTitle',
                   isHovered: _isHovered['showTitle']! || widget.isTitleVisible,
                   rotated: false),
+              // ノード色リセット
+              buildIconButton(
+                icon: Icons.color_lens,
+                onPressed: widget.resetNodeColor,
+                action: 'resetNodeColor',
+                isHovered: _isHovered['resetNodeColor'] ?? false,
+                rotated: false,
+              ),
               // ノード固定
               buildIconButton(
                 icon: widget.isPhysicsEnabled ? Icons.lock_open : Icons.lock,

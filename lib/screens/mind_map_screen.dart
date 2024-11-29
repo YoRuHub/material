@@ -207,6 +207,7 @@ class MindMapScreenState extends State<MindMapScreen>
                   isPhysicsEnabled: isPhysicsEnabled,
                   detachChildren: _detachFromChildrenNode,
                   detachParent: _detachFromParentNode,
+                  resetNodeColor: _resetNodeColor,
                   duplicateActiveNode: _duplicateActiveNode,
                   stopPhysics: _stopPhysics,
                   deleteActiveNode: _deleteActiveNode,
@@ -653,6 +654,53 @@ class MindMapScreenState extends State<MindMapScreen>
           node.isTemporarilyDetached = false;
         }
       }
+    }
+  }
+
+  void _resetNodeColor() {
+    if (_activeNode == null) return;
+
+    // 階層ごとの色を計算するヘルパーメソッド
+    Color getColorForGeneration(int generation) {
+      double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
+      return HSLColor.fromAHSL(
+        NodeConstants.alpha,
+        hue,
+        NodeConstants.saturation,
+        NodeConstants.lightness,
+      ).toColor();
+    }
+
+    // 再帰的に子孫ノードの色を更新するヘルパーメソッド
+    void updateColorsRecursive(Node node, int generation) {
+      // 現在のノードの色を更新
+      node.color = getColorForGeneration(generation);
+
+      // 子ノードの色を再帰的に更新
+      for (var child in node.children) {
+        updateColorsRecursive(child, generation + 1);
+      }
+    }
+
+    // アクティブノードの祖先を遡ってすべての親ノードの色を更新
+    Node? ancestorNode = _activeNode;
+    int generation = 0;
+
+    while (ancestorNode != null) {
+      ancestorNode.color = getColorForGeneration(generation);
+      ancestorNode = ancestorNode.parent;
+      generation--;
+    }
+
+    // 最上位の祖先を取得
+    Node? rootAncestor = _activeNode;
+    while (rootAncestor?.parent != null) {
+      rootAncestor = rootAncestor!.parent;
+    }
+
+    // 最上位の祖先を基準に子孫ノードの色を更新
+    if (rootAncestor != null) {
+      updateColorsRecursive(rootAncestor, 0);
     }
   }
 
