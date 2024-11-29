@@ -15,17 +15,28 @@ class NodeColorUtils {
     return _getColorForGeneration(_calculateGeneration(node));
   }
 
-  /// 再帰的にノードの色を更新（非同期対応）
   static Future<void> updateNodeColor(Node node, int projectId) async {
-    if (node.color == Colors.transparent) {
+    // もし色がnullまたは透明なら色を設定
+    if (node.color == null || node.color == Colors.transparent) {
       node.color = _getColorForGeneration(_calculateGeneration(node));
       final nodeModel = NodeModel();
       await nodeModel.upsertNode(
-          node.id, node.title, node.contents, node.color, projectId);
+          node.id, node.title, node.contents, node.color!, projectId);
     }
 
-    for (Node child in node.children) {
-      await updateNodeColor(child, projectId);
+    // 子ノードをバッチ処理
+    final children = List<Node>.from(node.children); // 元のリストをコピー
+    const batchSize = 10; // 一度に処理する子ノードの数
+    for (int i = 0; i < children.length; i += batchSize) {
+      // バッチサイズ分ずつ処理
+      final batch = children.sublist(
+          i,
+          (i + batchSize) < children.length
+              ? (i + batchSize)
+              : children.length);
+      await Future.wait(batch.map((child) async {
+        await updateNodeColor(child, projectId);
+      }));
     }
   }
 

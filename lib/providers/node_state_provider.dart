@@ -4,25 +4,23 @@ import 'package:flutter_app/models/node.dart';
 
 // ノードの状態を管理するためのStateNotifier
 class NodeStateNotifier extends StateNotifier<NodeState> {
-  NodeStateNotifier() : super(NodeState()) {
-    Logger.debug('NodeStateNotifier created with initial state');
-  }
+  NodeStateNotifier() : super(NodeState());
 
+  // ドラッグノードを設定する
   void setDraggedNode(Node? node) {
     if (state.draggedNode != node) {
       state = state.copyWith(draggedNode: node);
     }
   }
 
+  // アクティブノードを設定する
   void setActiveNode(Node? node) {
-    if (state.activeNode != node) {
-      state = state.copyWith(activeNode: node);
-    }
+    state = state.resetActiveWith(activeNode: node);
   }
 
-  @override
-  set state(NodeState newState) {
-    super.state = newState;
+  // 状態をリセットする
+  void resetState() {
+    state = NodeState(); // draggedNode と activeNode を null にする
   }
 }
 
@@ -39,6 +37,14 @@ class NodeState {
     return NodeState(
       draggedNode: draggedNode,
       activeNode: activeNode ?? this.activeNode,
+    );
+  }
+
+  NodeState resetActiveWith({
+    Node? activeNode,
+  }) {
+    return NodeState(
+      activeNode: activeNode,
     );
   }
 }

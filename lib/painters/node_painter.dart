@@ -154,7 +154,7 @@ class NodePainter extends CustomPainter {
 
       if (activeNode != null && node == activeNode) {
         final Paint glowPaint = Paint()
-          ..color = node.color.withOpacity(0.9)
+          ..color = node.color!.withOpacity(0.9)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 15 * scale);
         canvas.drawCircle(center, scaledRadius * 1.8, glowPaint);
       }
@@ -175,8 +175,8 @@ class NodePainter extends CustomPainter {
         radius: 0.9,
         colors: [
           Colors.white.withOpacity(0.2),
-          node.color.withOpacity(0.7),
-          node.color.withOpacity(0.6),
+          node.color!.withOpacity(0.7),
+          node.color!.withOpacity(0.6),
         ],
         stops: const [0.0, 0.5, 1.0],
       );
@@ -199,7 +199,7 @@ class NodePainter extends CustomPainter {
           center, nucleusRadius - scale * 2, nuclearEnvelopePaint);
 
       final Paint nucleolusPaint = Paint()
-        ..color = node.color.withOpacity(1)
+        ..color = node.color!.withOpacity(1)
         ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
       for (int i = 0; i < 3; i++) {

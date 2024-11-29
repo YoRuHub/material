@@ -63,7 +63,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
-
+    // ウィジェットツリーのビルドが完了した後にノードの状態をリセット
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(nodeStateNotifierProvider.notifier).resetState();
+    });
     _initializeNodes();
   }
 
@@ -524,23 +527,23 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       _scale,
     );
 
-    // ドラッグされるノードを設定
     for (var node in nodes) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
-        // ドラッグを開始したノードを設定
+        // Only set dragged node, do NOT change active node
         ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(node);
         setState(() {
           _isPanning = false;
-          _dragStart = details.localPosition; // ドラッグ開始位置を記録
+          _dragStart = details.localPosition;
         });
         return;
       }
     }
 
+    // If no node is dragged, then handle panning
     setState(() {
       _isPanning = true;
       _offsetStart = _offset;
@@ -573,6 +576,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   void _onPanEnd(DragEndDetails details) {
     final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
+    Logger.debug('draggedNode_id = ${draggedNode?.id}');
     if (draggedNode != null) {
       setState(() {
         _checkAndUpdateParentChildRelationship(draggedNode);

@@ -35,7 +35,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
     super.initState();
     titleController = TextEditingController(text: widget.node.title);
     contentController = TextEditingController(text: widget.node.contents);
-    _selectedColor = widget.node.color; // ノードの色を初期値に設定
+    _selectedColor = widget.node.color ?? Colors.blue;
   }
 
   @override
@@ -102,13 +102,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
 
     if (pickedColor != null) {
       setState(() {
-        // 透明色（色なし）を選んだ場合、世代に基づいて色を再設定
-        if (pickedColor == Colors.transparent) {
-          _selectedColor =
-              NodeColorUtils.getColorForCurrentGeneration(widget.node);
-        } else {
-          _selectedColor = pickedColor;
-        }
+        _selectedColor = pickedColor;
       });
     }
   }
