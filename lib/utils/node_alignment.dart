@@ -91,13 +91,13 @@ class NodeAlignment {
     Map<Node, double> nodeWidths,
   ) {
     if (node.children.isEmpty) {
-      nodeWidths[node] = NodeConstants.nodeSpacing;
-      return NodeConstants.nodeSpacing;
+      nodeWidths[node] = NodeConstants.nodeMinSeparation;
+      return NodeConstants.nodeMinSeparation;
     }
 
     double width = node.children.fold(
         0.0, (sum, child) => sum + _calculateSubtreeWidth(child, nodeWidths));
-    nodeWidths[node] = max(width, NodeConstants.nodeSpacing);
+    nodeWidths[node] = max(width, NodeConstants.nodeMinSeparation);
     return nodeWidths[node]!;
   }
 
@@ -107,13 +107,13 @@ class NodeAlignment {
     Map<Node, double> nodeHeights,
   ) {
     if (node.children.isEmpty) {
-      nodeHeights[node] = NodeConstants.levelHeight;
-      return NodeConstants.levelHeight;
+      nodeHeights[node] = NodeConstants.nodeMinSeparation;
+      return NodeConstants.nodeMinSeparation;
     }
 
     double height = node.children.fold(
         0.0, (sum, child) => sum + _calculateSubtreeHeight(child, nodeHeights));
-    nodeHeights[node] = max(height, NodeConstants.levelHeight);
+    nodeHeights[node] = max(height, NodeConstants.nodeMinSeparation);
     return nodeHeights[node]!;
   }
 
@@ -141,7 +141,7 @@ class NodeAlignment {
       _calculateTargetPositionsVertical(
         child,
         childX + nodeWidths[child]! / 2,
-        y + NodeConstants.levelHeight,
+        y + NodeConstants.nodeMinSeparation,
         nodeWidths,
         setState,
       );
@@ -172,7 +172,7 @@ class NodeAlignment {
     for (var child in node.children) {
       _calculateTargetPositionsHorizontal(
         child,
-        x + NodeConstants.nodeSpacing,
+        x + NodeConstants.nodeMinSeparation,
         childY + nodeHeights[child]! / 2,
         nodeHeights,
         setState,
@@ -187,7 +187,7 @@ class NodeAlignment {
     vector_math.Vector2 targetPosition,
     void Function(VoidCallback fn) setState,
   ) {
-    const int steps = NodeConstants.totalSteps;
+    const int steps = NodeConstants.totalAnimationFrames;
     vector_math.Vector2 startPosition = node.position.clone();
     vector_math.Vector2 delta =
         (targetPosition - startPosition) / steps.toDouble();

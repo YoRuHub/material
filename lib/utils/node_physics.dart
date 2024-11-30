@@ -51,7 +51,7 @@ class NodePhysics {
 
         double distance = (draggedNode.position - node.position).length;
 
-        if (distance < NodeConstants.snapDistance) {
+        if (distance < NodeConstants.snapEffectRange) {
           node.isTemporarilyDetached = true;
           _moveTowardsDraggedNode(node, draggedNode);
         } else {
@@ -65,7 +65,7 @@ class NodePhysics {
 
   /// 親ノードへの追従処理
   /// ドラッグ中のノードが親ノードに対して引力を働かせる
-  /// ドラッグ中のノードと親ノードの距離が[minDistance]以上の場合に
+  /// ドラッグ中のノードと親ノードの距離が[nodeMinSeparation]以上の場合に
   /// ドラッグ中のノードを親ノードに向かって引力をかける
   ///
   /// [draggedNode] ドラッグ中のノード
@@ -74,18 +74,18 @@ class NodePhysics {
     double dy = draggedNode.position.y - draggedNode.parent!.position.y;
     double distance = sqrt(dx * dx + dy * dy);
 
-    if (distance > NodeConstants.minDistance) {
+    if (distance > NodeConstants.nodeMinSeparation) {
       vector_math.Vector2 direction = vector_math.Vector2(dx, dy).normalized();
       vector_math.Vector2 movement = direction *
-          (distance - NodeConstants.minDistance) *
-          NodeConstants.attractionStrength;
+          (distance - NodeConstants.nodeMinSeparation) *
+          NodeConstants.attractionCoefficient;
       draggedNode.parent!.position += movement;
     }
   }
 
   /// 子ノードへの追従処理
   /// ドラッグ中のノードの子ノードに対して引力を働かせる
-  /// ドラッグ中のノードと子ノードの距離が[minDistance]以上の場合に
+  /// ドラッグ中のノードと子ノードの距離が[nodeMinSeparation]以上の場合に
   /// ドラッグ中のノードを子ノードに向かって引力をかける
   ///
   /// [draggedNode] ドラッグ中のノード
@@ -95,18 +95,18 @@ class NodePhysics {
     double dy = child.position.y - draggedNode.position.y;
     double distance = sqrt(dx * dx + dy * dy);
 
-    if (distance > NodeConstants.minDistance) {
+    if (distance > NodeConstants.nodeMinSeparation) {
       vector_math.Vector2 direction = vector_math.Vector2(dx, dy).normalized();
       vector_math.Vector2 movement = direction *
-          (distance - NodeConstants.minDistance) *
-          NodeConstants.attractionStrength;
+          (distance - NodeConstants.nodeMinSeparation) *
+          NodeConstants.attractionCoefficient;
       child.position -= movement;
     }
   }
 
   /// 吸着処理
   /// ドラッグ中のノードに向かってノードを移動させる
-  /// ノードの位置が[minApproachDistance]以上離れている場合のみ
+  /// ノードの位置が[snapTriggerDistance]以上離れている場合のみ
   /// ドラッグ中のノードに向かって移動する
   ///
   /// [node] 移動するノード
@@ -116,15 +116,15 @@ class NodePhysics {
     double distance = direction.length;
 
     // 最小距離以上の場合のみ移動
-    if (distance > NodeConstants.minApproachDistance) {
+    if (distance > NodeConstants.snapTriggerDistance) {
       // 移動方向の正規化
       direction.normalize();
 
       // 現在位置から目標位置への補間
       vector_math.Vector2 targetPosition =
-          draggedNode.position - direction * NodeConstants.minApproachDistance;
-      vector_math.Vector2 movement =
-          (targetPosition - node.position) * NodeConstants.dragSpeed;
+          draggedNode.position - direction * NodeConstants.snapTriggerDistance;
+      vector_math.Vector2 movement = (targetPosition - node.position) *
+          NodeConstants.dragVelocityMultiplier;
 
       // 急激な動きを防ぐために移動量を制限
       double maxMovement = 5.0;
@@ -160,12 +160,12 @@ class NodePhysics {
       double dy = node.position.y - otherNode.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance < NodeConstants.minDistance) {
+      if (distance < NodeConstants.nodeMinSeparation) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 repulsion = direction *
-            NodeConstants.repulsionStrength *
-            (NodeConstants.minDistance - distance);
+            NodeConstants.repulsionCoefficient *
+            (NodeConstants.nodeMinSeparation - distance);
         node.velocity += repulsion;
       }
     }
@@ -188,12 +188,12 @@ class NodePhysics {
       double dy = node.position.y - node.parent!.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance > NodeConstants.minDistance) {
+      if (distance > NodeConstants.nodeMinSeparation) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 movement = direction *
-            (distance - NodeConstants.minDistance) *
-            NodeConstants.attractionStrength;
+            (distance - NodeConstants.nodeMinSeparation) *
+            NodeConstants.attractionCoefficient;
         node.position -= movement;
       }
     }
@@ -207,12 +207,12 @@ class NodePhysics {
       double dy = child.position.y - node.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance > NodeConstants.minDistance) {
+      if (distance > NodeConstants.nodeMinSeparation) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 movement = direction *
-            (distance - NodeConstants.minDistance) *
-            NodeConstants.attractionStrength;
+            (distance - NodeConstants.nodeMinSeparation) *
+            NodeConstants.attractionCoefficient;
 
         node.position += movement;
         child.position -= movement;
@@ -228,7 +228,7 @@ class NodePhysics {
     // ドラッグ中のノードは位置更新をスキップ
     if (!node.isTemporarilyDetached) {
       node.position += node.velocity;
-      node.velocity *= NodeConstants.velocityDamping;
+      node.velocity *= NodeConstants.velocityDampingFactor;
     }
   }
 
@@ -247,19 +247,19 @@ class NodePhysics {
       vector_math.Vector2 direction = node.position - connectedNode.position;
       double distance = direction.length;
 
-      if (distance > NodeConstants.initialDistanceThreshold) {
+      if (distance > NodeConstants.nodeMinSeparation) {
         vector_math.Vector2 targetPosition = node.position -
-            direction.normalized() * NodeConstants.idealDistance;
+            direction.normalized() * NodeConstants.nodePreferredDistance;
 
         double strengthMultiplier =
-            (distance - NodeConstants.initialDistanceThreshold) /
-                NodeConstants.idealDistance;
+            (distance - NodeConstants.nodeMinSeparation) /
+                NodeConstants.nodePreferredDistance;
         strengthMultiplier =
-            min(NodeConstants.maxStrengthMultiplier, strengthMultiplier);
+            min(NodeConstants.maxForceMultiplier, strengthMultiplier);
 
         vector_math.Vector2 movement =
             (targetPosition - connectedNode.position) *
-                (NodeConstants.attractionStrength * strengthMultiplier);
+                (NodeConstants.attractionCoefficient * strengthMultiplier);
 
         connectedNode.velocity += movement;
       }

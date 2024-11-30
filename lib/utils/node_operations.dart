@@ -69,7 +69,7 @@ class NodeOperations {
   // ノード間の距離チェック
   static bool areNodesClose(Node node1, Node node2) {
     double distance = (node1.position - node2.position).length;
-    return distance < NodeConstants.nodeSnapDistance;
+    return distance < NodeConstants.snapTriggerDistance;
   }
 
   // ランダムな位置オフセットの生成

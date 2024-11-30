@@ -244,8 +244,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // 新しい位置を計算（少しずらす）
     vector_math.Vector2 newPosition = originalNode.position +
         vector_math.Vector2(
-          NodeConstants.nodeSpacing,
-          NodeConstants.levelHeight,
+          NodeConstants.nodeMinSeparation,
+          NodeConstants.nodeMinSeparation,
         );
 
     final newNodeData = await _nodeModel.upsertNode(0, originalNode.title,
@@ -453,8 +453,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       color ??= NodeColorUtils.getColorForNextGeneration(nodeState.activeNode);
       // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
       basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
       );
     } else {
       // 親ノードがない場合、画面の中心を基準にする
@@ -466,8 +466,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       // ランダムに少しずらして配置
       basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeSpacing,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
+        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
       );
     }
 
@@ -667,7 +667,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       double distance = (draggedNode.position - node.position).length;
 
       // 規定のスナップ距離内の場合のみ処理を実行
-      if (distance < NodeConstants.snapDistance) {
+      if (distance < NodeConstants.snapEffectRange) {
         // 循環参照が発生するか確認
         if (_wouldCreateCycle(draggedNode, node)) continue;
 
