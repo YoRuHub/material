@@ -1,9 +1,9 @@
+// setting_drawer_widget.dart
 import 'package:flutter/material.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
-import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'slider_setting_widget.dart'; // 新しく作成したファイルをインポート
 
-// Corrected class definition
 class SettingDrawerWidget extends ConsumerStatefulWidget {
   final VoidCallback onPhysicsToggle;
   final VoidCallback onTitleToggle;
@@ -18,7 +18,6 @@ class SettingDrawerWidget extends ConsumerStatefulWidget {
   SettingDrawerWidgetState createState() => SettingDrawerWidgetState();
 }
 
-// Corrected state class name
 class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
   @override
   void initState() {
@@ -31,8 +30,6 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
   Widget build(BuildContext context) {
     // ref.watchを使用してProviderから値を取得
     final settings = ref.watch(settingsNotifierProvider);
-    final idealNodeDistance =
-        settings.idealNodeDistance; // SettingsオブジェクトからidealNodeDistanceを取得
 
     return Drawer(
       child: ListView(
@@ -55,53 +52,22 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
           ),
 
           // ノードの間隔設定
-          _buildSliderSetting(
+          SliderSettingWidget(
             title: 'ノードの間隔',
-            value: idealNodeDistance,
+            value: settings.idealNodeDistance,
             min: 50.0,
             max: 500.0,
             onChanged: (value) {
-              // 値が変更されたときに更新
               ref
                   .read(settingsNotifierProvider.notifier)
                   .updateIdealNodeDistance(value);
             },
+            onTap: () {
+              ref
+                  .read(settingsNotifierProvider.notifier)
+                  .resetIdealNodeDistance();
+            },
           ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSliderSetting({
-    required String title,
-    required double value,
-    required double min,
-    required double max,
-    required ValueChanged<double> onChanged,
-  }) {
-    return ListTile(
-      title: Text(title),
-      subtitle: Row(
-        children: [
-          Expanded(
-            child: SfSlider(
-              min: min,
-              max: max,
-              value: value, // 現在の値を表示
-              interval: (max - min) / 5,
-              showTicks: true,
-              showLabels: true,
-              enableTooltip: true,
-              minorTicksPerInterval: 1,
-              onChanged: (dynamic newValue) {
-                final doubleValue = newValue is double ? newValue : value;
-                ref
-                    .read(settingsNotifierProvider.notifier)
-                    .updateIdealNodeDistance(doubleValue);
-              },
-            ),
-          ),
-          Text(value.toStringAsFixed(2)), // 現在の値を表示
         ],
       ),
     );

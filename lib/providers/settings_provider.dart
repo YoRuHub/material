@@ -33,11 +33,21 @@ class SettingsNotifier extends StateNotifier<Settings> {
   Future<void> updateIdealNodeDistance(double newDistance) async {
     try {
       await _settingsModel.updateSettings({'ideal_node_distance': newDistance});
-
       // 状態を更新
       state = Settings(idealNodeDistance: newDistance);
     } catch (e) {
       Logger.error('Error updating ideal node distance: $e');
+    }
+  }
+
+  Future<void> resetIdealNodeDistance() async {
+    try {
+      await _settingsModel.updateSettings(
+          {'ideal_node_distance': NodeConstants.nodePreferredDistance});
+      // 状態を更新
+      state = Settings(idealNodeDistance: NodeConstants.nodePreferredDistance);
+    } catch (e) {
+      Logger.error('Error resetting ideal node distance: $e');
     }
   }
 }

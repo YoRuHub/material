@@ -2,6 +2,7 @@ class NodeConstants {
   // --- 距離関連定数 ---
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
   static const double nodePreferredDistance = 100.0;
+  static const double idealNodeDistance = 100.0;
 
   /// ノードがスナップするための閾値距離（ユーザー操作で接近時に使用）
   static const double snapTriggerDistance = 10.0;
