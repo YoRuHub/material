@@ -15,23 +15,25 @@ class AddNodeButtonState extends State<AddNodeButton> {
   @override
   Widget build(BuildContext context) {
     return Positioned(
-      bottom: 8.0,
-      left: 8.0,
-      child: MouseRegion(
-        onEnter: (_) => setState(() => _isHovered = true),
-        onExit: (_) => setState(() => _isHovered = false),
-        child: FloatingActionButton(
-          onPressed: () => widget.onPressed(),
-          backgroundColor: Theme.of(context).colorScheme.surface,
-          child: Icon(
-            Icons.add, // ノード追加アイコン
-            color: _isHovered
-                ? Theme.of(context).colorScheme.primary
-                : Theme.of(context).colorScheme.primary.withOpacity(0.5),
-            size: 30,
+        bottom: 0.0,
+        left: 0.0,
+        child: Padding(
+          padding: const EdgeInsets.all(16.0),
+          child: MouseRegion(
+            onEnter: (_) => setState(() => _isHovered = true),
+            onExit: (_) => setState(() => _isHovered = false),
+            child: FloatingActionButton(
+              onPressed: () => widget.onPressed(),
+              backgroundColor: Theme.of(context).colorScheme.surface,
+              child: Icon(
+                Icons.add, // ノード追加アイコン
+                color: _isHovered
+                    ? Theme.of(context).colorScheme.primary
+                    : Theme.of(context).colorScheme.primary.withOpacity(0.5),
+                size: 30,
+              ),
+            ),
           ),
-        ),
-      ),
-    );
+        ));
   }
 }

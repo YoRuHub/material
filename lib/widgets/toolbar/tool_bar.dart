@@ -95,7 +95,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
     return Positioned(
       top: 40,
       child: Padding(
-        padding: const EdgeInsets.all(8.0),
+        padding: const EdgeInsets.all(16.0),
         child: Container(
           padding: const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
           decoration: BoxDecoration(
