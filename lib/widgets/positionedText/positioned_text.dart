@@ -17,7 +17,7 @@ class PositionedText extends StatelessWidget {
     return Positioned(
       top: 0,
       child: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(16),
         child: Text(
           'X: ${offsetX.toStringAsFixed(1)}, Y: ${offsetY.toStringAsFixed(1)}, Z: ${scaleZ.toStringAsFixed(2)}',
           style: const TextStyle(
