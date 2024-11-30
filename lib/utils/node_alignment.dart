@@ -215,7 +215,8 @@ class NodeAlignment {
         (targetPosition - startPosition) / steps.toDouble();
 
     for (int i = 0; i < steps; i++) {
-      Future.delayed(Duration(milliseconds: i * 16), () {
+      Future.delayed(Duration(milliseconds: i * NodeConstants.frameInterval),
+          () {
         setState(() {
           node.position = startPosition + delta * i.toDouble();
         });
@@ -223,7 +224,8 @@ class NodeAlignment {
     }
 
     // 最終位置を設定
-    Future.delayed(const Duration(milliseconds: steps * 16), () {
+    Future.delayed(
+        const Duration(milliseconds: steps * NodeConstants.frameInterval), () {
       setState(() {
         node.position = targetPosition;
       });

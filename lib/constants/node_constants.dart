@@ -28,7 +28,7 @@ class NodeConstants {
   static const int totalAnimationFrames = 60;
 
   /// アニメーションの各フレーム間隔（1フレームの描画にかかる時間）
-  static const Duration frameInterval = Duration(milliseconds: 16);
+  static const int frameInterval = 16;
 
   // --- 色関連定数 ---
   /// ノードの色の彩度（0.0 - 1.0 の範囲で色の鮮やかさを設定）
