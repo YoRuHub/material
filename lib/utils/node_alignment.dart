@@ -1,8 +1,10 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/node.dart';
 import '../constants/node_constants.dart';
+import '../providers/settings_provider.dart';
 
 class NodeAlignment {
   // 垂直方向の配置
@@ -10,8 +12,12 @@ class NodeAlignment {
     List<Node> nodes,
     Size screenSize,
     void Function(VoidCallback fn) setState,
+    WidgetRef ref,
   ) async {
     if (nodes.isEmpty) return;
+
+    // 一度だけ設定を取得
+    final settings = ref.read(settingsNotifierProvider);
 
     // ルートノードを特定
     List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
@@ -23,7 +29,7 @@ class NodeAlignment {
     // 各ルートノードのサブツリーの幅を計算
     Map<Node, double> nodeWidths = {};
     for (var root in rootNodes) {
-      _calculateSubtreeWidth(root, nodeWidths);
+      _calculateSubtreeWidth(root, nodeWidths, settings);
     }
 
     // ルートノードの合計幅を計算
@@ -40,6 +46,7 @@ class NodeAlignment {
         startY,
         nodeWidths,
         setState,
+        settings,
       );
       currentX += nodeWidths[root]!;
     }
@@ -50,8 +57,12 @@ class NodeAlignment {
     List<Node> nodes,
     Size screenSize,
     void Function(VoidCallback fn) setState,
+    WidgetRef ref,
   ) async {
     if (nodes.isEmpty) return;
+
+    // 一度だけ設定を取得
+    final settings = ref.read(settingsNotifierProvider);
 
     // ルートノードを特定
     List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
@@ -63,7 +74,7 @@ class NodeAlignment {
     // 各ルートノードのサブツリーの高さを計算
     Map<Node, double> nodeHeights = {};
     for (var root in rootNodes) {
-      _calculateSubtreeHeight(root, nodeHeights);
+      _calculateSubtreeHeight(root, nodeHeights, settings);
     }
 
     // ルートノードの合計高さを計算
@@ -80,6 +91,7 @@ class NodeAlignment {
         currentY,
         nodeHeights,
         setState,
+        settings,
       );
       currentY += nodeHeights[root]!;
     }
@@ -89,15 +101,18 @@ class NodeAlignment {
   static double _calculateSubtreeWidth(
     Node node,
     Map<Node, double> nodeWidths,
+    dynamic settings, // 取得した設定値
   ) {
     if (node.children.isEmpty) {
-      nodeWidths[node] = NodeConstants.nodeMinSeparation;
-      return NodeConstants.nodeMinSeparation;
+      nodeWidths[node] = settings.idealNodeDistance;
+      return settings.idealNodeDistance;
     }
 
     double width = node.children.fold(
-        0.0, (sum, child) => sum + _calculateSubtreeWidth(child, nodeWidths));
-    nodeWidths[node] = max(width, NodeConstants.nodeMinSeparation);
+        0.0,
+        (sum, child) =>
+            sum + _calculateSubtreeWidth(child, nodeWidths, settings));
+    nodeWidths[node] = max(width, settings.idealNodeDistance);
     return nodeWidths[node]!;
   }
 
@@ -105,15 +120,18 @@ class NodeAlignment {
   static double _calculateSubtreeHeight(
     Node node,
     Map<Node, double> nodeHeights,
+    dynamic settings, // 取得した設定値
   ) {
     if (node.children.isEmpty) {
-      nodeHeights[node] = NodeConstants.nodeMinSeparation;
-      return NodeConstants.nodeMinSeparation;
+      nodeHeights[node] = settings.idealNodeDistance;
+      return settings.idealNodeDistance;
     }
 
     double height = node.children.fold(
-        0.0, (sum, child) => sum + _calculateSubtreeHeight(child, nodeHeights));
-    nodeHeights[node] = max(height, NodeConstants.nodeMinSeparation);
+        0.0,
+        (sum, child) =>
+            sum + _calculateSubtreeHeight(child, nodeHeights, settings));
+    nodeHeights[node] = max(height, settings.idealNodeDistance);
     return nodeHeights[node]!;
   }
 
@@ -124,6 +142,7 @@ class NodeAlignment {
     double y,
     Map<Node, double> nodeWidths,
     void Function(VoidCallback fn) setState,
+    dynamic settings, // 取得した設定値
   ) {
     // ノードの目標位置を設定
     vector_math.Vector2 targetPosition = vector_math.Vector2(x, y);
@@ -141,9 +160,10 @@ class NodeAlignment {
       _calculateTargetPositionsVertical(
         child,
         childX + nodeWidths[child]! / 2,
-        y + NodeConstants.nodeMinSeparation,
+        y + settings.idealNodeDistance,
         nodeWidths,
         setState,
+        settings,
       );
       childX += nodeWidths[child]!;
     }
@@ -156,6 +176,7 @@ class NodeAlignment {
     double y,
     Map<Node, double> nodeHeights,
     void Function(VoidCallback fn) setState,
+    dynamic settings, // 取得した設定値
   ) {
     // ノードの目標位置を設定
     vector_math.Vector2 targetPosition = vector_math.Vector2(x, y);
@@ -172,10 +193,11 @@ class NodeAlignment {
     for (var child in node.children) {
       _calculateTargetPositionsHorizontal(
         child,
-        x + NodeConstants.nodeMinSeparation,
+        x + settings.idealNodeDistance,
         childY + nodeHeights[child]! / 2,
         nodeHeights,
         setState,
+        settings,
       );
       childY += nodeHeights[child]!;
     }

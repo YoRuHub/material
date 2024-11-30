@@ -117,15 +117,17 @@ class DatabaseHelper {
   // テーブルリセット
   Future<void> resetTables() async {
     final db = await database;
+
     final tableList = DatabaseSchemas.tableSchemas.keys.toList();
 
     for (var table in tableList) {
       try {
         await dropTable(db, table);
         await _createTable(db, table);
+        await _insertDefaultData(db, table); // デフォルトデータを挿入
+        Logger.debug('Table "$table" reset successfully.');
       } catch (e) {
-        Logger.error('Error resetting table $table: ${e.toString()}');
-        rethrow;
+        Logger.error('Error resetting table "$table": $e');
       }
     }
   }
@@ -141,14 +143,29 @@ class DatabaseHelper {
           "SELECT name FROM sqlite_master WHERE type='table' AND name=?",
           [tableName],
         );
-
         if (result.isEmpty) {
           await _createTable(db, tableName);
+          await _insertDefaultData(db, tableName);
         }
       }
+      Logger.debug('Database tables initialized successfully.');
     } catch (e) {
       Logger.error('Error initializing database tables: ${e.toString()}');
       rethrow;
+    }
+  }
+
+  Future<void> _insertDefaultData(Database db, String tableName) async {
+    final insertSchema = DatabaseSchemas.insertSchemas[tableName];
+    if (insertSchema != null) {
+      try {
+        await db.execute(insertSchema);
+        Logger.debug(
+            'Default data inserted into "$tableName" table successfully.');
+      } catch (e) {
+        Logger.error(
+            'Error inserting default data into "$tableName" table: $e');
+      }
     }
   }
 }

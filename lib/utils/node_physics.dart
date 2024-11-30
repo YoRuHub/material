@@ -1,7 +1,9 @@
 import 'dart:math';
+import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../constants/node_constants.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// メインの物理演算更新
 class NodePhysics {
@@ -14,6 +16,7 @@ class NodePhysics {
     required List<Node> nodes,
     required Node? draggedNode,
     required bool isPhysicsEnabled,
+    required WidgetRef ref,
   }) {
     if (!isPhysicsEnabled) return;
 
@@ -26,8 +29,8 @@ class NodePhysics {
       if (node == draggedNode) continue;
 
       if (!node.isTemporarilyDetached) {
-        _applyRepulsionForces(node, nodes, draggedNode);
-        _applyAttractionForces(node, draggedNode);
+        _applyRepulsionForces(node, nodes, draggedNode, ref);
+        _applyAttractionForces(node, draggedNode, ref);
         _updateNodePosition(node);
       }
     }
@@ -36,12 +39,12 @@ class NodePhysics {
     if (draggedNode != null) {
       // 親ノードへの追従
       if (draggedNode.parent != null) {
-        _applyAttractionToParent(draggedNode);
+        _applyAttractionToParent(draggedNode, ref);
       }
 
       // 子ノードの追従
       for (var child in draggedNode.children) {
-        _applyAttractionToChild(draggedNode, child);
+        _applyAttractionToChild(draggedNode, child, ref);
       }
 
       // 吸着処理
@@ -65,19 +68,21 @@ class NodePhysics {
 
   /// 親ノードへの追従処理
   /// ドラッグ中のノードが親ノードに対して引力を働かせる
-  /// ドラッグ中のノードと親ノードの距離が[nodeMinSeparation]以上の場合に
+  /// ドラッグ中のノードと親ノードの距離が[idealNodeDistance]以上の場合に
   /// ドラッグ中のノードを親ノードに向かって引力をかける
   ///
   /// [draggedNode] ドラッグ中のノード
-  static void _applyAttractionToParent(Node draggedNode) {
+  static void _applyAttractionToParent(Node draggedNode, ref) {
+    final settings = ref.read(settingsNotifierProvider);
+
     double dx = draggedNode.position.x - draggedNode.parent!.position.x;
     double dy = draggedNode.position.y - draggedNode.parent!.position.y;
     double distance = sqrt(dx * dx + dy * dy);
 
-    if (distance > NodeConstants.nodeMinSeparation) {
+    if (distance > settings.idealNodeDistance) {
       vector_math.Vector2 direction = vector_math.Vector2(dx, dy).normalized();
       vector_math.Vector2 movement = direction *
-          (distance - NodeConstants.nodeMinSeparation) *
+          (distance - settings.idealNodeDistance) *
           NodeConstants.attractionCoefficient;
       draggedNode.parent!.position += movement;
     }
@@ -85,20 +90,21 @@ class NodePhysics {
 
   /// 子ノードへの追従処理
   /// ドラッグ中のノードの子ノードに対して引力を働かせる
-  /// ドラッグ中のノードと子ノードの距離が[nodeMinSeparation]以上の場合に
+  /// ドラッグ中のノードと子ノードの距離が[nodePreferredDistance]以上の場合に
   /// ドラッグ中のノードを子ノードに向かって引力をかける
   ///
   /// [draggedNode] ドラッグ中のノード
   /// [child] ドラッグ中のノードの子ノード
-  static void _applyAttractionToChild(Node draggedNode, Node child) {
+  static void _applyAttractionToChild(Node draggedNode, Node child, ref) {
+    final settings = ref.read(settingsNotifierProvider);
     double dx = child.position.x - draggedNode.position.x;
     double dy = child.position.y - draggedNode.position.y;
     double distance = sqrt(dx * dx + dy * dy);
 
-    if (distance > NodeConstants.nodeMinSeparation) {
+    if (distance > settings.idealNodeDistance) {
       vector_math.Vector2 direction = vector_math.Vector2(dx, dy).normalized();
       vector_math.Vector2 movement = direction *
-          (distance - NodeConstants.nodeMinSeparation) *
+          (distance - settings.idealNodeDistance) *
           NodeConstants.attractionCoefficient;
       child.position -= movement;
     }
@@ -149,9 +155,11 @@ class NodePhysics {
   /// [nodes] ノードリスト
   /// [draggedNode] ドラッグ中のノード
   static void _applyRepulsionForces(
-      Node node, List<Node> nodes, Node? draggedNode) {
+      Node node, List<Node> nodes, Node? draggedNode, ref) {
     // ドラッグ中のノードは完全にスキップ
     if (node == draggedNode) return;
+
+    final settings = ref.read(settingsNotifierProvider);
 
     for (var otherNode in nodes) {
       if (node == otherNode || otherNode == draggedNode) continue;
@@ -160,12 +168,12 @@ class NodePhysics {
       double dy = node.position.y - otherNode.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance < NodeConstants.nodeMinSeparation) {
+      if (distance < settings.idealNodeDistance) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 repulsion = direction *
             NodeConstants.repulsionCoefficient *
-            (NodeConstants.nodeMinSeparation - distance);
+            (settings.idealNodeDistance - distance);
         node.velocity += repulsion;
       }
     }
@@ -175,9 +183,11 @@ class NodePhysics {
   ///
   /// [node] 更新するノード
   /// [draggedNode] ドラッグ中のノード
-  static void _applyAttractionForces(Node node, Node? draggedNode) {
+  static void _applyAttractionForces(Node node, Node? draggedNode, ref) {
     // ドラッグ中のノードは完全にスキップ
     if (node == draggedNode) return;
+
+    final settings = ref.read(settingsNotifierProvider);
 
     // 親ノードとの引力
     if (node.parent != null) {
@@ -188,11 +198,11 @@ class NodePhysics {
       double dy = node.position.y - node.parent!.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance > NodeConstants.nodeMinSeparation) {
+      if (distance > settings.idealNodeDistance) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 movement = direction *
-            (distance - NodeConstants.nodeMinSeparation) *
+            (distance - settings.idealNodeDistance) *
             NodeConstants.attractionCoefficient;
         node.position -= movement;
       }
@@ -207,11 +217,11 @@ class NodePhysics {
       double dy = child.position.y - node.position.y;
       double distance = sqrt(dx * dx + dy * dy);
 
-      if (distance > NodeConstants.nodeMinSeparation) {
+      if (distance > settings.idealNodeDistance) {
         vector_math.Vector2 direction =
             vector_math.Vector2(dx, dy).normalized();
         vector_math.Vector2 movement = direction *
-            (distance - NodeConstants.nodeMinSeparation) *
+            (distance - settings.idealNodeDistance) *
             NodeConstants.attractionCoefficient;
 
         node.position += movement;
@@ -238,22 +248,22 @@ class NodePhysics {
   /// その力に応じて velocity を更新する
   ///
   /// [node] 中心となるノード
-  static void updateConnectedNodes(Node node) {
+  static void updateConnectedNodes(Node node, ref) {
     Set<Node> connectedNodes = _findConnectedNodes(node);
 
+    final settings = ref.read(settingsNotifierProvider);
     for (var connectedNode in connectedNodes) {
       if (connectedNode == node) continue;
 
       vector_math.Vector2 direction = node.position - connectedNode.position;
       double distance = direction.length;
 
-      if (distance > NodeConstants.nodeMinSeparation) {
-        vector_math.Vector2 targetPosition = node.position -
-            direction.normalized() * NodeConstants.nodePreferredDistance;
+      if (distance > settings.idealNodeDistance) {
+        vector_math.Vector2 targetPosition =
+            node.position - direction.normalized() * settings.idealNodeDistance;
 
-        double strengthMultiplier =
-            (distance - NodeConstants.nodeMinSeparation) /
-                NodeConstants.nodePreferredDistance;
+        double strengthMultiplier = (distance - settings.idealNodeDistance) /
+            settings.idealNodeDistance;
         strengthMultiplier =
             min(NodeConstants.maxForceMultiplier, strengthMultiplier);
 

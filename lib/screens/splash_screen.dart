@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/database/database_helper.dart';
 import 'package:flutter_app/providers/project_provider.dart';
+import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -31,6 +32,8 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await _initDatabase();
       // プロジェクトデータの読み込み
       await _loadProjects();
+      // 設定データの読み込み
+      await _loadSettings();
 
       // 初期化処理が終わったら、HomeScreenに遷移
       if (mounted) {
@@ -74,6 +77,15 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
     } catch (e) {
       Logger.error('Error loading projects: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loadSettings() async {
+    try {
+      final settingsNotifier = ref.read(settingsNotifierProvider.notifier);
+      await settingsNotifier.loadSettings(); // 設定を読み込む処理を追加
+    } catch (e) {
+      Logger.error('Error loading settings: ${e.toString()}');
     }
   }
 }

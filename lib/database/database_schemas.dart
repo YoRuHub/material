@@ -30,6 +30,21 @@ class DatabaseSchemas {
         updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
       )
     ''',
+
+    /// 設定情報テーブル（ノード間の理想的な距離を管理）
+    'settings': '''
+      CREATE TABLE IF NOT EXISTS settings (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        ideal_node_distance REAL DEFAULT 100.0
+        )
+    ''',
+  };
+  // defaultDataSchemas
+  static const Map<String, String> insertSchemas = {
+    'settings': '''
+     INSERT OR IGNORE INTO settings (id, ideal_node_distance) VALUES
+       (1, 100.0);
+    ''',
   };
 
   // ALTERテーブルスキーマ(Sample)

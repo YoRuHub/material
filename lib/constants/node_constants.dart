@@ -1,8 +1,5 @@
 class NodeConstants {
   // --- 距離関連定数 ---
-  /// ノード間の最小許容距離（これ以上近づくと反発力が働く）
-  static const double nodeMinSeparation = 100.0;
-
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
   static const double nodePreferredDistance = 100.0;
 

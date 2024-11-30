@@ -2,11 +2,13 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
+import 'package:flutter_app/database/database_helper.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
+import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
@@ -16,6 +18,9 @@ import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
+import 'package:flutter_app/widgets/resetButton/reset_button.dart';
+import 'package:flutter_app/widgets/settingButton/setting_button.dart';
+import 'package:flutter_app/widgets/settingButton/setting_drawer_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/toolbar/tool_bar.dart';
@@ -50,6 +55,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
+  bool _isDrawerOpen = false; // Drawer の状態を管理するフラグ
 
   @override
   void initState() {
@@ -78,9 +84,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         nodeId: node['id'] as int,
         title: node['title'] as String,
         contents: node['contents'] as String,
-        color: node['color'] != null
-            ? Color(node['color'] as int) // int を Color に変換
-            : null, // null の場合はそのまま
+        color: node['color'] != null ? Color(node['color'] as int) : null,
       );
     }
 
@@ -111,119 +115,175 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
+  void _checkDrawerStatus(BuildContext context) {
+    final scaffoldState = Scaffold.of(context);
+    if (scaffoldState.isDrawerOpen) {
+      if (!_isDrawerOpen) {
+        if (mounted) {
+          _controller.stop(); // Drawerが開いたらアニメーション停止
+          setState(() {
+            _isDrawerOpen = true;
+          });
+        }
+      }
+    } else {
+      if (_isDrawerOpen) {
+        if (mounted) {
+          _controller.repeat(); // Drawerが閉じたらアニメーション再開
+          setState(() {
+            _isDrawerOpen = false;
+          });
+        }
+      }
+    }
+  }
+
   @override
   void dispose() {
     _controller.dispose();
     super.dispose();
   }
 
+  void _togglePhysics() {
+    setState(() {
+      isPhysicsEnabled = !isPhysicsEnabled;
+    });
+  }
+
+  void _toggleNodeTitles() {
+    setState(() {
+      isTitleVisible = !isTitleVisible;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final nodeState = ref.watch(nodeStateNotifierProvider);
+
     return Scaffold(
       appBar: AppBar(
-        title: Text(
-          widget.projectTitle,
-        ),
+        title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
+        actions: [
+          // SettingIcon をここで使う
+          SettingIcon(
+            onPhysicsToggle: _togglePhysics,
+            onTitleToggle: _toggleNodeTitles,
+          ),
+        ],
       ),
-      body: Stack(
-        children: [
-          Column(
-            mainAxisAlignment: MainAxisAlignment.center,
+      endDrawer: SettingDrawerWidget(
+        onPhysicsToggle: _togglePhysics,
+        onTitleToggle: _toggleNodeTitles,
+      ),
+      body: Builder(
+        builder: (context) {
+          _checkDrawerStatus(context); // Drawerの状態をチェック
+          return Stack(
             children: [
-              Expanded(
-                child: Listener(
-                  onPointerSignal: (pointerSignal) {
-                    if (pointerSignal is PointerScrollEvent) {
-                      setState(() {
-                        final screenCenter =
-                            CoordinateUtils.calculateScreenCenter(
-                          MediaQuery.of(context).size,
-                          AppBar().preferredSize.height,
-                        );
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Listener(
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent) {
+                          setState(() {
+                            final screenCenter =
+                                CoordinateUtils.calculateScreenCenter(
+                              MediaQuery.of(context).size,
+                              AppBar().preferredSize.height,
+                            );
 
-                        final (newScale, newOffset) =
-                            CoordinateUtils.calculateZoom(
-                          currentScale: _scale,
-                          scrollDelta: pointerSignal.scrollDelta.dy,
-                          screenCenter: screenCenter,
-                          currentOffset: _offset,
-                        );
+                            final (newScale, newOffset) =
+                                CoordinateUtils.calculateZoom(
+                              currentScale: _scale,
+                              scrollDelta: pointerSignal.scrollDelta.dy,
+                              screenCenter: screenCenter,
+                              currentOffset: _offset,
+                            );
 
-                        _scale = newScale;
-                        _offset = newOffset;
-                      });
-                    }
-                  },
-                  child: GestureDetector(
-                    onPanStart: _onPanStart,
-                    onPanUpdate: _onPanUpdate,
-                    onPanEnd: _onPanEnd,
-                    onTapUp: _onTapUp,
-                    child: AnimatedBuilder(
-                      animation: _controller,
-                      builder: (context, child) {
-                        NodePhysics.updatePhysics(
-                          nodes: nodes,
-                          draggedNode: nodeState.draggedNode,
-                          isPhysicsEnabled: isPhysicsEnabled,
-                        );
-                        return CustomPaint(
-                          size: Size(
-                            MediaQuery.of(context).size.width,
-                            MediaQuery.of(context).size.height -
-                                AppBar().preferredSize.height,
-                          ),
-                          painter: NodePainter(nodes, _signalAnimation.value,
-                              _scale, _offset, isTitleVisible, context, ref),
-                        );
+                            _scale = newScale;
+                            _offset = newOffset;
+                          });
+                        }
                       },
+                      child: GestureDetector(
+                        onPanStart: _onPanStart,
+                        onPanUpdate: _onPanUpdate,
+                        onPanEnd: _onPanEnd,
+                        onTapUp: _onTapUp,
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, child) {
+                            NodePhysics.updatePhysics(
+                                nodes: nodes,
+                                draggedNode: nodeState.draggedNode,
+                                isPhysicsEnabled: isPhysicsEnabled,
+                                ref: ref);
+                            return CustomPaint(
+                              size: Size(
+                                MediaQuery.of(context).size.width,
+                                MediaQuery.of(context).size.height -
+                                    AppBar().preferredSize.height,
+                              ),
+                              painter: NodePainter(
+                                  nodes,
+                                  _signalAnimation.value,
+                                  _scale,
+                                  _offset,
+                                  isTitleVisible,
+                                  context,
+                                  ref),
+                            );
+                          },
+                        ),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
-            ],
-          ),
-          Stack(
-            children: [
-              PositionedText(
-                offsetX: _offset.dx,
-                offsetY: _offset.dy,
-                scaleZ: _scale,
+              Stack(
+                children: [
+                  PositionedText(
+                    offsetX: _offset.dx,
+                    offsetY: _offset.dy,
+                    scaleZ: _scale,
+                  ),
+                  ToolBarWidget(
+                      alignNodesHorizontal:
+                          _alignNodesHorizontal, // contextを渡さないように修正
+                      alignNodesVertical: _alignNodesVertical,
+                      isPhysicsEnabled: isPhysicsEnabled,
+                      detachChildren: _detachFromChildrenNode,
+                      detachParent: _detachFromParentNode,
+                      resetNodeColor: _resetNodeColor,
+                      duplicateActiveNode: _duplicateActiveNode,
+                      stopPhysics: _stopPhysics,
+                      deleteActiveNode: _deleteActiveNode,
+                      showNodeTitle: _showNodeTitle,
+                      isTitleVisible: isTitleVisible),
+                  AddNodeButton(onPressed: _addNode),
+                ],
               ),
-              ToolBarWidget(
-                  alignNodesHorizontal:
-                      _alignNodesHorizontal, // contextを渡さないように修正
-                  alignNodesVertical: _alignNodesVertical,
-                  isPhysicsEnabled: isPhysicsEnabled,
-                  detachChildren: _detachFromChildrenNode,
-                  detachParent: _detachFromParentNode,
-                  resetNodeColor: _resetNodeColor,
-                  duplicateActiveNode: _duplicateActiveNode,
-                  stopPhysics: _stopPhysics,
-                  deleteActiveNode: _deleteActiveNode,
-                  showNodeTitle: _showNodeTitle,
-                  isTitleVisible: isTitleVisible),
-              AddNodeButton(onPressed: _addNode),
-            ],
-          ),
-          if (nodeState.activeNode != null)
-            Builder(
-              key: ValueKey(nodeState.activeNode!.id),
-              builder: (context) {
-                return NodeContentsPanel(
-                  node: nodeState.activeNode!,
-                  nodeModel: _nodeModel,
-                  onNodeUpdated: (updatedNode) {
-                    ref
-                        .read(nodeStateNotifierProvider.notifier)
-                        .setActiveNode(updatedNode);
+              if (nodeState.activeNode != null)
+                Builder(
+                  key: ValueKey(nodeState.activeNode!.id),
+                  builder: (context) {
+                    return NodeContentsPanel(
+                      node: nodeState.activeNode!,
+                      nodeModel: _nodeModel,
+                      onNodeUpdated: (updatedNode) {
+                        ref
+                            .read(nodeStateNotifierProvider.notifier)
+                            .setActiveNode(updatedNode);
+                      },
+                    );
                   },
-                );
-              },
-            )
-        ],
+                )
+            ],
+          );
+        },
       ),
     );
   }
@@ -241,11 +301,13 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
   Future<Node> _copyNodeWithChildren(Node originalNode,
       {Node? newParent}) async {
+    final settings = ref.read(settingsNotifierProvider);
+
     // 新しい位置を計算（少しずらす）
     vector_math.Vector2 newPosition = originalNode.position +
         vector_math.Vector2(
-          NodeConstants.nodeMinSeparation,
-          NodeConstants.nodeMinSeparation,
+          settings.idealNodeDistance,
+          settings.idealNodeDistance,
         );
 
     final newNodeData = await _nodeModel.upsertNode(0, originalNode.title,
@@ -407,20 +469,14 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     if (nodes.isEmpty) return;
 
     await NodeAlignment.alignNodesVertical(
-      nodes,
-      MediaQuery.of(context).size,
-      setState,
-    );
+        nodes, MediaQuery.of(context).size, setState, ref);
   }
 
   void _alignNodesHorizontal() async {
     if (nodes.isEmpty) return;
 
     await NodeAlignment.alignNodesHorizontal(
-      nodes,
-      MediaQuery.of(context).size,
-      setState,
-    );
+        nodes, MediaQuery.of(context).size, setState, ref);
   }
 
   void _stopPhysics() {
@@ -443,6 +499,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     Color? color,
   }) async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    final settings = ref.read(settingsNotifierProvider);
     // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
     vector_math.Vector2 basePosition;
 
@@ -453,8 +510,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       color ??= NodeColorUtils.getColorForNextGeneration(nodeState.activeNode);
       // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
       basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
+        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
+        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
       );
     } else {
       // 親ノードがない場合、画面の中心を基準にする
@@ -466,8 +523,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       // ランダムに少しずらして配置
       basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
-        (Random().nextDouble() * 2 - 1) * NodeConstants.nodeMinSeparation,
+        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
+        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
       );
     }
 
