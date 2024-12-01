@@ -1,8 +1,9 @@
-// setting_drawer_widget.dart
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/models/settings_model.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
+import 'package:flutter_app/widgets/settingButton/slider_setting_widget.dart';
+import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'slider_setting_widget.dart'; // 新しく作成したファイルをインポート
 
 class SettingDrawerWidget extends ConsumerStatefulWidget {
   final VoidCallback onPhysicsToggle;
@@ -19,16 +20,17 @@ class SettingDrawerWidget extends ConsumerStatefulWidget {
 }
 
 class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
+  late final SettingsModel _settingsModel; // SettingsModelを1回だけ初期化
+
   @override
   void initState() {
     super.initState();
-    // 初期設定をロードすることを明示的に確認
     ref.read(settingsNotifierProvider.notifier).loadSettings();
+    _settingsModel = SettingsModel(); // 初期化
   }
 
   @override
   Widget build(BuildContext context) {
-    // ref.watchを使用してProviderから値を取得
     final settings = ref.watch(settingsNotifierProvider);
 
     return Drawer(
@@ -50,19 +52,24 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
               ),
             ),
           ),
-
-          // ノードの間隔設定
           SliderSettingWidget(
             title: 'ノードの間隔',
             value: settings.idealNodeDistance,
             min: 50.0,
             max: 500.0,
             onChanged: (value) {
+              // ドラッグ中の値をリアルタイム更新
               ref
                   .read(settingsNotifierProvider.notifier)
                   .updateIdealNodeDistance(value);
             },
+            onChangeEnd: (value) async {
+              // ドラッグ終了時にデータベース更新
+              await _settingsModel
+                  .updateSettings({'ideal_node_distance': value});
+            },
             onTap: () {
+              // タイトルタップでリセット
               ref
                   .read(settingsNotifierProvider.notifier)
                   .resetIdealNodeDistance();

@@ -1,4 +1,3 @@
-// slider_setting_widget.dart
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -10,6 +9,7 @@ class SliderSettingWidget extends ConsumerWidget {
   final double min;
   final double max;
   final ValueChanged<double> onChanged;
+  final ValueChanged<double> onChangeEnd; // タップを離したときの処理を追加
   final VoidCallback onTap;
 
   const SliderSettingWidget({
@@ -19,6 +19,7 @@ class SliderSettingWidget extends ConsumerWidget {
     required this.min,
     required this.max,
     required this.onChanged,
+    required this.onChangeEnd,
     required this.onTap,
   });
 
@@ -46,9 +47,11 @@ class SliderSettingWidget extends ConsumerWidget {
         minorTicksPerInterval: 1,
         onChanged: (dynamic newValue) {
           final doubleValue = newValue is double ? newValue : value;
-          ref
-              .read(settingsNotifierProvider.notifier)
-              .updateIdealNodeDistance(doubleValue);
+          onChanged(doubleValue); // 値をリアルタイムで反映
+        },
+        onChangeEnd: (dynamic newValue) {
+          final doubleValue = newValue is double ? newValue : value;
+          onChangeEnd(doubleValue); // タップを離したときに保存
         },
       ),
     );
