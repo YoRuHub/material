@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/settings_model.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/widgets/settingButton/slider_setting_widget.dart';
-import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SettingDrawerWidget extends ConsumerStatefulWidget {

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 
-class SettingButton extends StatelessWidget {
+class ExportButton extends StatelessWidget {
   final VoidCallback onPhysicsToggle;
   final VoidCallback onTitleToggle;
 
-  const SettingButton({
+  const ExportButton({
     super.key,
     required this.onPhysicsToggle,
     required this.onTitleToggle,
@@ -13,8 +13,8 @@ class SettingButton extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return IconButton(
-      icon: const Icon(Icons.settings),
-      tooltip: 'Settings',
+      icon: const Icon(Icons.download_outlined), // エクスポート用のアイコン
+      tooltip: 'Export Project', // ツールチップ
       onPressed: () {
         Scaffold.of(context).openEndDrawer();
       },

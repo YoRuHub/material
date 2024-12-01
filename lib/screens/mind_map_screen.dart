@@ -15,6 +15,7 @@ import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
+import 'package:flutter_app/widgets/exportButton/export_button.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
@@ -163,8 +164,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
-          // SettingIcon をここで使う
-          SettingIcon(
+          ExportButton(
+            onPhysicsToggle: _togglePhysics,
+            onTitleToggle: _toggleNodeTitles,
+          ),
+          SettingButton(
             onPhysicsToggle: _togglePhysics,
             onTitleToggle: _toggleNodeTitles,
           ),

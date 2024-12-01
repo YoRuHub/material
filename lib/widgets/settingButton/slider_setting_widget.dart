@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:syncfusion_flutter_sliders/sliders.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_app/providers/settings_provider.dart';
 
 class SliderSettingWidget extends ConsumerWidget {
   final String title;
