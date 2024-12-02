@@ -1,23 +1,16 @@
 import 'package:flutter/material.dart';
 
 class SettingButton extends StatelessWidget {
-  final VoidCallback onPhysicsToggle;
-  final VoidCallback onTitleToggle;
+  final VoidCallback onPressed;
 
-  const SettingButton({
-    super.key,
-    required this.onPhysicsToggle,
-    required this.onTitleToggle,
-  });
+  const SettingButton({super.key, required this.onPressed});
 
   @override
   Widget build(BuildContext context) {
     return IconButton(
       icon: const Icon(Icons.settings),
       tooltip: 'Settings',
-      onPressed: () {
-        Scaffold.of(context).openEndDrawer();
-      },
+      onPressed: onPressed,
     );
   }
 }

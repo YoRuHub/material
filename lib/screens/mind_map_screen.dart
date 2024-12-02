@@ -16,6 +16,7 @@ import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_button.dart';
+import 'package:flutter_app/widgets/exportButton/export_drawer_widget.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
@@ -55,6 +56,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
   bool _isDrawerOpen = false; // Drawer の状態を管理するフラグ
+  Widget? currentDrawer;
 
   @override
   void initState() {
@@ -88,10 +90,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
 
     // ノードの関係性マップを取得
-    final nodeMap = await _nodeMapModel.fetchAllNodeMap();
+    final nodeMap = await _nodeMapModel.fetchAllNodeMap(widget.projectId);
     for (var entry in nodeMap) {
-      int parentId = entry.key;
-      int childId = entry.value;
+      int parentId = entry.parentId;
+      int childId = entry.childId;
       Node? parentNode = nodes.cast<Node?>().firstWhere(
             (node) => node?.id == parentId,
             orElse: () => null,
@@ -155,29 +157,60 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  void _openSettingDrawer() {
+    setState(() {
+      currentDrawer = SettingDrawerWidget(
+        onPhysicsToggle: _togglePhysics,
+        onTitleToggle: _toggleNodeTitles,
+      );
+    });
+    // 状態更新後にDrawerを開く処理
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
+  }
+
+  void _openExportDrawer() {
+    setState(() {
+      currentDrawer = ExportDrawerWidget(
+        onPhysicsToggle: _togglePhysics,
+        onTitleToggle: _toggleNodeTitles,
+        projectId: widget.projectId,
+      );
+    });
+    // 状態更新後にDrawerを開く処理
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final nodeState = ref.watch(nodeStateNotifierProvider);
 
     return Scaffold(
+      key: _scaffoldKey, // グローバルキーを指定
       appBar: AppBar(
         title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
           ExportButton(
-            onPhysicsToggle: _togglePhysics,
-            onTitleToggle: _toggleNodeTitles,
+            onPressed: () {
+              _openExportDrawer();
+              _scaffoldKey.currentState?.openEndDrawer();
+            },
           ),
           SettingButton(
-            onPhysicsToggle: _togglePhysics,
-            onTitleToggle: _toggleNodeTitles,
+            onPressed: () {
+              _openSettingDrawer();
+              _scaffoldKey.currentState?.openEndDrawer();
+            },
           ),
         ],
       ),
-      endDrawer: SettingDrawerWidget(
-        onPhysicsToggle: _togglePhysics,
-        onTitleToggle: _toggleNodeTitles,
-      ),
+      endDrawer: currentDrawer,
       body: Builder(
         builder: (context) {
           _checkDrawerStatus(context); // Drawerの状態をチェック
@@ -331,7 +364,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // 子ノードを再帰的にコピー
     for (var child in originalNode.children) {
       Node newChild = await _copyNodeWithChildren(child, newParent: newNode);
-      await _nodeMapModel.insertNodeMap(newNode.id, newChild.id);
+      await _nodeMapModel.insertNodeMap(
+          newNode.id, newChild.id, widget.projectId);
       newNode.children.add(newChild);
     }
 
@@ -537,7 +571,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
     if (nodeState.activeNode != null) {
       // 親ノードがある場合、親ノード情報をセットしてノードを追加
-      await _nodeMapModel.insertNodeMap(nodeState.activeNode!.id, newNodeId);
+      await _nodeMapModel.insertNodeMap(
+          nodeState.activeNode!.id, newNodeId, widget.projectId);
 
       final newNode = NodeOperations.addNode(
         position: basePosition,
@@ -740,7 +775,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
           // ノードを新しい親ノードに紐づける
           draggedNode.parent = node;
-          _nodeMapModel.insertNodeMap(node.id, draggedNode.id);
+          _nodeMapModel.insertNodeMap(
+              node.id, draggedNode.id, widget.projectId);
           node.children.add(draggedNode);
 
           // 色を更新
@@ -749,7 +785,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           // **孫ノードを子ノードに正しく紐づける**
           for (Node child in draggedNode.children) {
             child.parent = draggedNode; // 子ノードとして再設定
-            _nodeMapModel.insertNodeMap(draggedNode.id, child.id);
+            _nodeMapModel.insertNodeMap(
+                draggedNode.id, child.id, widget.projectId);
             NodeColorUtils.updateNodeColor(child, widget.projectId);
           }
 

@@ -1,3 +1,4 @@
+import 'package:flutter_app/models/node_map.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'base_model.dart';
 
@@ -5,19 +6,23 @@ class NodeMapModel extends BaseModel {
   static const String table = 'node_map';
   static const String columnParentId = 'parent_id';
   static const String columnChildId = 'child_id';
+  static const String columnProjectId = 'project_id';
 
   /// データベースから全てのノードマップを取得
-  Future<List<MapEntry>> fetchAllNodeMap() async {
+  Future<List<NodeMap>> fetchAllNodeMap(int projectId) async {
     try {
       // データを取得
       final result = await select(
         table,
-        columns: [columnParentId, columnChildId],
+        columns: [columnParentId, columnChildId, columnProjectId],
+        whereClause: '$columnProjectId = ?',
+        whereArgs: [projectId],
       );
       // 結果が空でない場合にログとともに返す
       if (result.isNotEmpty) {
         final nodeMap = result
-            .map((row) => MapEntry(row[columnParentId], row[columnChildId]))
+            .map((row) => NodeMap(
+                row[columnParentId], row[columnChildId], row[columnProjectId]))
             .toList();
         return nodeMap;
       } else {
@@ -30,11 +35,15 @@ class NodeMapModel extends BaseModel {
   }
 
   /// ノードマップを追加
-  Future<void> insertNodeMap(int parentId, int childId) async {
+  Future<void> insertNodeMap(int parentId, int childId, int projectId) async {
     try {
       await insert(
         table,
-        {columnParentId: parentId, columnChildId: childId},
+        {
+          columnParentId: parentId,
+          columnChildId: childId,
+          columnProjectId: projectId
+        },
       );
     } catch (e) {
       Logger.error('Error inserting node map: $e');

@@ -17,7 +17,8 @@ class DatabaseSchemas {
     'node_map': '''
       CREATE TABLE IF NOT EXISTS node_map (
         parent_id INTEGER,
-        child_id INTEGER
+        child_id INTEGER,
+        project_id INTEGER NOT NULL
       )
     ''',
 
