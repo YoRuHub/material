@@ -17,6 +17,8 @@ import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_drawer_widget.dart';
+import 'package:flutter_app/widgets/inportButton/inport_button.dart';
+import 'package:flutter_app/widgets/inportButton/inport_drawer_widget.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
@@ -186,6 +188,20 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
+  void _openInportDrawer() {
+    setState(() {
+      currentDrawer = InportDrawerWidget(
+        onPhysicsToggle: _togglePhysics,
+        onTitleToggle: _toggleNodeTitles,
+        projectId: widget.projectId,
+      );
+    });
+    // 状態更新後にDrawerを開く処理
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final nodeState = ref.watch(nodeStateNotifierProvider);
@@ -196,6 +212,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
+          InportButton(onPressed: () {
+            _openInportDrawer();
+            _scaffoldKey.currentState?.openEndDrawer();
+          }),
           ExportButton(
             onPressed: () {
               _openExportDrawer();

@@ -58,5 +58,9 @@ ThemeData buildThemeData() {
         fontSize: 16, // フォントサイズを変更
       ),
     ),
+    drawerTheme: const DrawerThemeData(
+      backgroundColor: Color(0xFF333333), // Drawer 背景色
+      elevation: 5, // Drawer の影
+    ),
   );
 }

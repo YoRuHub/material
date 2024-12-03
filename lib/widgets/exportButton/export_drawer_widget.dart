@@ -102,7 +102,12 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
                   readOnly: true,
                   decoration: const InputDecoration(
                     border: OutlineInputBorder(),
-                    labelText: 'Export YAML',
+                    label: Center(
+                      child: Text(
+                        'YAML Content',
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
                   ),
                   style: const TextStyle(fontFamily: 'monospace', height: 1.5),
                 ),

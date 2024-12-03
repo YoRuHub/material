@@ -1,3 +1,5 @@
+import 'package:yaml/yaml.dart';
+
 class YamlConverter {
   static String convertNodesToYaml(
     List<Map<String, dynamic>> nodes,
@@ -14,14 +16,20 @@ class YamlConverter {
                 ? '"$contents"'
                 : '""'; // 空の場合は""を設定
 
+        // colorが整数型であれば、16進数のカラーコードに変換
+        final color = node['color'];
+        final formattedColor = (color != null && color is int)
+            ? '#${color.toRadixString(16).padLeft(6, '0')}' // intをカラーコードに変換
+            : (color != null && color is String) // すでにカラーコードが文字列であればそのまま使用
+                ? color
+                : '""'; // colorがnullの場合は""を設定
+
         return MapEntry(nodeId, {
           'title': node['title'] != null && node['title'].isNotEmpty
               ? '"${node['title']}"'
               : '""', // タイトルが空の場合は""を設定
           'contents': formattedContents,
-          'color': node['color'] != null
-              ? '"${node['color']}"'
-              : '""', // colorも空の場合は""を設定
+          'color': formattedColor,
         });
       }),
     };
@@ -73,5 +81,46 @@ class YamlConverter {
 
     writeYaml(input);
     return yamlBuffer.toString();
+  }
+
+  // YAMLをパースしてデータをインポートする処理
+  static Map<String, dynamic> importYamlToMap(String yamlString) {
+    final dynamic decodedYaml = loadYaml(yamlString);
+
+    // ノード情報を変換
+    final nodes = (decodedYaml['nodes'] as YamlMap).map((key, value) {
+      final node = value as YamlMap;
+      final title = node['title'] ?? '';
+      final contents = node['contents'] ?? '';
+      final color = node['color'] ?? '';
+
+      return MapEntry(key, {
+        'id': int.parse(key.toString()), // nodeIdを整数に変換
+        'title': title is String && title != '""' ? title : null,
+        'contents': contents is String && contents != '""' ? contents : null,
+        'color': _parseColor(color), // カラーコードを元の整数に戻す
+      });
+    });
+
+    // node_maps情報を変換
+    final nodeMaps = (decodedYaml['node_maps'] as YamlMap).map((key, value) {
+      final parentId = int.parse(key.toString());
+      final childIds = List<int>.from(value);
+      return MapEntry(parentId, childIds);
+    });
+
+    return {
+      'nodes': nodes.values.toList(),
+      'node_maps': nodeMaps,
+    };
+  }
+
+  // カラーコードを元の整数に戻す処理
+  static int _parseColor(String color) {
+    if (color.startsWith('#')) {
+      final colorWithoutHash = color.substring(1);
+      return int.parse(colorWithoutHash, radix: 16);
+    }
+    return 0; // 無効なカラーコードの場合は0を返す
   }
 }
