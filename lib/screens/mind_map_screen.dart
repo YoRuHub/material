@@ -6,6 +6,7 @@ import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
+import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
@@ -108,14 +109,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           );
 
       if (parentNode != null && childNode != null) {
-        setState(() {
-          childNode.parent = parentNode;
+        ref
+            .read(nodesProvider.notifier)
+            .addChildToNode(parentNode.id, childNode);
 
-          if (!parentNode.children.contains(childNode)) {
-            parentNode.children.add(childNode);
-            NodeColorUtils.updateNodeColor(childNode, widget.projectId);
-          }
-        });
+        NodeColorUtils.updateNodeColor(childNode, widget.projectId);
       }
     }
   }
@@ -206,6 +204,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   @override
   Widget build(BuildContext context) {
+    final nodes = ref.watch(nodesProvider);
     final nodeState = ref.watch(nodeStateNotifierProvider);
     final screenState = ref.watch(screenProvider);
 
@@ -517,10 +516,14 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
 
     // 子ノードを削除
-    node.parent?.children.remove(node);
+    if (node.parent != null) {
+      ref
+          .read(nodesProvider.notifier)
+          .removeChildFromNode(node.parent!.id, node);
+    }
 
     // ノードを削除
-    nodes.remove(node);
+    ref.read(nodesProvider.notifier).removeNode(node);
 
     // dbから削除
     await _nodeModel.deleteNode(node.id, widget.projectId);
@@ -566,7 +569,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       context: context,
       ref: ref,
       projectId: widget.projectId,
-      nodes: nodes,
       nodeId: nodeId,
       title: title,
       contents: contents,
@@ -600,7 +602,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
     );
 
-    for (var node in nodes) {
+    for (var node in ref.read(nodesProvider)) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
@@ -680,7 +682,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     bool isNodeSelected = false;
 
     // クリックで選択されるノードを探す
-    for (var node in nodes) {
+    for (var node in ref.read(nodesProvider)) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
@@ -692,6 +694,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
           // タップされたノードがすでにアクティブなら、アクティブ状態を解除
           if (node == currentActiveNode) {
+            Logger.debug('Deselecting Node: ${node.id}');
             node.isActive = false;
             ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
           } else {

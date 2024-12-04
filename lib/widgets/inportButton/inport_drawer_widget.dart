@@ -57,12 +57,15 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
       for (var node in nodes) {
         final title = node['title'];
         final contents = node['contents'];
-        final color = node['color'];
+        final color = Color(node['color']);
+
+        Logger.info('Node: $title');
+        Logger.info('Contents: $contents');
+        Logger.info('Color: $color');
         NodeAdditionUtils.addNode(
           context: context,
           ref: ref,
           projectId: widget.projectId,
-          nodes: [],
           nodeId: 0,
           title: title,
           contents: contents,
@@ -70,9 +73,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
           currentOffset: screenState.offset,
           currentScale: screenState.scale,
         );
-        Logger.info('Node: $title');
-        Logger.info('Contents: $contents');
-        Logger.info('Color: $color');
       }
 
       SnackBarHelper.success(

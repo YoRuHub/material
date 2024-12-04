@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
@@ -19,7 +20,6 @@ class NodeAdditionUtils {
     required BuildContext context,
     required WidgetRef ref,
     required int projectId,
-    required List<Node> nodes,
     required int nodeId,
     required String title,
     required String contents,
@@ -29,6 +29,7 @@ class NodeAdditionUtils {
   }) async {
     // 1. Access necessary providers
     final nodeState = ref.read(nodeStateNotifierProvider);
+    final NodesNotifier nodesNotifier = ref.read(nodesProvider.notifier);
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
 
@@ -38,11 +39,8 @@ class NodeAdditionUtils {
       nodeState,
       currentOffset,
       currentScale,
-      nodes,
+      ref.read(nodesProvider),
     );
-
-    // 3. Determine node color
-    color ??= _determineNodeColor(nodeState, color);
 
     // 4. Insert node into database
     final newNodeData =
@@ -70,13 +68,12 @@ class NodeAdditionUtils {
       // Insert node map in database to maintain parent-child relationship
       await nodeMapModel.insertNodeMap(
           nodeState.activeNode!.id, newNodeId, projectId);
-
-      // Update node colors in the hierarchy
-      NodeColorUtils.updateNodeColor(newNode, projectId);
     }
 
+    // Update node colors in the hierarchy
+    NodeColorUtils.updateNodeColor(newNode, projectId);
     // 7. Add the new node to the nodes list
-    nodes.add(newNode);
+    nodesNotifier.addNode(newNode);
 
     return newNode;
   }
@@ -140,15 +137,5 @@ class NodeAdditionUtils {
     }
 
     return basePosition;
-  }
-
-  /// Determine the appropriate color for the new node
-  static Color? _determineNodeColor(NodeState nodeState, Color? providedColor) {
-    // If color is not provided and there's an active node,
-    // generate a color based on the node hierarchy
-    return providedColor ??
-        (nodeState.activeNode != null
-            ? NodeColorUtils.getColorForNextGeneration(nodeState.activeNode)
-            : null);
   }
 }
