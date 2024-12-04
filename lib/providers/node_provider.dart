@@ -53,6 +53,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
   void addChildToNode(int parentNodeId, Node childNode) {
     state = state.map((node) {
       if (node.id == parentNodeId) {
+        Logger.debug('Adding child node $childNode to parent node $node');
         node.children.add(childNode);
         childNode.parent = node;
       }

@@ -95,18 +95,20 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
     // ノードの関係性マップを取得
     final nodeMap = await _nodeMapModel.fetchAllNodeMap(widget.projectId);
+    Logger.debug('Node Map: $nodeMap');
     for (var entry in nodeMap) {
       int parentId = entry.parentId;
       int childId = entry.childId;
-      Node? parentNode = nodes.cast<Node?>().firstWhere(
+      Node? parentNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
             (node) => node?.id == parentId,
             orElse: () => null,
           );
 
-      Node? childNode = nodes.cast<Node?>().firstWhere(
+      Node? childNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
             (node) => node?.id == childId,
             orElse: () => null,
           );
+      Logger.debug('Parent Node: $parentNode, Child Node: $childNode');
 
       if (parentNode != null && childNode != null) {
         ref
@@ -207,6 +209,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodes = ref.watch(nodesProvider);
     final nodeState = ref.watch(nodeStateNotifierProvider);
     final screenState = ref.watch(screenProvider);
+    final NodesNotifier nodesNotifier = ref.read(nodesProvider.notifier);
 
     return Scaffold(
       key: _scaffoldKey, // グローバルキーを指定
@@ -289,7 +292,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                                     AppBar().preferredSize.height,
                               ),
                               painter: NodePainter(
-                                  nodes,
+                                  ref.read(nodesProvider),
                                   _signalAnimation.value,
                                   screenState.scale,
                                   screenState.offset,

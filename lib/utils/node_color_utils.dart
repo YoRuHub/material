@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/utils/logger.dart';
 
 class NodeColorUtils {
   /// 次の世代の色を取得
@@ -19,6 +20,7 @@ class NodeColorUtils {
     // もし色がnullまたは透明なら色を設定
     if (node.color == null || node.color == Colors.transparent) {
       node.color = _getColorForGeneration(_calculateGeneration(node));
+      Logger.debug('Node ${node.id} color updated to ${node.color}');
       final nodeModel = NodeModel();
       await nodeModel.upsertNode(
           node.id, node.title, node.contents, node.color!, projectId);

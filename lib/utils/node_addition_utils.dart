@@ -42,6 +42,10 @@ class NodeAdditionUtils {
       ref.read(nodesProvider),
     );
 
+    if (color == null && nodeState.activeNode != null) {
+      color = NodeColorUtils.getColorForNextGeneration(nodeState.activeNode);
+    }
+
     // 4. Insert node into database
     final newNodeData =
         await nodeModel.upsertNode(nodeId, title, contents, color, projectId);
@@ -50,6 +54,7 @@ class NodeAdditionUtils {
     // 5. Create the new node
     Node newNode = NodeOperations.addNode(
       position: basePosition,
+      parentNode: nodeState.activeNode,
       nodeId: newNodeId,
       title: title,
       contents: contents,
