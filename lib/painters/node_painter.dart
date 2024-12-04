@@ -1,7 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
-import 'package:flutter_app/utils/logger.dart';
 import '../models/node.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 

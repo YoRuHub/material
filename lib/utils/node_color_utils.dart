@@ -13,6 +13,7 @@ class NodeColorUtils {
 
   /// 現在の世代の色を取得
   static Color getColorForCurrentGeneration(Node? node) {
+    if (node == null) return _getColorForGeneration(0);
     return _getColorForGeneration(_calculateGeneration(node));
   }
 

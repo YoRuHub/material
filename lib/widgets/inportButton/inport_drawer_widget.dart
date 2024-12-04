@@ -1,15 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/database/models/node_map_model.dart';
-import 'package:flutter_app/database/models/node_model.dart';
-import 'package:flutter_app/models/node_map.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:flutter_app/utils/node_addition_utils.dart';
+import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:yaml/yaml.dart';
 
 class InportDrawerWidget extends ConsumerStatefulWidget {
   final VoidCallback onPhysicsToggle;
@@ -36,6 +32,7 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
     _yamlController = TextEditingController(text: '');
   }
 
+// Todo:ノード登録後　ノードマップのインポート処理を追加
   Future<void> _importYaml() async {
     final yamlContent = _yamlController.text.trim();
 
@@ -50,8 +47,7 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
 
       // ノード情報とマッピングを取り出す
       final nodes = importedData['nodes'] as List<Map<String, dynamic>>;
-      final nodeMaps = importedData['node_maps'] as Map<int, List<int>>;
-      final screenState = ref.watch(screenProvider);
+      ref.watch(screenProvider);
 
       // ここでノードとマップを処理する
       for (var node in nodes) {
@@ -62,7 +58,7 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
         Logger.info('Node: $title');
         Logger.info('Contents: $contents');
         Logger.info('Color: $color');
-        NodeAdditionUtils.addNode(
+        NodeOperations.addNode(
           context: context,
           ref: ref,
           projectId: widget.projectId,
@@ -70,8 +66,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
           title: title,
           contents: contents,
           color: color,
-          currentOffset: screenState.offset,
-          currentScale: screenState.scale,
         );
       }
 

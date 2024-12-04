@@ -8,9 +8,8 @@ class NodesNotifier extends StateNotifier<List<Node>> {
 
   // Add a single node
   void addNode(Node node) {
-    // Check if a node with the same ID already exists
+    // 同じIDのノードが存在する場合は追加しない
     if (state.any((existingNode) => existingNode.id == node.id)) {
-      // If a node with the same ID exists, do not add
       return;
     }
     state = [...state, node];

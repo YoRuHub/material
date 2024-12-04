@@ -12,9 +12,9 @@ import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:flutter_app/utils/node_addition_utils.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
+import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_button.dart';
@@ -50,11 +50,9 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   bool isTitleVisible = true;
   bool isFocusMode = false;
 
-  Offset _offset = Offset.zero;
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
 
-  double _scale = 1.0;
   bool _isPanning = false;
 
   late NodeModel _nodeModel;
@@ -85,12 +83,18 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // ノードデータの取得と作成
     final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
     for (var node in nodesData) {
-      await _addNode(
-        nodeId: node['id'] as int,
-        title: node['title'] as String,
-        contents: node['contents'] as String,
-        color: node['color'] != null ? Color(node['color'] as int) : null,
-      );
+      if (mounted) {
+        await NodeOperations.addNode(
+          context: context,
+          ref: ref,
+          projectId: widget.projectId,
+          nodeId: node['id'] as int,
+          title: node['title'] as String,
+          contents: node['contents'] as String,
+          color: node['color'] != null ? Color(node['color']) : null,
+          createdAt: node['created_at'] as String,
+        );
+      }
     }
 
     // ノードの関係性マップを取得
@@ -209,7 +213,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodes = ref.watch(nodesProvider);
     final nodeState = ref.watch(nodeStateNotifierProvider);
     final screenState = ref.watch(screenProvider);
-    final NodesNotifier nodesNotifier = ref.read(nodesProvider.notifier);
+    ref.read(nodesProvider.notifier);
 
     return Scaffold(
       key: _scaffoldKey, // グローバルキーを指定
@@ -560,31 +564,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
-  Future<void> _addNode({
-    int nodeId = 0,
-    String title = "",
-    String contents = "",
-    Color? color,
-  }) async {
-    final screenState = ref.read(screenProvider);
-
-    Node? newNode = await NodeAdditionUtils.addNode(
+  Future<void> _addNode() async {
+    await NodeOperations.addNode(
       context: context,
       ref: ref,
       projectId: widget.projectId,
-      nodeId: nodeId,
-      title: title,
-      contents: contents,
-      color: color,
-      currentOffset: screenState.offset,
-      currentScale: screenState.scale,
+      nodeId: 0,
+      title: '',
+      contents: '',
+      color: null,
+      parentNode: ref.read(nodeStateNotifierProvider).activeNode,
     );
-
-    if (newNode != null) {
-      Logger.debug('Added Node: $newNode');
-    } else {
-      Logger.debug('Failed to add Node with ID: $nodeId');
-    }
   }
 
   static Color getColorForGeneration(int generation) {
