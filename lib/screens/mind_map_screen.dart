@@ -731,7 +731,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {
-    for (Node node in nodes) {
+    for (Node node in ref.read(nodesProvider)) {
       if (node == draggedNode) continue;
 
       // ドラッグされたノードと他のノードとの距離を計算
