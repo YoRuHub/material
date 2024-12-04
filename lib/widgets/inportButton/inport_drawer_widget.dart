@@ -3,7 +3,9 @@ import 'package:flutter/services.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node_map.dart';
+import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
+import 'package:flutter_app/utils/node_addition_utils.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -43,36 +45,38 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
     }
 
     try {
-      // YAML をパース
-      final yamlMap = loadYaml(yamlContent);
+      // YamlConverterを使ってYAMLをMapに変換
+      final importedData = YamlConverter.importYamlToMap(yamlContent);
 
-      // `nodes` キーをリストとして取得
-      if (yamlMap is Map && yamlMap.containsKey('nodes')) {
-        final nodes = yamlMap['nodes'] as Map;
+      // ノード情報とマッピングを取り出す
+      final nodes = importedData['nodes'] as List<Map<String, dynamic>>;
+      final nodeMaps = importedData['node_maps'] as Map<int, List<int>>;
+      final screenState = ref.watch(screenProvider);
 
-        // 各ノードをループ処理
-        nodes.forEach((key, value) {
-          if (value is Map) {
-            final title = value['title'];
-            final contents = value['contents'];
-            final color = value['color'];
-
-            Logger.info('Node $key:');
-            Logger.info('  Title: $title');
-            Logger.info('  Contents: $contents');
-            Logger.info('  Color: $color');
-
-            // 必要に応じてデータを保存や処理
-            // ...
-          }
-        });
-
-        SnackBarHelper.success(
-            context, 'YAML imported and processed successfully.');
-      } else {
-        SnackBarHelper.error(
-            context, 'Invalid YAML format: Missing "nodes" key.');
+      // ここでノードとマップを処理する
+      for (var node in nodes) {
+        final title = node['title'];
+        final contents = node['contents'];
+        final color = node['color'];
+        NodeAdditionUtils.addNode(
+          context: context,
+          ref: ref,
+          projectId: widget.projectId,
+          nodes: [],
+          nodeId: 0,
+          title: title,
+          contents: contents,
+          color: color,
+          currentOffset: screenState.offset,
+          currentScale: screenState.scale,
+        );
+        Logger.info('Node: $title');
+        Logger.info('Contents: $contents');
+        Logger.info('Color: $color');
       }
+
+      SnackBarHelper.success(
+          context, 'YAML imported and processed successfully.');
     } catch (e) {
       Logger.error('Error importing YAML: $e');
       SnackBarHelper.error(context, 'Failed to import YAML: $e');
@@ -116,7 +120,7 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: ElevatedButton.icon(
-                onPressed: _importYaml,
+                onPressed: _importYaml, // 修正: 直接 _importYaml を呼び出す
                 icon: const Icon(Icons.import_export),
                 label: const Text('Import YAML'),
               ),
