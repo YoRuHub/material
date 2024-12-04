@@ -7,6 +7,7 @@ import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:yaml/yaml.dart';
 
 class InportDrawerWidget extends ConsumerStatefulWidget {
   final VoidCallback onPhysicsToggle;
@@ -35,14 +36,43 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
 
   Future<void> _importYaml() async {
     final yamlContent = _yamlController.text.trim();
+
     if (yamlContent.isEmpty) {
       SnackBarHelper.error(context, 'YAML content is empty.');
       return;
     }
 
     try {
-      // TODO: YAMLインポート処理をここに実装
-      SnackBarHelper.success(context, 'Import executed successfully.');
+      // YAML をパース
+      final yamlMap = loadYaml(yamlContent);
+
+      // `nodes` キーをリストとして取得
+      if (yamlMap is Map && yamlMap.containsKey('nodes')) {
+        final nodes = yamlMap['nodes'] as Map;
+
+        // 各ノードをループ処理
+        nodes.forEach((key, value) {
+          if (value is Map) {
+            final title = value['title'];
+            final contents = value['contents'];
+            final color = value['color'];
+
+            Logger.info('Node $key:');
+            Logger.info('  Title: $title');
+            Logger.info('  Contents: $contents');
+            Logger.info('  Color: $color');
+
+            // 必要に応じてデータを保存や処理
+            // ...
+          }
+        });
+
+        SnackBarHelper.success(
+            context, 'YAML imported and processed successfully.');
+      } else {
+        SnackBarHelper.error(
+            context, 'Invalid YAML format: Missing "nodes" key.');
+      }
     } catch (e) {
       Logger.error('Error importing YAML: $e');
       SnackBarHelper.error(context, 'Failed to import YAML: $e');

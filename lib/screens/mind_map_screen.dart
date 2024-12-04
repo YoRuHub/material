@@ -7,12 +7,13 @@ import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
+import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
+import 'package:flutter_app/utils/node_addition_utils.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
-import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_button.dart';
@@ -109,6 +110,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       if (parentNode != null && childNode != null) {
         setState(() {
           childNode.parent = parentNode;
+
           if (!parentNode.children.contains(childNode)) {
             parentNode.children.add(childNode);
             NodeColorUtils.updateNodeColor(childNode, widget.projectId);
@@ -205,6 +207,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   Widget build(BuildContext context) {
     final nodeState = ref.watch(nodeStateNotifierProvider);
+    final screenState = ref.watch(screenProvider);
 
     return Scaffold(
       key: _scaffoldKey, // グローバルキーを指定
@@ -252,14 +255,18 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
                             final (newScale, newOffset) =
                                 CoordinateUtils.calculateZoom(
-                              currentScale: _scale,
+                              currentScale: screenState.scale,
                               scrollDelta: pointerSignal.scrollDelta.dy,
                               screenCenter: screenCenter,
-                              currentOffset: _offset,
+                              currentOffset: screenState.offset,
                             );
 
-                            _scale = newScale;
-                            _offset = newOffset;
+                            ref
+                                .read(screenProvider.notifier)
+                                .setScale(newScale);
+                            ref
+                                .read(screenProvider.notifier)
+                                .setOffset(newOffset);
                           });
                         }
                       },
@@ -285,8 +292,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                               painter: NodePainter(
                                   nodes,
                                   _signalAnimation.value,
-                                  _scale,
-                                  _offset,
+                                  screenState.scale,
+                                  screenState.offset,
                                   isTitleVisible,
                                   context,
                                   ref),
@@ -301,13 +308,12 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
               Stack(
                 children: [
                   PositionedText(
-                    offsetX: _offset.dx,
-                    offsetY: _offset.dy,
-                    scaleZ: _scale,
+                    offsetX: screenState.offset.dx,
+                    offsetY: screenState.offset.dy,
+                    scaleZ: screenState.scale,
                   ),
                   ToolBarWidget(
-                      alignNodesHorizontal:
-                          _alignNodesHorizontal, // contextを渡さないように修正
+                      alignNodesHorizontal: _alignNodesHorizontal,
                       alignNodesVertical: _alignNodesVertical,
                       isPhysicsEnabled: isPhysicsEnabled,
                       detachChildren: _detachFromChildrenNode,
@@ -550,77 +556,29 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   Future<void> _addNode({
     int nodeId = 0,
-    String title = '',
-    String contents = '',
+    String title = "",
+    String contents = "",
     Color? color,
   }) async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
-    final settings = ref.read(settingsNotifierProvider);
-    // 基準位置を取得（親ノードがある場合、親ノードの位置を基準にする）
-    vector_math.Vector2 basePosition;
+    final screenState = ref.read(screenProvider);
 
-    if (nodeState.activeNode != null) {
-      // 親ノードの位置を基準にする
-      basePosition = nodeState.activeNode!.position;
-      // colorがnullの場合はNodeColorUtilsで計算された階層の色を使用する
-      color ??= NodeColorUtils.getColorForNextGeneration(nodeState.activeNode);
-      // 親ノードの位置に少しオフセットを加えて配置（ランダムにずらす）
-      basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
-        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
-      );
+    Node? newNode = await NodeAdditionUtils.addNode(
+      context: context,
+      ref: ref,
+      projectId: widget.projectId,
+      nodes: nodes,
+      nodeId: nodeId,
+      title: title,
+      contents: contents,
+      color: color,
+      currentOffset: screenState.offset,
+      currentScale: screenState.scale,
+    );
+
+    if (newNode != null) {
+      Logger.debug('Added Node: $newNode');
     } else {
-      // 親ノードがない場合、画面の中心を基準にする
-      basePosition = CoordinateUtils.screenToWorld(
-        MediaQuery.of(context).size.center(Offset.zero),
-        _offset,
-        _scale,
-      );
-
-      // ランダムに少しずらして配置
-      basePosition += vector_math.Vector2(
-        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
-        (Random().nextDouble() * 2 - 1) * settings.idealNodeDistance,
-      );
-    }
-
-    // 非同期処理を先に完了させる
-    final newNodeData = await _nodeModel.upsertNode(
-        nodeId, title, contents, color, widget.projectId);
-    int newNodeId = newNodeData['id'] as int;
-
-    if (nodeState.activeNode != null) {
-      // 親ノードがある場合、親ノード情報をセットしてノードを追加
-      await _nodeMapModel.insertNodeMap(
-          nodeState.activeNode!.id, newNodeId, widget.projectId);
-
-      final newNode = NodeOperations.addNode(
-        position: basePosition,
-        parentNode: nodeState.activeNode,
-        nodeId: newNodeId,
-        color: color,
-        projectId: widget.projectId,
-      );
-
-      // 非同期処理完了後に setState で状態を更新
-      setState(() {
-        nodes.add(newNode);
-      });
-    } else {
-      // 親ノードがない場合はそのまま新しいノードを追加
-      final newNode = NodeOperations.addNode(
-        position: basePosition,
-        nodeId: newNodeId,
-        title: title,
-        contents: contents,
-        color: color,
-        projectId: widget.projectId,
-      );
-
-      // 非同期処理完了後に setState で状態を更新
-      setState(() {
-        nodes.add(newNode);
-      });
+      Logger.debug('Failed to add Node with ID: $nodeId');
     }
   }
 
@@ -635,10 +593,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   void _onPanStart(DragStartDetails details) {
+    // スクリーン座標をワールド座標に変換
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      _offset,
-      _scale,
+      ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
+      ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
     );
 
     for (var node in nodes) {
@@ -647,7 +606,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
-        // Only set dragged node, do NOT change active node
+        // ノードが選択された場合
         ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(node);
         setState(() {
           _isPanning = false;
@@ -657,10 +616,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       }
     }
 
-    // If no node is dragged, then handle panning
+    // ノードが選択されなかった場合は、ビューのドラッグ
     setState(() {
       _isPanning = true;
-      _offsetStart = _offset;
+      _offsetStart = ref.read(screenProvider).offset;
       _dragStart = details.localPosition;
       ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(null);
     });
@@ -670,20 +629,22 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
 
     if (draggedNode != null) {
-      // ノードをドラッグしているときは、アクティブノードの状態は変更しない
+      // ノードがドラッグ中の場合
       setState(() {
         vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
           details.localPosition,
-          _offset,
-          _scale,
+          ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
+          ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
         );
         draggedNode.position = worldPos;
       });
     } else if (_isPanning) {
-      // 背景のドラッグ（ビューの移動）
+      // ビューのドラッグ中
       setState(() {
         final dragDelta = details.localPosition - _dragStart;
-        _offset = _offsetStart + dragDelta;
+        ref
+            .read(screenProvider.notifier)
+            .setOffset(_offsetStart + dragDelta); // オフセット更新
       });
     }
   }
@@ -709,8 +670,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   void _onTapUp(TapUpDetails details) {
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      _offset,
-      _scale,
+      ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
+      ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
     );
     _checkForNodeSelection(worldPos);
   }

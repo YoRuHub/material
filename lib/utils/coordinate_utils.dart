@@ -56,9 +56,9 @@ class CoordinateUtils {
     // 新しいスケール値を計算
     double newScale = currentScale;
     if (scrollDelta > 0) {
-      newScale *= 0.95;
+      newScale *= 1.05; // ズームイン
     } else {
-      newScale *= 1.05;
+      newScale *= 0.95; // ズームアウト
     }
 
     // スケールを制限
@@ -70,9 +70,9 @@ class CoordinateUtils {
     // スケールの変化率を計算
     final scaleChange = newScale / prevScale;
 
-    // オフセットを調整して画面中心を基準に拡大縮小
+    // オフセットを調整して、ズームの中心（スクリーン中心）に合わせる
     final newOffset =
-        screenCenter + ((currentOffset - screenCenter) * scaleChange);
+        screenCenter + (currentOffset - screenCenter) * scaleChange;
 
     return (newScale, newOffset);
   }
