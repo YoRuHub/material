@@ -19,7 +19,7 @@ class NodeStateNotifier extends StateNotifier<NodeState> {
 
   // 状態をリセットする
   void resetState() {
-    state = NodeState(); // draggedNode と activeNode を null にする
+    state = NodeState();
   }
 }
 

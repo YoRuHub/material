@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
@@ -12,8 +13,7 @@ import '../models/node.dart';
 import '../constants/node_constants.dart';
 
 class NodeOperations {
-  // ノードの追加
-
+  /// ノードの追加
   static Future<Node> addNode({
     required BuildContext context,
     required WidgetRef ref,
@@ -66,9 +66,7 @@ class NodeOperations {
         createdAt: newNodeCreatedAt);
 
     if (parentNode != null) {
-      ref
-          .read(nodesProvider.notifier)
-          .addChildToNode(parentNode.id, newNode, projectId);
+      nodesNotifier.addChildToNode(parentNode.id, newNode, projectId);
     }
 
     nodesNotifier.addNode(newNode);
@@ -76,18 +74,29 @@ class NodeOperations {
     return newNode;
   }
 
-  // ノードの削除（再帰的に子ノードも削除）
-  static void deleteNodeAndChildren(Node node, List<Node> nodes) {
+  /// ノードの削除
+  static Future<void> deleteNode(
+      Node node, int projectId, WidgetRef ref) async {
+    final nodeModel = NodeModel();
+    final nodeMapModel = NodeMapModel();
+    final NodesNotifier nodesNotifier =
+        ref.read<NodesNotifier>(nodesProvider.notifier);
     // 子ノードを逆順に削除
     for (var i = node.children.length - 1; i >= 0; i--) {
-      deleteNodeAndChildren(node.children[i], nodes);
+      await deleteNode(node.children[i], projectId, ref);
     }
 
-    // 親ノードから切り離す
-    node.parent?.children.remove(node);
+    // 子ノードを削除
+    if (node.parent != null) {
+      await nodesNotifier.removeChildFromNode(node.parent!.id, node);
+    }
 
-    // ノードリストから削除
-    nodes.remove(node);
+    // プロバイダーから削除
+    nodesNotifier.removeNode(node);
+
+    // dbから削除
+    await nodeModel.deleteNode(node.id, projectId);
+    await nodeMapModel.deleteParentNodeMap(node.id);
   }
 
   // 子ノードの切り離し

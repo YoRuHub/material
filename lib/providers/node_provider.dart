@@ -1,7 +1,7 @@
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:flutter_app/models/node.dart'; // Adjust import path as needed
+import 'package:flutter_app/models/node.dart';
 
 // Define a state notifier class for managing nodes
 class NodesNotifier extends StateNotifier<List<Node>> {
@@ -65,7 +65,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
   }
 
   // Remove a child from a specific parent node
-  void removeChildFromNode(int parentNodeId, Node childNode) {
+  Future<void> removeChildFromNode(int parentNodeId, Node childNode) async {
     state = state.map((node) {
       if (node.id == parentNodeId) {
         node.children.remove(childNode);
@@ -73,6 +73,30 @@ class NodesNotifier extends StateNotifier<List<Node>> {
       }
       return node;
     }).toList();
+
+    nodeMapModel.deleteParentNodeMap(parentNodeId);
+  }
+
+  // NodesNotifier に親ノードを切り離すメソッドを追加
+  Future<void> removeParentFromNode(int childNodeId) async {
+    state = state.map((node) {
+      // Find the node that is the parent of the child node
+      if (node.children.any((child) => child.id == childNodeId)) {
+        // Remove the child from this node's children
+        node.children.removeWhere((child) => child.id == childNodeId);
+      }
+      return node;
+    }).toList();
+
+    // Update the specific child node to remove its parent reference
+    state = state.map((node) {
+      if (node.id == childNodeId) {
+        node.parent = null;
+      }
+      return node;
+    }).toList();
+
+    nodeMapModel.deleteChildNodeMap(childNodeId);
   }
 }
 

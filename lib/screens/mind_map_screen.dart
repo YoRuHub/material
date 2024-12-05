@@ -8,8 +8,8 @@ import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
+import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
-import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
@@ -75,12 +75,16 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // ウィジェットツリーのビルドが完了した後にノードの状態をリセット
     WidgetsBinding.instance.addPostFrameCallback((_) {
       ref.read(nodeStateNotifierProvider.notifier).resetState();
+      ref.read(nodesProvider.notifier).clearNodes();
+      ref.read(screenProvider.notifier).resetScreen();
+      ref
+          .read(projectNotifierProvider.notifier)
+          .setCurrentProject(widget.projectId);
     });
     _initializeNodes();
   }
 
   Future<void> _initializeNodes() async {
-    // ノードデータの取得と作成
     final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
     for (var node in nodesData) {
       if (mounted) {
@@ -97,9 +101,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       }
     }
 
-    // ノードの関係性マップを取得
     final nodeMap = await _nodeMapModel.fetchAllNodeMap(widget.projectId);
-    Logger.debug('Node Map: $nodeMap');
     for (var entry in nodeMap) {
       int parentId = entry.parentId;
       int childId = entry.childId;
@@ -112,12 +114,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
             (node) => node?.id == childId,
             orElse: () => null,
           );
-      Logger.debug('Parent Node: $parentNode, Child Node: $childNode');
 
       if (parentNode != null && childNode != null) {
         ref
             .read(nodesProvider.notifier)
-            .addChildToNode(parentNode.id, childNode, parentId);
+            .addChildToNode(parentNode.id, childNode, widget.projectId);
 
         NodeColorUtils.updateNodeColor(childNode, widget.projectId);
       }
@@ -368,37 +369,20 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   // ノードとその子孫を再帰的にコピーするヘルパーメソッド
   Future<Node> _copyNodeWithChildren(Node originalNode,
       {Node? newParent}) async {
-    final settings = ref.read(settingsNotifierProvider);
-
-    // 新しい位置を計算（少しずらす）
-    vector_math.Vector2 newPosition = originalNode.position +
-        vector_math.Vector2(
-          settings.idealNodeDistance,
-          settings.idealNodeDistance,
-        );
-
-    final newNodeData = await _nodeModel.upsertNode(0, originalNode.title,
-        originalNode.contents, originalNode.color, widget.projectId);
-    // 新しいノードを作成
-    Node newNode = Node(
-      id: newNodeData['id'] as int,
-      position: newPosition,
-      velocity: vector_math.Vector2.zero(),
-      color: originalNode.color,
-      radius: originalNode.radius,
-      parent: newParent,
+    final newNode = await NodeOperations.addNode(
+      context: context,
+      ref: ref,
+      projectId: widget.projectId,
+      nodeId: 0,
       title: originalNode.title,
       contents: originalNode.contents,
-      projectId: widget.projectId,
-      createdAt: newNodeData['created_at'] as String,
+      color: originalNode.color,
+      parentNode: newParent,
     );
 
     // 子ノードを再帰的にコピー
     for (var child in originalNode.children) {
-      Node newChild = await _copyNodeWithChildren(child, newParent: newNode);
-      await _nodeMapModel.insertNodeMap(
-          newNode.id, newChild.id, widget.projectId);
-      newNode.children.add(newChild);
+      await _copyNodeWithChildren(child, newParent: newNode);
     }
 
     return newNode;
@@ -433,122 +417,83 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
-  void _detachFromChildrenNode() {
+  Future<void> _detachFromChildrenNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
+
     if (nodeState.activeNode != null) {
-      // 1. アクティブノードから子ノードの関係を削除
-      _nodeMapModel.deleteParentNodeMap(nodeState.activeNode!.id);
+      final activeNode = nodeState.activeNode!;
 
-      setState(() {
-        // 2. 子ノードを切り離す処理
-        for (var child in nodeState.activeNode!.children) {
-          child.parent = null; // 子ノードの親をリセット
+      // 削除する子ノードを保持するリストを作成
+      List<Node> childrenToRemove = [];
 
-          // 3. ランダムな方向に弾く
-          double angle = Random().nextDouble() * 2 * pi;
-          child.velocity = vector_math.Vector2(
-            cos(angle) * NodeConstants.touchSpeedMultiplier,
-            sin(angle) * NodeConstants.touchSpeedMultiplier,
-          );
+      // 2. 子ノードを切り離す処理
+      for (var child in activeNode.children) {
+        // 3. ランダムな方向に弾く
+        double angle = Random().nextDouble() * 2 * pi;
+        child.velocity = vector_math.Vector2(
+          cos(angle) * NodeConstants.touchSpeedMultiplier,
+          sin(angle) * NodeConstants.touchSpeedMultiplier,
+        );
 
-          // 4. 子ノードの色をリセット
-          NodeColorUtils.updateNodeColor(child, widget.projectId);
+        // 4. 子ノードの色をリセット
+        NodeColorUtils.updateNodeColor(child, widget.projectId);
 
-          // 5. データモデルからも削除
-          _nodeMapModel.deleteParentNodeMap(child.id);
-        }
+        // 5. 削除する子ノードをリストに追加
+        childrenToRemove.add(child);
+      }
 
-        // 6. アクティブノードの子リストをクリア
-        nodeState.activeNode!.children.clear();
-      });
+      // 6. ノードプロバイダーで子ノードの親を削除
+      for (var child in childrenToRemove) {
+        // 子ノードをプロバイダーから削除
+        await ref
+            .read(nodesProvider.notifier)
+            .removeChildFromNode(activeNode.id, child);
+      }
     }
   }
 
-  void _detachFromParentNode() {
+  Future<void> _detachFromParentNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
+
     if (nodeState.activeNode != null && nodeState.activeNode!.parent != null) {
-      setState(() {
-        try {
-          // 親ノードを取得
-          Node parentNode = nodeState.activeNode!.parent!;
+      final activeNode = nodeState.activeNode!;
+      final parentNode = activeNode.parent!;
 
-          // 子リストから削除
-          if (parentNode.children.contains(nodeState.activeNode)) {
-            _nodeMapModel.deleteChildNodeMap(nodeState.activeNode!.id);
-            parentNode.children.remove(nodeState.activeNode);
-          }
+      await ref
+          .read(nodesProvider.notifier)
+          .removeParentFromNode(activeNode.id);
 
-          // ランダムな方向に速度を設定
-          double angle = Random().nextDouble() * 2 * pi;
-          vector_math.Vector2 velocity = vector_math.Vector2(
-            cos(angle) * NodeConstants.touchSpeedMultiplier,
-            sin(angle) * NodeConstants.touchSpeedMultiplier,
-          );
+      double angle = Random().nextDouble() * 2 * pi;
+      vector_math.Vector2 velocity = vector_math.Vector2(
+        cos(angle) * NodeConstants.touchSpeedMultiplier,
+        sin(angle) * NodeConstants.touchSpeedMultiplier,
+      );
 
-          // アクティブノードと親ノードに反対方向の速度を設定
-          nodeState.activeNode!.velocity = velocity;
-          parentNode.velocity = -velocity;
-
-          // 親ノード参照を解除
-          nodeState.activeNode!.parent = null;
-
-          // アクティブノードの色を更新
-          NodeColorUtils.updateNodeColor(
-              nodeState.activeNode!, widget.projectId);
-
-          // 元の親ノードの色を更新（影響範囲を限定）
-          NodeColorUtils.updateNodeColor(parentNode, widget.projectId);
-        } catch (e) {
-          // エラーログを出力
-          Logger.error('Error detaching node: $e');
-        }
-      });
+      activeNode.velocity = velocity;
+      parentNode.velocity = -velocity;
     }
   }
 
+  /// アクティブノードを削除(子ノードを再帰的に削除)
   void _deleteActiveNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
     if (nodeState.activeNode != null) {
       // 子ノードも再帰的に削除
-      await _deleteNodeAndChildren(nodeState.activeNode!);
+      await NodeOperations.deleteNode(
+          nodeState.activeNode!, widget.projectId, ref);
     }
     //アクティブ状態を解除
     ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
   }
 
-  Future<void> _deleteNodeAndChildren(Node node) async {
-    // 子ノードを逆順に削除
-    for (var i = node.children.length - 1; i >= 0; i--) {
-      await _deleteNodeAndChildren(node.children[i]);
-    }
-
-    // 子ノードを削除
-    if (node.parent != null) {
-      ref
-          .read(nodesProvider.notifier)
-          .removeChildFromNode(node.parent!.id, node);
-    }
-
-    // ノードを削除
-    ref.read(nodesProvider.notifier).removeNode(node);
-
-    // dbから削除
-    await _nodeModel.deleteNode(node.id, widget.projectId);
-    await _nodeMapModel.deleteParentNodeMap(node.id);
-  }
-
   void _alignNodesVertical() async {
-    if (nodes.isEmpty) return;
-
     await NodeAlignment.alignNodesVertical(
-        nodes, MediaQuery.of(context).size, setState, ref);
+        MediaQuery.of(context).size, setState, ref);
   }
 
   void _alignNodesHorizontal() async {
-    if (nodes.isEmpty) return;
-
     await NodeAlignment.alignNodesHorizontal(
-        nodes, MediaQuery.of(context).size, setState, ref);
+        MediaQuery.of(context).size, setState, ref);
   }
 
   void _stopPhysics() {

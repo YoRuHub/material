@@ -7,10 +7,45 @@ import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ProjectNotifier extends StateNotifier<List<Project>> {
+  // Add a new field to track the current project ID
+  int? _currentProjectId;
+
+  // Getter for the current project ID
+  int? get currentProjectId => _currentProjectId;
+
   ProjectNotifier() : super([]);
   final _projectModel = ProjectModel();
   final _nodeModel = NodeModel();
   final _nodeMapModel = NodeMapModel();
+
+  void setCurrentProject(int projectId) {
+    // Verify that the project ID exists in the state
+    final project = state.firstWhere((p) => p.id == projectId,
+        orElse: () =>
+            throw ArgumentError('Project with ID $projectId not found'));
+
+    // Set the current project ID
+    _currentProjectId = projectId;
+
+    Logger.debug(
+        'Current project set: ID: ${project.id}, Title: ${project.title}');
+  }
+
+  void clearCurrentProject() {
+    _currentProjectId = null;
+    Logger.debug('Current project cleared');
+  }
+
+  Project? getCurrentProject() {
+    if (_currentProjectId == null) return null;
+
+    try {
+      return state.firstWhere((p) => p.id == _currentProjectId);
+    } catch (e) {
+      Logger.error('Current project not found in state');
+      return null;
+    }
+  }
 
   Future<void> loadProjects() async {
     try {

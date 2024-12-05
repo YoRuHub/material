@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/providers/node_provider.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/node.dart';
@@ -9,11 +10,11 @@ import '../providers/settings_provider.dart';
 class NodeAlignment {
   // 垂直方向の配置
   static Future<void> alignNodesVertical(
-    List<Node> nodes,
     Size screenSize,
     void Function(VoidCallback fn) setState,
     WidgetRef ref,
   ) async {
+    final List<Node> nodes = ref.read(nodesProvider);
     if (nodes.isEmpty) return;
 
     // 一度だけ設定を取得
@@ -54,11 +55,11 @@ class NodeAlignment {
 
   // 水平方向の配置
   static Future<void> alignNodesHorizontal(
-    List<Node> nodes,
     Size screenSize,
     void Function(VoidCallback fn) setState,
     WidgetRef ref,
   ) async {
+    final List<Node> nodes = ref.read(nodesProvider);
     if (nodes.isEmpty) return;
 
     // 一度だけ設定を取得
