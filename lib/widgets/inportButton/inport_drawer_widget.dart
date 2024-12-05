@@ -58,30 +58,15 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
         final title = node['title'] as String;
         final contents = node['contents'] as String;
 
-        // 色を適切に処理
-        final colorValue = node['color'];
-        Color color;
-        if (colorValue is int) {
-          // 既に整数型の場合
-          color = Color(colorValue);
-        } else if (colorValue is String) {
-          // 文字列型の場合 (例: "#ffe05252")
-          color =
-              Color(int.parse(colorValue.substring(1), radix: 16) | 0xFF000000);
-        } else {
-          throw FormatException('Unexpected color format: $colorValue');
-        }
-
-        Logger.info('Node: $title');
-        Logger.info('Contents: $contents');
-        Logger.info('Color: $color');
+        // 色を文字列からColorに変換
+        final Color color = Color(node['color']);
 
         // 新しいノードを作成
         Node newNode = await NodeOperations.addNode(
           context: context,
           ref: ref,
           projectId: widget.projectId,
-          nodeId: 0, // 新しいノードIDは自動生成される
+          nodeId: 0,
           title: title,
           contents: contents,
           color: color,
@@ -107,8 +92,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
           ref
               .read(nodesProvider.notifier)
               .addChildToNode(parentNode.id, childNode, widget.projectId);
-
-          Logger.info('Parent: ${parentNode.id} -> Child: ${childNode.id}');
         }
       }
 
