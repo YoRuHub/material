@@ -417,70 +417,32 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
+  //// 子ノードを切り離す
   Future<void> _detachFromChildrenNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    final activeNode = nodeState.activeNode;
 
-    if (nodeState.activeNode != null) {
-      final activeNode = nodeState.activeNode!;
-
-      // 削除する子ノードを保持するリストを作成
-      List<Node> childrenToRemove = [];
-
-      // 2. 子ノードを切り離す処理
-      for (var child in activeNode.children) {
-        // 3. ランダムな方向に弾く
-        double angle = Random().nextDouble() * 2 * pi;
-        child.velocity = vector_math.Vector2(
-          cos(angle) * NodeConstants.touchSpeedMultiplier,
-          sin(angle) * NodeConstants.touchSpeedMultiplier,
-        );
-
-        // 4. 子ノードの色をリセット
-        NodeColorUtils.updateNodeColor(child, widget.projectId);
-
-        // 5. 削除する子ノードをリストに追加
-        childrenToRemove.add(child);
-      }
-
-      // 6. ノードプロバイダーで子ノードの親を削除
-      for (var child in childrenToRemove) {
-        // 子ノードをプロバイダーから削除
-        await ref
-            .read(nodesProvider.notifier)
-            .removeChildFromNode(activeNode.id, child);
-      }
+    if (activeNode != null) {
+      await NodeOperations.detachChildren(activeNode, ref);
     }
   }
 
+  /// 親ノードを切り離す
   Future<void> _detachFromParentNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
-
-    if (nodeState.activeNode != null && nodeState.activeNode!.parent != null) {
-      final activeNode = nodeState.activeNode!;
-      final parentNode = activeNode.parent!;
-
-      await ref
-          .read(nodesProvider.notifier)
-          .removeParentFromNode(activeNode.id);
-
-      double angle = Random().nextDouble() * 2 * pi;
-      vector_math.Vector2 velocity = vector_math.Vector2(
-        cos(angle) * NodeConstants.touchSpeedMultiplier,
-        sin(angle) * NodeConstants.touchSpeedMultiplier,
-      );
-
-      activeNode.velocity = velocity;
-      parentNode.velocity = -velocity;
+    final activeNode = nodeState.activeNode;
+    if (activeNode != null) {
+      await NodeOperations.detachParent(activeNode, ref);
     }
   }
 
   /// アクティブノードを削除(子ノードを再帰的に削除)
   void _deleteActiveNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
-    if (nodeState.activeNode != null) {
+    final activeNode = nodeState.activeNode;
+    if (activeNode != null) {
       // 子ノードも再帰的に削除
-      await NodeOperations.deleteNode(
-          nodeState.activeNode!, widget.projectId, ref);
+      await NodeOperations.deleteNode(activeNode, widget.projectId, ref);
     }
     //アクティブ状態を解除
     ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);

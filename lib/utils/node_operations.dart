@@ -76,42 +76,76 @@ class NodeOperations {
 
   /// ノードの削除
   static Future<void> deleteNode(
-      Node node, int projectId, WidgetRef ref) async {
+      Node targetNode, int projectId, WidgetRef ref) async {
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     // 子ノードを逆順に削除
-    for (var i = node.children.length - 1; i >= 0; i--) {
-      await deleteNode(node.children[i], projectId, ref);
+    for (var i = targetNode.children.length - 1; i >= 0; i--) {
+      await deleteNode(targetNode.children[i], projectId, ref);
     }
 
     // 子ノードを削除
-    if (node.parent != null) {
-      await nodesNotifier.removeChildFromNode(node.parent!.id, node);
+    if (targetNode.parent != null) {
+      await nodesNotifier.removeChildFromNode(
+          targetNode.parent!.id, targetNode);
     }
 
     // プロバイダーから削除
-    nodesNotifier.removeNode(node);
+    nodesNotifier.removeNode(targetNode);
 
     // dbから削除
-    await nodeModel.deleteNode(node.id, projectId);
-    await nodeMapModel.deleteParentNodeMap(node.id);
+    await nodeModel.deleteNode(targetNode.id, projectId);
+    await nodeMapModel.deleteParentNodeMap(targetNode.id);
   }
 
-  // 子ノードの切り離し
-  static void detachChildren(Node node) {
+  /// 子ノードを切り離す
+  static Future<void> detachChildren(Node node, WidgetRef ref) async {
+    final NodesNotifier nodesNotifier =
+        ref.read<NodesNotifier>(nodesProvider.notifier);
+    // 削除する子ノードを保持するリストを作成
+    List<Node> childrenToRemove = [];
+
     for (var child in node.children) {
-      child.parent = null;
-      // 切り離した子ノードにランダムな初速度を与える
+      // ノードを弾く
+      double angle = Random().nextDouble() * 2 * pi;
       child.velocity = vector_math.Vector2(
-        Random().nextDouble() * NodeConstants.randomOffsetRange -
-            NodeConstants.randomOffsetHalf,
-        Random().nextDouble() * NodeConstants.randomOffsetRange -
-            NodeConstants.randomOffsetHalf,
+        cos(angle) * NodeConstants.touchSpeedMultiplier,
+        sin(angle) * NodeConstants.touchSpeedMultiplier,
       );
+
+      // 削除する子ノードをリストに追加
+      childrenToRemove.add(child);
     }
-    node.children.clear();
+
+    // ノードプロバイダーで子ノードの親を削除
+    for (var child in childrenToRemove) {
+      await nodesNotifier.removeChildFromNode(node.id, child);
+    }
+  }
+
+  /// 親ノードを切り離す
+  static Future<void> detachParent(
+    Node targetNode,
+    WidgetRef ref,
+  ) async {
+    if (targetNode.parent != null) {
+      final parentNode = targetNode.parent!;
+
+      await ref
+          .read(nodesProvider.notifier)
+          .removeParentFromNode(targetNode.id);
+
+      double angle = Random().nextDouble() * 2 * pi;
+      vector_math.Vector2 velocity = vector_math.Vector2(
+        cos(angle) * NodeConstants.touchSpeedMultiplier,
+        sin(angle) * NodeConstants.touchSpeedMultiplier,
+      );
+
+      targetNode.velocity = velocity;
+      parentNode.velocity = -velocity;
+    }
   }
 
   // ノード間の距離チェック
