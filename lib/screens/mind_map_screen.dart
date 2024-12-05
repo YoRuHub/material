@@ -116,9 +116,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           );
 
       if (parentNode != null && childNode != null) {
-        ref
-            .read(nodesProvider.notifier)
-            .addChildToNode(parentNode.id, childNode, widget.projectId);
+        NodeOperations.linkChildNode(
+            ref, parentNode.id, childNode, widget.projectId);
 
         NodeColorUtils.updateNodeColor(childNode, widget.projectId);
       }
@@ -364,56 +363,16 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
-  // focusモード
-
-  // ノードとその子孫を再帰的にコピーするヘルパーメソッド
-  Future<Node> _copyNodeWithChildren(Node originalNode,
-      {Node? newParent}) async {
-    final newNode = await NodeOperations.addNode(
-      context: context,
-      ref: ref,
-      projectId: widget.projectId,
-      nodeId: 0,
-      title: originalNode.title,
-      contents: originalNode.contents,
-      color: originalNode.color,
-      parentNode: newParent,
-    );
-
-    // 子ノードを再帰的にコピー
-    for (var child in originalNode.children) {
-      await _copyNodeWithChildren(child, newParent: newNode);
-    }
-
-    return newNode;
-  }
-
-  // アクティブノードとその子孫をコピーする関数
+  // アクティブノードを複製（子ノードを含む）
   Future<void> _duplicateActiveNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
-    if (nodeState.activeNode != null) {
-      // Perform the asynchronous work
-      Node copiedNode = await _copyNodeWithChildren(nodeState.activeNode!);
-
-      // Update the widget state
-      setState(() {
-        // Add the new node to the nodes list
-        nodes.add(copiedNode);
-
-        // Add the children to the nodes list
-        _addChildrenToNodesList(copiedNode);
-
-        // Update the node color
-        NodeColorUtils.updateNodeColor(copiedNode, widget.projectId);
-      });
-    }
-  }
-
-  // 子ノードを再帰的にノードリストに追加するヘルパーメソッド
-  void _addChildrenToNodesList(Node node) {
-    for (var child in node.children) {
-      nodes.add(child);
-      _addChildrenToNodesList(child);
+    final activeNode = nodeState.activeNode;
+    if (activeNode != null) {
+      await NodeOperations.duplicateNode(
+          context: context,
+          ref: ref,
+          targetNode: activeNode,
+          projectId: widget.projectId);
     }
   }
 
@@ -436,29 +395,48 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
-  /// アクティブノードを削除(子ノードを再帰的に削除)
-  void _deleteActiveNode() async {
+  /// アクティブノードを削除（子ノードを含む）
+  Future<void> _deleteActiveNode() async {
     NodeState nodeState = ref.read(nodeStateNotifierProvider);
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       // 子ノードも再帰的に削除
       await NodeOperations.deleteNode(activeNode, widget.projectId, ref);
     }
-    //アクティブ状態を解除
+    //アクティブ状態をリセット
     ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
   }
 
-  void _alignNodesVertical() async {
+  /// ノードを縦に並べ替え
+  Future<void> _alignNodesVertical() async {
     await NodeAlignment.alignNodesVertical(
         MediaQuery.of(context).size, setState, ref);
   }
 
-  void _alignNodesHorizontal() async {
+  /// ノードを横に並べ替え
+  Future<void> _alignNodesHorizontal() async {
     await NodeAlignment.alignNodesHorizontal(
         MediaQuery.of(context).size, setState, ref);
   }
 
-  void _stopPhysics() {
+  Future<void> _resetNodeColor() async {
+    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    final activeNode = nodeState.activeNode;
+    if (activeNode != null) {
+      // 最上位の祖先を取得
+      Node? rootAncestor = nodeState.activeNode;
+      while (rootAncestor?.parent != null) {
+        rootAncestor = rootAncestor!.parent;
+      }
+
+      // 最上位の祖先を基準に子孫ノードの色を更新
+      if (rootAncestor != null) {
+        NodeColorUtils.forceUpdateNodeColor(rootAncestor, widget.projectId);
+      }
+    }
+  }
+
+  Future<void> _stopPhysics() async {
     if (isPhysicsEnabled) {
       setState(() {
         isPhysicsEnabled = false;
@@ -471,6 +449,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
+  /// 新しいノードを追加
   Future<void> _addNode() async {
     await NodeOperations.addNode(
       context: context,
@@ -482,16 +461,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       color: null,
       parentNode: ref.read(nodeStateNotifierProvider).activeNode,
     );
-  }
-
-  static Color getColorForGeneration(int generation) {
-    double hue = (generation * NodeConstants.hueShift) % NodeConstants.maxHue;
-    return HSLColor.fromAHSL(
-      NodeConstants.alpha,
-      hue,
-      NodeConstants.saturation,
-      NodeConstants.lightness,
-    ).toColor();
   }
 
   void _onPanStart(DragStartDetails details) {
@@ -679,22 +648,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           node.isTemporarilyDetached = false;
         }
       }
-    }
-  }
-
-  void _resetNodeColor() {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
-    if (nodeState.activeNode == null) return;
-
-    // 最上位の祖先を取得
-    Node? rootAncestor = nodeState.activeNode;
-    while (rootAncestor?.parent != null) {
-      rootAncestor = rootAncestor!.parent;
-    }
-
-    // 最上位の祖先を基準に子孫ノードの色を更新
-    if (rootAncestor != null) {
-      NodeColorUtils.forceUpdateNodeColor(rootAncestor, widget.projectId);
     }
   }
 

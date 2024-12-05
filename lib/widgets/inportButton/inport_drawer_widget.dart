@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_app/models/node.dart';
-import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
@@ -35,7 +34,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
 
   Future<void> _importYaml() async {
     final yamlContent = _yamlController.text.trim();
-
     if (yamlContent.isEmpty) {
       SnackBarHelper.error(context, 'YAML content is empty.');
       return;
@@ -89,9 +87,12 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
           if (childNode == null) continue;
 
           // 新しいNodeオブジェクトで親子関係を追加
-          ref
-              .read(nodesProvider.notifier)
-              .addChildToNode(parentNode.id, childNode, widget.projectId);
+          await NodeOperations.linkChildNode(
+            ref,
+            parentNode.id,
+            childNode,
+            widget.projectId,
+          );
         }
       }
 

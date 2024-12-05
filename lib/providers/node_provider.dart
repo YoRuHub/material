@@ -1,4 +1,3 @@
-import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/models/node.dart';
@@ -6,7 +5,6 @@ import 'package:flutter_app/models/node.dart';
 // Define a state notifier class for managing nodes
 class NodesNotifier extends StateNotifier<List<Node>> {
   NodesNotifier() : super([]);
-  final nodeMapModel = NodeMapModel();
 
   // Add a single node
   void addNode(Node node) {
@@ -51,7 +49,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
   }
 
   // Add a child to a specific parent node
-  Future<void> addChildToNode(
+  Future<void> linkChildNodeToParent(
       int parentNodeId, Node childNode, int projectId) async {
     state = state.map((node) {
       if (node.id == parentNodeId) {
@@ -61,7 +59,6 @@ class NodesNotifier extends StateNotifier<List<Node>> {
       }
       return node;
     }).toList();
-    await nodeMapModel.insertNodeMap(parentNodeId, childNode.id, projectId);
   }
 
   // Remove a child from a specific parent node
@@ -73,8 +70,6 @@ class NodesNotifier extends StateNotifier<List<Node>> {
       }
       return node;
     }).toList();
-
-    nodeMapModel.deleteParentNodeMap(parentNodeId);
   }
 
   // NodesNotifier に親ノードを切り離すメソッドを追加
@@ -95,8 +90,6 @@ class NodesNotifier extends StateNotifier<List<Node>> {
       }
       return node;
     }).toList();
-
-    nodeMapModel.deleteChildNodeMap(childNodeId);
   }
 }
 

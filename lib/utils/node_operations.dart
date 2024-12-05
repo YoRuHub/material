@@ -28,7 +28,6 @@ class NodeOperations {
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final NodeModel nodeModel = NodeModel();
-
     // ノードの配置位置を取得
     vector_math.Vector2 basePosition = _calculateBasePosition(
       context,
@@ -66,10 +65,53 @@ class NodeOperations {
         createdAt: newNodeCreatedAt);
 
     if (parentNode != null) {
-      nodesNotifier.addChildToNode(parentNode.id, newNode, projectId);
+      await linkChildNode(ref, parentNode.id, newNode, projectId);
     }
 
     nodesNotifier.addNode(newNode);
+
+    return newNode;
+  }
+
+  /// ノードの紐付け
+  static Future<void> linkChildNode(
+      WidgetRef ref, int parentNodeId, Node childNode, int projectId) async {
+    ref
+        .read(nodesProvider.notifier)
+        .linkChildNodeToParent(parentNodeId, childNode, projectId);
+    final nodeMapModel = NodeMapModel();
+    await nodeMapModel.insertNodeMap(parentNodeId, childNode.id, projectId);
+  }
+
+  /// ノードのコピー
+  static Future<Node> duplicateNode(
+      {required BuildContext context,
+      required Node targetNode,
+      required WidgetRef ref,
+      required int projectId,
+      Node? newParent}) async {
+    final newNode = await NodeOperations.addNode(
+      context: context,
+      ref: ref,
+      projectId: projectId,
+      nodeId: 0,
+      title: targetNode.title,
+      contents: targetNode.contents,
+      color: targetNode.color,
+      parentNode: newParent,
+    );
+    // 子ノードを再帰的にコピー
+    for (var child in targetNode.children) {
+      if (context.mounted) {
+        await duplicateNode(
+          context: context,
+          targetNode: child,
+          ref: ref,
+          projectId: projectId,
+          newParent: newNode,
+        );
+      }
+    }
 
     return newNode;
   }
@@ -87,9 +129,10 @@ class NodeOperations {
     }
 
     // 子ノードを削除
-    if (targetNode.parent != null) {
-      await nodesNotifier.removeChildFromNode(
-          targetNode.parent!.id, targetNode);
+    final parentNode = targetNode.parent;
+    if (parentNode != null) {
+      await nodesNotifier.removeChildFromNode(parentNode.id, targetNode);
+      nodeMapModel.deleteParentNodeMap(parentNode.id);
     }
 
     // プロバイダーから削除
@@ -104,6 +147,8 @@ class NodeOperations {
   static Future<void> detachChildren(Node node, WidgetRef ref) async {
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
+
+    final nodeMapModel = NodeMapModel();
     // 削除する子ノードを保持するリストを作成
     List<Node> childrenToRemove = [];
 
@@ -122,6 +167,7 @@ class NodeOperations {
     // ノードプロバイダーで子ノードの親を削除
     for (var child in childrenToRemove) {
       await nodesNotifier.removeChildFromNode(node.id, child);
+      await nodeMapModel.deleteChildNodeMap(child.id);
     }
   }
 
@@ -131,12 +177,14 @@ class NodeOperations {
     WidgetRef ref,
   ) async {
     if (targetNode.parent != null) {
+      final nodeMapModel = NodeMapModel();
       final parentNode = targetNode.parent!;
 
       await ref
           .read(nodesProvider.notifier)
           .removeParentFromNode(targetNode.id);
 
+      nodeMapModel.deleteChildNodeMap(targetNode.id);
       double angle = Random().nextDouble() * 2 * pi;
       vector_math.Vector2 velocity = vector_math.Vector2(
         cos(angle) * NodeConstants.touchSpeedMultiplier,
@@ -148,7 +196,7 @@ class NodeOperations {
     }
   }
 
-  // ノード間の距離チェック
+  /// ノード間の距離チェック
   static bool areNodesClose(Node node1, Node node2) {
     double distance = (node1.position - node2.position).length;
     return distance < NodeConstants.snapTriggerDistance;
