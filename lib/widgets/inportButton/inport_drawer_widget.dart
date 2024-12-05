@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_app/providers/screen_provider.dart';
+import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
@@ -32,7 +33,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
     _yamlController = TextEditingController(text: '');
   }
 
-// Todo:ノード登録後　ノードマップのインポート処理を追加
   Future<void> _importYaml() async {
     final yamlContent = _yamlController.text.trim();
 
@@ -42,38 +42,87 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
     }
 
     try {
-      // YamlConverterを使ってYAMLをMapに変換
+      // YAMLデータをMapに変換
       final importedData = YamlConverter.importYamlToMap(yamlContent);
 
       // ノード情報とマッピングを取り出す
-      final nodes = importedData['nodes'] as List<Map<String, dynamic>>;
-      ref.watch(screenProvider);
+      final nodesList = importedData['nodes'] as List<Map<String, dynamic>>;
+      final nodeMaps = importedData['node_maps'] as Map<int, List<int>>;
 
-      // ここでノードとマップを処理する
-      for (var node in nodes) {
-        final title = node['title'];
-        final contents = node['contents'];
-        final color = Color(node['color']);
+      // 古いノードIDと新しいNodeオブジェクトの対応を保存するマップ
+      final Map<int, Node> idMapping = {};
+
+      // 各ノードを追加し、新しいNodeオブジェクトをマップに登録
+      for (var node in nodesList) {
+        final oldNodeId = node['id'] as int; // 必要であれば、このキーを確認
+        final title = node['title'] as String;
+        final contents = node['contents'] as String;
+
+        // 色を適切に処理
+        final colorValue = node['color'];
+        Color color;
+        if (colorValue is int) {
+          // 既に整数型の場合
+          color = Color(colorValue);
+        } else if (colorValue is String) {
+          // 文字列型の場合 (例: "#ffe05252")
+          color =
+              Color(int.parse(colorValue.substring(1), radix: 16) | 0xFF000000);
+        } else {
+          throw FormatException('Unexpected color format: $colorValue');
+        }
 
         Logger.info('Node: $title');
         Logger.info('Contents: $contents');
         Logger.info('Color: $color');
-        NodeOperations.addNode(
+
+        // 新しいノードを作成
+        Node newNode = await NodeOperations.addNode(
           context: context,
           ref: ref,
           projectId: widget.projectId,
-          nodeId: 0,
+          nodeId: 0, // 新しいノードIDは自動生成される
           title: title,
           contents: contents,
           color: color,
         );
+
+        // 古いノードIDと新しいNodeオブジェクトの対応を保存
+        idMapping[oldNodeId] = newNode;
       }
 
-      SnackBarHelper.success(
-          context, 'YAML imported and processed successfully.');
+      // ノードマッピングを再構築
+      for (var oldParentId in nodeMaps.keys) {
+        final oldChildIds = nodeMaps[oldParentId]!;
+
+        // 古いIDを新しいNodeオブジェクトに変換
+        final parentNode = idMapping[oldParentId];
+        if (parentNode == null) continue;
+
+        for (var oldChildId in oldChildIds) {
+          final childNode = idMapping[oldChildId];
+          if (childNode == null) continue;
+
+          // 新しいNodeオブジェクトで親子関係を追加
+          ref
+              .read(nodesProvider.notifier)
+              .addChildToNode(parentNode.id, childNode, widget.projectId);
+
+          Logger.info('Parent: ${parentNode.id} -> Child: ${childNode.id}');
+        }
+      }
+
+      if (mounted) {
+        SnackBarHelper.success(
+          context,
+          'YAML imported and processed successfully.',
+        );
+      }
     } catch (e) {
       Logger.error('Error importing YAML: $e');
-      SnackBarHelper.error(context, 'Failed to import YAML: $e');
+      if (mounted) {
+        SnackBarHelper.error(context, 'Failed to import YAML: $e');
+      }
     }
   }
 

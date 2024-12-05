@@ -1,6 +1,5 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
@@ -26,9 +25,9 @@ class NodeOperations {
     String createdAt = '',
     Node? parentNode,
   }) async {
-    final NodesNotifier nodesNotifier = ref.read(nodesProvider.notifier);
-    final nodeModel = NodeModel();
-    final nodeMapModel = NodeMapModel();
+    final NodesNotifier nodesNotifier =
+        ref.read<NodesNotifier>(nodesProvider.notifier);
+    final NodeModel nodeModel = NodeModel();
 
     // ノードの配置位置を取得
     vector_math.Vector2 basePosition = _calculateBasePosition(
@@ -67,7 +66,9 @@ class NodeOperations {
         createdAt: newNodeCreatedAt);
 
     if (parentNode != null) {
-      await nodeMapModel.insertNodeMap(parentNode.id, newNodeId, projectId);
+      ref
+          .read(nodesProvider.notifier)
+          .addChildToNode(parentNode.id, newNode, projectId);
     }
 
     nodesNotifier.addNode(newNode);

@@ -37,14 +37,31 @@ class NodeMapModel extends BaseModel {
   /// ノードマップを追加
   Future<void> insertNodeMap(int parentId, int childId, int projectId) async {
     try {
-      await insert(
+      // 既存データをチェック
+      final result = await select(
         table,
-        {
-          columnParentId: parentId,
-          columnChildId: childId,
-          columnProjectId: projectId
-        },
+        columns: [columnParentId, columnChildId, columnProjectId],
+        whereClause:
+            '$columnParentId = ? AND $columnChildId = ? AND $columnProjectId = ?',
+        whereArgs: [parentId, childId, projectId],
       );
+
+      // データが存在しない場合のみ挿入
+      if (result.isEmpty) {
+        await insert(
+          table,
+          {
+            columnParentId: parentId,
+            columnChildId: childId,
+            columnProjectId: projectId,
+          },
+        );
+        Logger.info(
+            'Inserted node map: parentId=$parentId, childId=$childId, projectId=$projectId');
+      } else {
+        Logger.info(
+            'Node map already exists: parentId=$parentId, childId=$childId, projectId=$projectId');
+      }
     } catch (e) {
       Logger.error('Error inserting node map: $e');
       rethrow;

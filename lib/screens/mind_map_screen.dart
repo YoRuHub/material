@@ -117,7 +117,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       if (parentNode != null && childNode != null) {
         ref
             .read(nodesProvider.notifier)
-            .addChildToNode(parentNode.id, childNode);
+            .addChildToNode(parentNode.id, childNode, parentId);
 
         NodeColorUtils.updateNodeColor(childNode, widget.projectId);
       }

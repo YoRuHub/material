@@ -1,3 +1,4 @@
+import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/models/node.dart'; // Adjust import path as needed
@@ -5,6 +6,7 @@ import 'package:flutter_app/models/node.dart'; // Adjust import path as needed
 // Define a state notifier class for managing nodes
 class NodesNotifier extends StateNotifier<List<Node>> {
   NodesNotifier() : super([]);
+  final nodeMapModel = NodeMapModel();
 
   // Add a single node
   void addNode(Node node) {
@@ -49,7 +51,8 @@ class NodesNotifier extends StateNotifier<List<Node>> {
   }
 
   // Add a child to a specific parent node
-  void addChildToNode(int parentNodeId, Node childNode) {
+  Future<void> addChildToNode(
+      int parentNodeId, Node childNode, int projectId) async {
     state = state.map((node) {
       if (node.id == parentNodeId) {
         Logger.debug('Adding child node $childNode to parent node $node');
@@ -58,6 +61,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
       }
       return node;
     }).toList();
+    await nodeMapModel.insertNodeMap(parentNodeId, childNode.id, projectId);
   }
 
   // Remove a child from a specific parent node
