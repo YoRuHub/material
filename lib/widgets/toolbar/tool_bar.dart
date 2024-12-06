@@ -13,21 +13,17 @@ class ToolBarWidget extends StatefulWidget {
   final VoidCallback deleteActiveNode;
   final Function duplicateActiveNode;
 
-  final bool isTitleVisible;
-
-  const ToolBarWidget({
-    super.key,
-    required this.alignNodesHorizontal,
-    required this.alignNodesVertical,
-    required this.detachChildren,
-    required this.detachParent,
-    required this.resetNodeColor,
-    required this.stopPhysics,
-    required this.showNodeTitle,
-    required this.deleteActiveNode,
-    required this.duplicateActiveNode,
-    required this.isTitleVisible,
-  });
+  const ToolBarWidget(
+      {super.key,
+      required this.alignNodesHorizontal,
+      required this.alignNodesVertical,
+      required this.detachChildren,
+      required this.detachParent,
+      required this.resetNodeColor,
+      required this.stopPhysics,
+      required this.showNodeTitle,
+      required this.deleteActiveNode,
+      required this.duplicateActiveNode});
 
   @override
   ToolBarWidgetState createState() => ToolBarWidgetState();
@@ -97,7 +93,8 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
       builder: (context, ref, child) {
         final isPhysicsEnabled =
             ref.watch(screenProvider.select((state) => state.isPhysicsEnabled));
-
+        final isTitleVisible =
+            ref.watch(screenProvider.select((state) => state.isTitleVisible));
         return Positioned(
           top: 40,
           child: Padding(
@@ -153,14 +150,14 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                     isHovered: _isHovered['duplicate'] ?? false,
                     rotated: false,
                   ),
+                  // ノードタイトル表示
                   buildIconButton(
-                      icon: widget.isTitleVisible
+                      icon: isTitleVisible
                           ? Icons.visibility
                           : Icons.visibility_off,
                       onPressed: widget.showNodeTitle,
                       action: 'showTitle',
-                      isHovered:
-                          _isHovered['showTitle']! || widget.isTitleVisible,
+                      isHovered: _isHovered['showTitle']! || isTitleVisible,
                       rotated: false),
                   // ノード色リセット
                   buildIconButton(

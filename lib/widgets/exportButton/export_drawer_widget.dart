@@ -9,14 +9,10 @@ import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ExportDrawerWidget extends ConsumerStatefulWidget {
-  final VoidCallback onPhysicsToggle;
-  final VoidCallback onTitleToggle;
   final int projectId;
 
   const ExportDrawerWidget({
     super.key,
-    required this.onPhysicsToggle,
-    required this.onTitleToggle,
     required this.projectId,
   });
 

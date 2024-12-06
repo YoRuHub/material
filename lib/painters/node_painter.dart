@@ -1,6 +1,7 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
+import 'package:flutter_app/providers/screen_provider.dart';
 import '../models/node.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
@@ -10,7 +11,6 @@ class NodePainter extends CustomPainter {
   final double signalProgress;
   final double scale;
   final Offset offset;
-  final bool isTitleVisible;
   final BuildContext context; // BuildContextを追加
   final WidgetRef ref; // Riverpodの参照を追加
 
@@ -20,7 +20,7 @@ class NodePainter extends CustomPainter {
   /// [scale] スケールの倍率
   /// [offset] オフセット位置
   NodePainter(this.nodes, this.signalProgress, this.scale, this.offset,
-      this.isTitleVisible, this.context, this.ref);
+      this.context, this.ref);
 
   /// 座標をスケールとオフセットで変換する
   /// [x] X座標
@@ -86,6 +86,7 @@ class NodePainter extends CustomPainter {
   void paint(Canvas canvas, Size size) {
     // Riverpodのstateを参照してアクティブノードを取得
     Node? activeNode = ref.read(nodeStateNotifierProvider).activeNode;
+    final isTitleVisible = ref.read(screenProvider).isTitleVisible;
 
     // ノード間の接続線の描画
     for (var node in nodes) {

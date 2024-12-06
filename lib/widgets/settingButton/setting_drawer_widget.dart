@@ -5,13 +5,8 @@ import 'package:flutter_app/widgets/settingButton/slider_setting_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SettingDrawerWidget extends ConsumerStatefulWidget {
-  final VoidCallback onPhysicsToggle;
-  final VoidCallback onTitleToggle;
-
   const SettingDrawerWidget({
     super.key,
-    required this.onPhysicsToggle,
-    required this.onTitleToggle,
   });
 
   @override

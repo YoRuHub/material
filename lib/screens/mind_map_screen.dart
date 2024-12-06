@@ -46,7 +46,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late Animation<double> _signalAnimation;
   late List<Node> nodes;
 
-  bool isTitleVisible = true;
   bool isFocusMode = false;
 
   Offset _offsetStart = Offset.zero;
@@ -152,24 +151,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     super.dispose();
   }
 
-  void _togglePhysics() {
-    ref.read(screenProvider.notifier).disablePhysics();
-  }
-
-  void _toggleNodeTitles() {
-    setState(() {
-      isTitleVisible = !isTitleVisible;
-    });
-  }
-
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
   void _openSettingDrawer() {
     setState(() {
-      currentDrawer = SettingDrawerWidget(
-        onPhysicsToggle: _togglePhysics,
-        onTitleToggle: _toggleNodeTitles,
-      );
+      currentDrawer = const SettingDrawerWidget();
     });
     // 状態更新後にDrawerを開く処理
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -180,8 +166,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   void _openExportDrawer() {
     setState(() {
       currentDrawer = ExportDrawerWidget(
-        onPhysicsToggle: _togglePhysics,
-        onTitleToggle: _toggleNodeTitles,
         projectId: widget.projectId,
       );
     });
@@ -194,8 +178,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   void _openInportDrawer() {
     setState(() {
       currentDrawer = InportDrawerWidget(
-        onPhysicsToggle: _togglePhysics,
-        onTitleToggle: _toggleNodeTitles,
         projectId: widget.projectId,
       );
     });
@@ -296,7 +278,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                                   _signalAnimation.value,
                                   screenState.scale,
                                   screenState.offset,
-                                  isTitleVisible,
                                   context,
                                   ref),
                             );
@@ -323,8 +304,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                       duplicateActiveNode: _duplicateActiveNode,
                       stopPhysics: _stopPhysics,
                       deleteActiveNode: _deleteActiveNode,
-                      showNodeTitle: _showNodeTitle,
-                      isTitleVisible: isTitleVisible),
+                      showNodeTitle: _showNodeTitle),
                   AddNodeButton(onPressed: _addNode),
                 ],
               ),
@@ -348,14 +328,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         },
       ),
     );
-  }
-
-  ///ノードのタイトルを表示するヘルパーメソッド
-
-  void _showNodeTitle() {
-    setState(() {
-      isTitleVisible = !isTitleVisible;
-    });
   }
 
   // アクティブノードを複製（子ノードを含む）
@@ -434,6 +406,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   /// 物理演算を停止
   Future<void> _stopPhysics() async {
     ref.read(screenProvider.notifier).togglePhysics();
+  }
+
+  /// ノードのタイトルを表示
+  Future<void> _showNodeTitle() async {
+    ref.read(screenProvider.notifier).toggleNodeTitles();
   }
 
   /// 新しいノードを追加
