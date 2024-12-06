@@ -46,7 +46,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late Animation<double> _signalAnimation;
   late List<Node> nodes;
 
-  bool isPhysicsEnabled = true;
   bool isTitleVisible = true;
   bool isFocusMode = false;
 
@@ -154,9 +153,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   void _togglePhysics() {
-    setState(() {
-      isPhysicsEnabled = !isPhysicsEnabled;
-    });
+    ref.read(screenProvider.notifier).disablePhysics();
   }
 
   void _toggleNodeTitles() {
@@ -287,7 +284,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                             NodePhysics.updatePhysics(
                                 nodes: nodes,
                                 draggedNode: nodeState.draggedNode,
-                                isPhysicsEnabled: isPhysicsEnabled,
                                 ref: ref);
                             return CustomPaint(
                               size: Size(
@@ -321,7 +317,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                   ToolBarWidget(
                       alignNodesHorizontal: _alignNodesHorizontal,
                       alignNodesVertical: _alignNodesVertical,
-                      isPhysicsEnabled: isPhysicsEnabled,
                       detachChildren: _detachFromChildrenNode,
                       detachParent: _detachFromParentNode,
                       resetNodeColor: _resetNodeColor,
@@ -436,17 +431,9 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
+  /// 物理演算を停止
   Future<void> _stopPhysics() async {
-    if (isPhysicsEnabled) {
-      setState(() {
-        isPhysicsEnabled = false;
-      });
-      return;
-    }
-
-    setState(() {
-      isPhysicsEnabled = true;
-    });
+    ref.read(screenProvider.notifier).togglePhysics();
   }
 
   /// 新しいノードを追加

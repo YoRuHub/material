@@ -1,4 +1,5 @@
 import 'dart:math';
+import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
@@ -15,9 +16,11 @@ class NodePhysics {
   static void updatePhysics({
     required List<Node> nodes,
     required Node? draggedNode,
-    required bool isPhysicsEnabled,
     required WidgetRef ref,
   }) {
+    final isPhysicsEnabled =
+        ref.watch(screenProvider.select((state) => state.isPhysicsEnabled));
+
     if (!isPhysicsEnabled) return;
 
     // ドラッグ中のノードは物理演算から完全に除外
