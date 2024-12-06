@@ -49,6 +49,5 @@ class NodeState {
 }
 
 // Riverpodプロバイダーの定義
-final nodeStateNotifierProvider =
-    StateNotifierProvider<NodeStateNotifier, NodeState>(
-        (ref) => NodeStateNotifier());
+final nodeStateProvider = StateNotifierProvider<NodeStateNotifier, NodeState>(
+    (ref) => NodeStateNotifier());

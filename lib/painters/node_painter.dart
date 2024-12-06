@@ -85,7 +85,7 @@ class NodePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Riverpodのstateを参照してアクティブノードを取得
-    Node? activeNode = ref.read(nodeStateNotifierProvider).activeNode;
+    Node? activeNode = ref.read(nodeStateProvider).activeNode;
     final isTitleVisible = ref.read(screenProvider).isTitleVisible;
 
     // ノード間の接続線の描画

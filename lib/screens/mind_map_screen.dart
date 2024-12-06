@@ -47,15 +47,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late List<Node> nodes;
 
   bool isFocusMode = false;
-
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
 
-  bool _isPanning = false;
-
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
-  bool _isDrawerOpen = false; // Drawer の状態を管理するフラグ
   Widget? currentDrawer;
 
   @override
@@ -70,15 +66,16 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
-    // ウィジェットツリーのビルドが完了した後にノードの状態をリセット
+
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(nodeStateNotifierProvider.notifier).resetState();
+      ref.read(nodeStateProvider.notifier).resetState();
       ref.read(nodesProvider.notifier).clearNodes();
       ref.read(screenProvider.notifier).resetScreen();
       ref
           .read(projectNotifierProvider.notifier)
           .setCurrentProject(widget.projectId);
     });
+
     _initializeNodes();
   }
 
@@ -116,31 +113,22 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       if (parentNode != null && childNode != null) {
         NodeOperations.linkChildNode(
             ref, parentNode.id, childNode, widget.projectId);
-
         NodeColorUtils.updateNodeColor(childNode, widget.projectId);
       }
     }
   }
 
+  // Drawerの状態を確認し、アニメーションを制御
   void _checkDrawerStatus(BuildContext context) {
-    final scaffoldState = Scaffold.of(context);
-    if (scaffoldState.isDrawerOpen) {
-      if (!_isDrawerOpen) {
-        if (mounted) {
-          _controller.stop(); // Drawerが開いたらアニメーション停止
-          setState(() {
-            _isDrawerOpen = true;
-          });
-        }
+    final isDrawerOpen = ref.watch(screenProvider).isDrawerOpen;
+
+    if (isDrawerOpen) {
+      if (!_controller.isAnimating) {
+        _controller.stop();
       }
     } else {
-      if (_isDrawerOpen) {
-        if (mounted) {
-          _controller.repeat(); // Drawerが閉じたらアニメーション再開
-          setState(() {
-            _isDrawerOpen = false;
-          });
-        }
+      if (!_controller.isAnimating) {
+        _controller.repeat();
       }
     }
   }
@@ -157,7 +145,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     setState(() {
       currentDrawer = const SettingDrawerWidget();
     });
-    // 状態更新後にDrawerを開く処理
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scaffoldKey.currentState?.openEndDrawer();
     });
@@ -169,7 +156,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         projectId: widget.projectId,
       );
     });
-    // 状態更新後にDrawerを開く処理
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scaffoldKey.currentState?.openEndDrawer();
     });
@@ -181,7 +167,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         projectId: widget.projectId,
       );
     });
-    // 状態更新後にDrawerを開く処理
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scaffoldKey.currentState?.openEndDrawer();
     });
@@ -190,7 +175,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   Widget build(BuildContext context) {
     final nodes = ref.watch(nodesProvider);
-    final nodeState = ref.watch(nodeStateNotifierProvider);
+    final nodeState = ref.watch(nodeStateProvider);
     final screenState = ref.watch(screenProvider);
     ref.read(nodesProvider.notifier);
 
@@ -317,12 +302,12 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                       nodeModel: _nodeModel,
                       onNodeUpdated: (updatedNode) {
                         ref
-                            .read(nodeStateNotifierProvider.notifier)
+                            .read(nodeStateProvider.notifier)
                             .setActiveNode(updatedNode);
                       },
                     );
                   },
-                )
+                ),
             ],
           );
         },
@@ -332,7 +317,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   // アクティブノードを複製（子ノードを含む）
   Future<void> _duplicateActiveNode() async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    NodeState nodeState = ref.read(nodeStateProvider);
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       await NodeOperations.duplicateNode(
@@ -345,7 +330,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   //// 子ノードを切り離す
   Future<void> _detachFromChildrenNode() async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    NodeState nodeState = ref.read(nodeStateProvider);
     final activeNode = nodeState.activeNode;
 
     if (activeNode != null) {
@@ -355,7 +340,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   /// 親ノードを切り離す
   Future<void> _detachFromParentNode() async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    NodeState nodeState = ref.read(nodeStateProvider);
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       await NodeOperations.detachParent(activeNode, ref);
@@ -364,14 +349,16 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   /// アクティブノードを削除（子ノードを含む）
   Future<void> _deleteActiveNode() async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    NodeState nodeState = ref.read(nodeStateProvider);
+    final nodeStateNotifier = ref.read(nodeStateProvider.notifier);
+
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       // 子ノードも再帰的に削除
       await NodeOperations.deleteNode(activeNode, widget.projectId, ref);
     }
     //アクティブ状態をリセット
-    ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+    nodeStateNotifier.setActiveNode(null);
   }
 
   /// ノードを縦に並べ替え
@@ -387,7 +374,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   Future<void> _resetNodeColor() async {
-    NodeState nodeState = ref.read(nodeStateNotifierProvider);
+    NodeState nodeState = ref.read(nodeStateProvider);
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       // 最上位の祖先を取得
@@ -423,16 +410,19 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       title: '',
       contents: '',
       color: null,
-      parentNode: ref.read(nodeStateNotifierProvider).activeNode,
+      parentNode: ref.read(nodeStateProvider).activeNode,
     );
   }
 
   void _onPanStart(DragStartDetails details) {
+    final ScreenNotifier screenNotifier = ref.read(screenProvider.notifier);
+    final screenState = ref.read(screenProvider);
+
     // スクリーン座標をワールド座標に変換
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
-      ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
-      ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
+      screenState.offset,
+      screenState.scale,
     );
 
     for (var node in ref.read(nodesProvider)) {
@@ -442,9 +432,9 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       if (distance < node.radius) {
         // ノードが選択された場合
-        ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(node);
+        ref.read(nodeStateProvider.notifier).setDraggedNode(node);
+        screenNotifier.disablePanning();
         setState(() {
-          _isPanning = false;
           _dragStart = details.localPosition;
         });
         return;
@@ -452,16 +442,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
 
     // ノードが選択されなかった場合は、ビューのドラッグ
+    screenNotifier.enablePanning();
     setState(() {
-      _isPanning = true;
       _offsetStart = ref.read(screenProvider).offset;
       _dragStart = details.localPosition;
-      ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(null);
+      ref.read(nodeStateProvider.notifier).setDraggedNode(null);
     });
   }
 
   void _onPanUpdate(DragUpdateDetails details) {
-    final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
+    final draggedNode = ref.read(nodeStateProvider).draggedNode;
+    final isPanning = ref.read(screenProvider).isPanning;
 
     if (draggedNode != null) {
       // ノードがドラッグ中の場合
@@ -473,7 +464,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         );
         draggedNode.position = worldPos;
       });
-    } else if (_isPanning) {
+    } else if (isPanning) {
       // ビューのドラッグ中
       setState(() {
         final dragDelta = details.localPosition - _dragStart;
@@ -485,21 +476,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   void _onPanEnd(DragEndDetails details) {
-    final draggedNode = ref.read(nodeStateNotifierProvider).draggedNode;
+    final draggedNode = ref.read(nodeStateProvider).draggedNode;
     if (draggedNode != null) {
       setState(() {
         _checkAndUpdateParentChildRelationship(draggedNode);
-
         // ドラッグ終了時に速度をリセット
         draggedNode.velocity = vector_math.Vector2.zero();
-        ref.read(nodeStateNotifierProvider.notifier).setDraggedNode(null);
+        ref.read(nodeStateProvider.notifier).setDraggedNode(null);
       });
     }
-
-    // ドラッグ終了後にpanningフラグをリセット
-    setState(() {
-      _isPanning = false;
-    });
+    //
+    ref.read(screenProvider.notifier).disablePanning();
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -522,14 +509,13 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       if (distance < node.radius) {
         setState(() {
-          final currentActiveNode =
-              ref.read(nodeStateNotifierProvider).activeNode;
+          final currentActiveNode = ref.read(nodeStateProvider).activeNode;
 
           // タップされたノードがすでにアクティブなら、アクティブ状態を解除
           if (node == currentActiveNode) {
             Logger.debug('Deselecting Node: ${node.id}');
             node.isActive = false;
-            ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+            ref.read(nodeStateProvider.notifier).setActiveNode(null);
           } else {
             // 新しいノードをアクティブにする
             _toggleActiveNode(node);
@@ -543,11 +529,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // ノードが選択されていない場合（背景をタップした場合）
     if (!isNodeSelected) {
       setState(() {
-        final currentActiveNode =
-            ref.read(nodeStateNotifierProvider).activeNode;
+        final currentActiveNode = ref.read(nodeStateProvider).activeNode;
         if (currentActiveNode != null) {
           currentActiveNode.isActive = false;
-          ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+          ref.read(nodeStateProvider.notifier).setActiveNode(null);
         }
       });
     }
@@ -557,17 +542,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   void _toggleActiveNode(Node newNode) {
     // 現在アクティブなノードを取得
-    final currentActiveNode = ref.read(nodeStateNotifierProvider).activeNode;
+    final currentActiveNode = ref.read(nodeStateProvider).activeNode;
 
     if (currentActiveNode != null) {
       // 現在アクティブなノードを非アクティブにする
       currentActiveNode.isActive = false;
-      ref.read(nodeStateNotifierProvider.notifier).setActiveNode(null);
+      ref.read(nodeStateProvider.notifier).setActiveNode(null);
     }
 
     // 新しいノードをアクティブにする
     newNode.isActive = true;
-    ref.read(nodeStateNotifierProvider.notifier).setActiveNode(newNode);
+    ref.read(nodeStateProvider.notifier).setActiveNode(newNode);
   }
 
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {

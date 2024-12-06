@@ -37,9 +37,9 @@ class NodeOperations {
     // ノードのカラーを取得
     if (color == null) {
       color = NodeColorUtils.getColorForCurrentGeneration(null);
-      if (ref.read(nodeStateNotifierProvider).activeNode != null) {
+      if (ref.read(nodeStateProvider).activeNode != null) {
         color = NodeColorUtils.getColorForNextGeneration(
-            ref.read(nodeStateNotifierProvider).activeNode);
+            ref.read(nodeStateProvider).activeNode);
       }
     }
 
