@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/models/project.dart';
 import 'package:flutter_app/widgets/toolbar/toolbar_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
@@ -19,6 +18,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
     'detachChildren': false,
     'detachParent': false,
     'duplicate': false,
+    'linkMode': false,
     'resetNodeColor': false,
     'lock': false,
     'showTitle': false,
@@ -77,6 +77,8 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
             ref.watch(screenProvider.select((state) => state.isPhysicsEnabled));
         final isTitleVisible =
             ref.watch(screenProvider.select((state) => state.isTitleVisible));
+        final isLinkMode =
+            ref.watch(screenProvider.select((state) => state.isLinkMode));
         final projectId =
             ref.watch(screenProvider.select((state) => state.projectId));
         final toolbarController = ref.watch(toolbarControllerProvider(
@@ -139,6 +141,14 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                     onPressed: toolbarController.duplicateActiveNode,
                     action: 'duplicate',
                     isHovered: _isHovered['duplicate'] ?? false,
+                    rotated: false,
+                  ),
+                  // リンクモード
+                  buildIconButton(
+                    icon: isLinkMode ? Icons.link : Icons.link_off,
+                    onPressed: toolbarController.toggleLinkMode,
+                    action: 'linkMode',
+                    isHovered: _isHovered['linkMode']! || isLinkMode,
                     rotated: false,
                   ),
                   // ノードタイトル表示

@@ -10,7 +10,6 @@ import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
-import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_interaction_handler.dart';
 import 'package:flutter_app/utils/node_operations.dart';

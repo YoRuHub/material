@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/providers/drag_position_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
@@ -53,15 +54,27 @@ class NodeInteractionHandler {
   void onPanUpdate(DragUpdateDetails details) {
     final draggedNode = ref.read(nodeStateProvider).draggedNode;
     final isPanning = ref.read(screenProvider).isPanning;
+    final isLinkMode = ref.read(screenProvider).isLinkMode;
 
-    if (draggedNode != null) {
+    if (draggedNode != null && isLinkMode == false) {
+      // ノードの位置更新
       vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
         details.localPosition,
         ref.read(screenProvider).offset,
         ref.read(screenProvider).scale,
       );
       draggedNode.position = worldPos;
+    } else if (isLinkMode) {
+      // タップ位置に基づいて更新
+      final dragPosition = ref.read(dragPositionProvider);
+      vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
+        details.localPosition,
+        ref.read(screenProvider).offset,
+        ref.read(screenProvider).scale,
+      );
+      dragPosition.setPosition(worldPos.x, worldPos.y); // 新たにsetPositionメソッドを追加
     } else if (isPanning) {
+      // 画面のオフセット更新
       final dragDelta = details.localPosition - _dragStart;
       ref.read(screenProvider.notifier).setOffset(_offsetStart + dragDelta);
     }
@@ -74,6 +87,7 @@ class NodeInteractionHandler {
       draggedNode.velocity = vector_math.Vector2.zero();
       ref.read(nodeStateProvider.notifier).setDraggedNode(null);
     }
+    ref.read(dragPositionProvider).reset();
     ref.read(screenProvider.notifier).disablePanning();
   }
 

@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/providers/drag_position_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import '../models/node.dart';
@@ -87,6 +88,7 @@ class NodePainter extends CustomPainter {
     // Riverpodのstateを参照してアクティブノードを取得
     List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
     final isTitleVisible = ref.read(screenProvider).isTitleVisible;
+    final isLinkMode = ref.read(screenProvider).isLinkMode;
 
     // ノード間の接続線の描画
     for (var node in nodes) {
@@ -130,10 +132,51 @@ class NodePainter extends CustomPainter {
       }
     }
 
+    // LinkMode時のアクティブノードとドラッグ位置の線の描画
+    if (isLinkMode && activeNodes.isNotEmpty) {
+      final dragPosition = ref.read(dragPositionProvider);
+      // xとyがnullでない場合のみ描画
+      if (dragPosition.x != null && dragPosition.y != null) {
+        final Offset dragOffset =
+            transformPoint(dragPosition.x!, dragPosition.y!);
+
+        for (var activeNode in activeNodes) {
+          final Offset nodeOffset = transformPoint(
+            activeNode.position.x,
+            activeNode.position.y,
+          );
+
+          final Paint linkPaint = Paint()
+            ..color = Colors.cyan.withOpacity(0.8)
+            ..strokeWidth = 2 * scale
+            ..style = PaintingStyle.stroke
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
+
+          canvas.drawLine(nodeOffset, dragOffset, linkPaint);
+        }
+      }
+    }
+
     // ノードの描画
     for (var node in nodes) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
+
+      // ドラッグ位置との重なりを正確に判定
+      final dragPosition = ref.read(dragPositionProvider);
+      bool isHovered = dragPosition.x != null &&
+          dragPosition.y != null &&
+          (center - transformPoint(dragPosition.x!, dragPosition.y!))
+                  .distance <=
+              scaledRadius;
+
+      // ドラッグ位置がノードに重なっている場合の強調表示
+      if (isHovered) {
+        final Paint hoverPaint = Paint()
+          ..color = Colors.white.withOpacity(0.8)
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 15 * scale);
+        canvas.drawCircle(center, scaledRadius * 1.3, hoverPaint);
+      }
 
       if (isTitleVisible) {
         final TextPainter textPainter = TextPainter(
@@ -160,17 +203,6 @@ class NodePainter extends CustomPainter {
           ..color = node.color!.withOpacity(0.9)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 15 * scale);
         canvas.drawCircle(center, scaledRadius * 1.8, glowPaint);
-      }
-
-      final Paint texturePaint = Paint()
-        ..color = Colors.white.withOpacity(0.2)
-        ..strokeWidth = 0.5 * scale;
-
-      for (double i = 0; i < 360; i += 15) {
-        final double angle = i * 3.14159 / 180;
-        final double x1 = center.dx + scaledRadius * 1.5 * cos(angle);
-        final double y1 = center.dy + scaledRadius * 1.5 * sin(angle);
-        canvas.drawCircle(Offset(x1, y1), scale * 0.5, texturePaint);
       }
 
       final gradient = RadialGradient(
