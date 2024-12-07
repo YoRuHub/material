@@ -12,6 +12,8 @@ import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
+import 'logger.dart';
+
 class NodeInteractionHandler {
   final WidgetRef ref;
   final int projectId;
@@ -94,23 +96,34 @@ class NodeInteractionHandler {
       double distance = sqrt(dx * dx + dy * dy);
 
       if (distance < node.radius) {
-        final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-        if (node == currentActiveNode) {
+        // 現在のアクティブノードリストを取得
+        List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+
+        // ノードがすでにアクティブリストにある場合
+        if (activeNodes.contains(node)) {
+          // ノードを非アクティブにする処理
           node.isActive = false;
-          ref.read(nodeStateProvider.notifier).setActiveNode(null);
+          ref.read(nodeStateProvider.notifier).setActiveNodes(
+              activeNodes.where((activeNode) => activeNode != node).toList());
         } else {
-          _toggleActiveNode(node);
+          // ノードをアクティブリストに追加
+          _toggleActiveNode(node); // ノードをアクティブリストに追加
+          _toggleSelectedNode(node); // 選択されたノードの状態を切り替え
         }
+
         isNodeSelected = true;
         break;
       }
     }
 
+    // ノードが選択されなかった場合、現在のアクティブノードを解除
     if (!isNodeSelected) {
-      final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-      if (currentActiveNode != null) {
-        currentActiveNode.isActive = false;
-        ref.read(nodeStateProvider.notifier).setActiveNode(null);
+      List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+      if (activeNodes.isNotEmpty) {
+        for (var activeNode in activeNodes) {
+          activeNode.isActive = false;
+        }
+        ref.read(nodeStateProvider.notifier).setActiveNodes([]);
       }
     }
 
@@ -118,13 +131,35 @@ class NodeInteractionHandler {
   }
 
   void _toggleActiveNode(Node newNode) {
-    final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-    if (currentActiveNode != null) {
-      currentActiveNode.isActive = false;
-      ref.read(nodeStateProvider.notifier).setActiveNode(null);
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+
+    // もし新しいノードがすでにアクティブノードリストに含まれていない場合
+    if (!activeNodes.contains(newNode)) {
+      // 現在のアクティブノードを非アクティブにする処理
+      for (var node in activeNodes) {
+        node.isActive = false;
+      }
+
+      // 新しいノードをアクティブノードリストに追加
+      newNode.isActive = true;
+      activeNodes.add(newNode);
+      ref.read(nodeStateProvider.notifier).setActiveNodes(activeNodes);
+    } else {
+      // 新しいノードがすでにアクティブノードリストにある場合、非アクティブにする
+      newNode.isActive = false;
+      activeNodes.remove(newNode);
+      ref.read(nodeStateProvider.notifier).setActiveNodes(activeNodes);
     }
-    newNode.isActive = true;
-    ref.read(nodeStateProvider.notifier).setActiveNode(newNode);
+  }
+
+  void _toggleSelectedNode(Node newNode) {
+    final currentSelectedNode = ref.read(nodeStateProvider).selectedNode;
+    if (currentSelectedNode != null) {
+      currentSelectedNode.isSelected = false;
+      ref.read(nodeStateProvider.notifier).setSelectedNode(null);
+    }
+    newNode.isSelected = true;
+    ref.read(nodeStateProvider.notifier).setSelectedNode(newNode);
   }
 
   void _checkAndUpdateParentChildRelationship(Node draggedNode) {

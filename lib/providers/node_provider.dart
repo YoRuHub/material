@@ -61,6 +61,44 @@ class NodesNotifier extends StateNotifier<List<Node>> {
     }).toList();
   }
 
+  // Add a target node to a source node
+  Future<void> linkTargetNodeToSource(int sourceNodeId, Node targetNode) async {
+    state = state.map((node) {
+      if (node.id == sourceNodeId) {
+        Logger.debug('Adding target node $targetNode to source node $node');
+        node.targetNodes.add(targetNode); // ここでターゲット先ノードを追加
+        targetNode.sourceNodes.add(node); // 逆方向にも追加
+      }
+      return node;
+    }).toList();
+  }
+
+  // Remove a target node from a source node
+  Future<void> removeTargetNodeFromSource(
+      int sourceNodeId, Node targetNode) async {
+    state = state.map((node) {
+      if (node.id == sourceNodeId) {
+        Logger.debug('Removing target node $targetNode from source node $node');
+        node.targetNodes.remove(targetNode); // ソースノードからターゲットノードを削除
+        targetNode.sourceNodes.remove(node); // 逆方向にも削除
+      }
+      return node;
+    }).toList();
+  }
+
+  // Remove a source node from a target node
+  Future<void> removeSourceNodeFromTarget(
+      int targetNodeId, Node sourceNode) async {
+    state = state.map((node) {
+      if (node.id == targetNodeId) {
+        Logger.debug('Removing source node $sourceNode from target node $node');
+        node.sourceNodes.remove(sourceNode); // ターゲットノードからソースノードを削除
+        sourceNode.targetNodes.remove(node); // 逆方向にも削除
+      }
+      return node;
+    }).toList();
+  }
+
   // Remove a child from a specific parent node
   Future<void> removeChildFromNode(int parentNodeId, Node childNode) async {
     state = state.map((node) {

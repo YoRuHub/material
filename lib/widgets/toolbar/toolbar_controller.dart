@@ -42,39 +42,46 @@ class ToolbarController {
   }
 
   Future<void> detachChildren() async {
-    final activeNode = ref.read(nodeStateProvider).activeNode;
-    if (activeNode != null) {
-      await NodeOperations.detachChildren(activeNode, ref);
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.detachChildren(activeNode, ref);
+      }
     }
   }
 
   Future<void> detachParent() async {
-    final activeNode = ref.read(nodeStateProvider).activeNode;
-    if (activeNode != null) {
-      await NodeOperations.detachParent(activeNode, ref);
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.detachParent(activeNode, ref);
+      }
     }
   }
 
   Future<void> duplicateActiveNode() async {
-    final activeNode = ref.read(nodeStateProvider).activeNode;
-    if (activeNode != null) {
-      await NodeOperations.duplicateNode(
-          context: context, ref: ref, targetNode: activeNode);
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.duplicateNode(
+            context: context, ref: ref, targetNode: activeNode);
+      }
     }
   }
 
   Future<void> resetNodeColor() async {
     final nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
+    List<Node> activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        Node? rootAncestor = activeNode;
+        while (rootAncestor?.parent != null) {
+          rootAncestor = rootAncestor!.parent;
+        }
 
-    if (activeNode != null) {
-      Node? rootAncestor = activeNode;
-      while (rootAncestor?.parent != null) {
-        rootAncestor = rootAncestor!.parent;
-      }
-
-      if (rootAncestor != null) {
-        NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
+        if (rootAncestor != null) {
+          NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
+        }
       }
     }
   }
@@ -89,13 +96,14 @@ class ToolbarController {
 
   Future<void> deleteActiveNode() async {
     final nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
     final nodeStateNotifier = ref.read(nodeStateProvider.notifier);
-
-    if (activeNode != null) {
-      await NodeOperations.deleteNode(activeNode, ref);
+    List<Node> activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.deleteNode(activeNode, ref);
+      }
     }
 
-    nodeStateNotifier.setActiveNode(null);
+    nodeStateNotifier.clearActiveNodes();
   }
 }

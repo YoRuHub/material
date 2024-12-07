@@ -274,17 +274,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                   AddNodeButton(onPressed: _addNode),
                 ],
               ),
-              if (nodeState.activeNode != null)
+              if (nodeState.selectedNode != null)
                 Builder(
-                  key: ValueKey(nodeState.activeNode!.id),
+                  key: ValueKey(nodeState.selectedNode!.id),
                   builder: (context) {
                     return NodeContentsPanel(
-                      node: nodeState.activeNode!,
+                      node: nodeState.selectedNode!,
                       nodeModel: _nodeModel,
                       onNodeUpdated: (updatedNode) {
                         ref
                             .read(nodeStateProvider.notifier)
-                            .setActiveNode(updatedNode);
+                            .setSelectedNode(updatedNode);
                       },
                     );
                   },
@@ -326,28 +326,37 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   // アクティブノードを複製（子ノードを含む）
   Future<void> _duplicateActiveNode() async {
     NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
-    if (activeNode != null) {
-      await NodeOperations.duplicateNode(
-          context: context, ref: ref, targetNode: activeNode);
+    final activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.duplicateNode(
+          context: context,
+          ref: ref,
+          targetNode: activeNode,
+        );
+      }
     }
   }
 
   //// 子ノードを切り離す
   Future<void> _detachFromChildrenNode() async {
     NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
-    if (activeNode != null) {
-      await NodeOperations.detachChildren(activeNode, ref);
+    final activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.detachChildren(activeNode, ref);
+      }
     }
   }
 
   /// 親ノードを切り離す
   Future<void> _detachFromParentNode() async {
     NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
-    if (activeNode != null) {
-      await NodeOperations.detachParent(activeNode, ref);
+    final activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.detachParent(activeNode, ref);
+      }
     }
   }
 
@@ -356,13 +365,15 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     NodeState nodeState = ref.read(nodeStateProvider);
     final nodeStateNotifier = ref.read(nodeStateProvider.notifier);
 
-    final activeNode = nodeState.activeNode;
-    if (activeNode != null) {
-      // 子ノードも再帰的に削除
-      await NodeOperations.deleteNode(activeNode, ref);
+    final activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (final activeNode in activeNodes) {
+        await NodeOperations.deleteNode(activeNode, ref);
+      }
     }
+
     //アクティブ状態をリセット
-    nodeStateNotifier.setActiveNode(null);
+    nodeStateNotifier.clearActiveNodes();
   }
 
   /// ノードを縦に並べ替え
@@ -379,17 +390,21 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   Future<void> _resetNodeColor() async {
     NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNode = nodeState.activeNode;
-    if (activeNode != null) {
-      // 最上位の祖先を取得
-      Node? rootAncestor = nodeState.activeNode;
-      while (rootAncestor?.parent != null) {
-        rootAncestor = rootAncestor!.parent;
-      }
+    final activeNodes = nodeState.activeNodes;
 
-      // 最上位の祖先を基準に子孫ノードの色を更新
-      if (rootAncestor != null) {
-        NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
+    if (activeNodes.isNotEmpty) {
+      // アクティブノードのリストをループして処理
+      for (final activeNode in activeNodes) {
+        // 最上位の祖先を取得
+        Node? rootAncestor = activeNode;
+        while (rootAncestor?.parent != null) {
+          rootAncestor = rootAncestor!.parent;
+        }
+
+        // 最上位の祖先を基準に子孫ノードの色を更新
+        if (rootAncestor != null) {
+          NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
+        }
       }
     }
   }
@@ -406,14 +421,21 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   /// 新しいノードを追加
   Future<void> _addNode() async {
-    await NodeOperations.addNode(
-      context: context,
-      ref: ref,
-      nodeId: 0,
-      title: '',
-      contents: '',
-      color: null,
-      parentNode: ref.read(nodeStateProvider).activeNode,
-    );
+    NodeState nodeState = ref.read(nodeStateProvider);
+    final activeNodes = nodeState.activeNodes;
+    if (activeNodes.isNotEmpty) {
+      // アクティブノードのリストをループして処理
+      for (final activeNode in activeNodes) {
+        await NodeOperations.addNode(
+          context: context,
+          ref: ref,
+          nodeId: 0,
+          title: '',
+          contents: '',
+          color: null,
+          parentNode: activeNode,
+        );
+      }
+    }
   }
 }

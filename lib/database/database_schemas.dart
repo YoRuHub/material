@@ -22,6 +22,15 @@ class DatabaseSchemas {
       )
     ''',
 
+    /// サブノード情報MAPテーブル
+    'node_link_map': '''
+      CREATE TABLE IF NOT EXISTS node_link_map (
+        source_id INTEGER,
+        target_id INTEGER,
+        project_id INTEGER NOT NULL
+      )
+    ''',
+
     /// プロジェクト情報テーブル
     'project': '''
       CREATE TABLE IF NOT EXISTS project (

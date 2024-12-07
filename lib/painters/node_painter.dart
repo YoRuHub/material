@@ -85,14 +85,15 @@ class NodePainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     // Riverpodのstateを参照してアクティブノードを取得
-    Node? activeNode = ref.read(nodeStateProvider).activeNode;
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
     final isTitleVisible = ref.read(screenProvider).isTitleVisible;
 
     // ノード間の接続線の描画
     for (var node in nodes) {
       if (node.parent != null) {
-        bool isActiveLineage = isNodeInActiveLineage(node, activeNode) ||
-            isNodeInActiveLineage(node.parent!, activeNode);
+        bool isActiveLineage = activeNodes.any((activeNode) =>
+            isNodeInActiveLineage(node, activeNode) ||
+            isNodeInActiveLineage(node.parent!, activeNode));
 
         final Paint linePaint = Paint()
           ..color = isActiveLineage
@@ -153,7 +154,8 @@ class NodePainter extends CustomPainter {
                 center.dy + scaledRadius + 5));
       }
 
-      if (activeNode != null && node == activeNode) {
+      // アクティブノードがリストに含まれている場合に強調表示
+      if (activeNodes.contains(node)) {
         final Paint glowPaint = Paint()
           ..color = node.color!.withOpacity(0.9)
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, 15 * scale);
