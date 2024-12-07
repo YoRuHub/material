@@ -1,7 +1,5 @@
-import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
@@ -11,9 +9,9 @@ import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
-import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
+import 'package:flutter_app/utils/node_interaction_handler.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
@@ -26,7 +24,6 @@ import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
 import 'package:flutter_app/widgets/settingButton/setting_drawer_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:vector_math/vector_math.dart' as vector_math;
 import '../widgets/toolbar/tool_bar.dart';
 
 class MindMapScreen extends ConsumerStatefulWidget {
@@ -47,17 +44,18 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late List<Node> nodes;
 
   bool isFocusMode = false;
-  Offset _offsetStart = Offset.zero;
-  Offset _dragStart = Offset.zero;
 
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
   Widget? currentDrawer;
 
+  late NodeInteractionHandler _nodeInteractionHandler;
   @override
   void initState() {
     super.initState();
     nodes = [];
+    _nodeInteractionHandler =
+        NodeInteractionHandler(ref: ref, projectId: widget.projectId);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -141,37 +139,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  void _openSettingDrawer() {
-    setState(() {
-      currentDrawer = const SettingDrawerWidget();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scaffoldKey.currentState?.openEndDrawer();
-    });
-  }
-
-  void _openExportDrawer() {
-    setState(() {
-      currentDrawer = ExportDrawerWidget(
-        projectId: widget.projectId,
-      );
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scaffoldKey.currentState?.openEndDrawer();
-    });
-  }
-
-  void _openInportDrawer() {
-    setState(() {
-      currentDrawer = InportDrawerWidget(
-        projectId: widget.projectId,
-      );
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scaffoldKey.currentState?.openEndDrawer();
-    });
-  }
-
   @override
   Widget build(BuildContext context) {
     final nodes = ref.watch(nodesProvider);
@@ -241,10 +208,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         }
                       },
                       child: GestureDetector(
-                        onPanStart: _onPanStart,
-                        onPanUpdate: _onPanUpdate,
-                        onPanEnd: _onPanEnd,
-                        onTapUp: _onTapUp,
+                        onPanStart: _nodeInteractionHandler.onPanStart,
+                        onPanUpdate: _nodeInteractionHandler.onPanUpdate,
+                        onPanEnd: _nodeInteractionHandler.onPanEnd,
+                        onTapUp: _nodeInteractionHandler.onTapUp,
                         child: AnimatedBuilder(
                           animation: _controller,
                           builder: (context, child) {
@@ -313,6 +280,37 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         },
       ),
     );
+  }
+
+  Future<void> _openSettingDrawer() async {
+    setState(() {
+      currentDrawer = const SettingDrawerWidget();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
+  }
+
+  Future<void> _openExportDrawer() async {
+    setState(() {
+      currentDrawer = ExportDrawerWidget(
+        projectId: widget.projectId,
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
+  }
+
+  Future<void> _openInportDrawer() async {
+    setState(() {
+      currentDrawer = InportDrawerWidget(
+        projectId: widget.projectId,
+      );
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
   }
 
   // アクティブノードを複製（子ノードを含む）
@@ -412,202 +410,5 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       color: null,
       parentNode: ref.read(nodeStateProvider).activeNode,
     );
-  }
-
-  void _onPanStart(DragStartDetails details) {
-    final ScreenNotifier screenNotifier = ref.read(screenProvider.notifier);
-    final screenState = ref.read(screenProvider);
-
-    // スクリーン座標をワールド座標に変換
-    vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-      details.localPosition,
-      screenState.offset,
-      screenState.scale,
-    );
-
-    for (var node in ref.read(nodesProvider)) {
-      double dx = node.position.x - worldPos.x;
-      double dy = node.position.y - worldPos.y;
-      double distance = sqrt(dx * dx + dy * dy);
-
-      if (distance < node.radius) {
-        // ノードが選択された場合
-        ref.read(nodeStateProvider.notifier).setDraggedNode(node);
-        screenNotifier.disablePanning();
-        setState(() {
-          _dragStart = details.localPosition;
-        });
-        return;
-      }
-    }
-
-    // ノードが選択されなかった場合は、ビューのドラッグ
-    screenNotifier.enablePanning();
-    setState(() {
-      _offsetStart = ref.read(screenProvider).offset;
-      _dragStart = details.localPosition;
-      ref.read(nodeStateProvider.notifier).setDraggedNode(null);
-    });
-  }
-
-  void _onPanUpdate(DragUpdateDetails details) {
-    final draggedNode = ref.read(nodeStateProvider).draggedNode;
-    final isPanning = ref.read(screenProvider).isPanning;
-
-    if (draggedNode != null) {
-      // ノードがドラッグ中の場合
-      setState(() {
-        vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-          details.localPosition,
-          ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
-          ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
-        );
-        draggedNode.position = worldPos;
-      });
-    } else if (isPanning) {
-      // ビューのドラッグ中
-      setState(() {
-        final dragDelta = details.localPosition - _dragStart;
-        ref
-            .read(screenProvider.notifier)
-            .setOffset(_offsetStart + dragDelta); // オフセット更新
-      });
-    }
-  }
-
-  void _onPanEnd(DragEndDetails details) {
-    final draggedNode = ref.read(nodeStateProvider).draggedNode;
-    if (draggedNode != null) {
-      setState(() {
-        _checkAndUpdateParentChildRelationship(draggedNode);
-        // ドラッグ終了時に速度をリセット
-        draggedNode.velocity = vector_math.Vector2.zero();
-        ref.read(nodeStateProvider.notifier).setDraggedNode(null);
-      });
-    }
-    //
-    ref.read(screenProvider.notifier).disablePanning();
-  }
-
-  void _onTapUp(TapUpDetails details) {
-    vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
-      details.localPosition,
-      ref.read(screenProvider).offset, // ScreenProviderからオフセットを取得
-      ref.read(screenProvider).scale, // ScreenProviderからスケールを取得
-    );
-    _checkForNodeSelection(worldPos);
-  }
-
-  bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
-    bool isNodeSelected = false;
-
-    // クリックで選択されるノードを探す
-    for (var node in ref.read(nodesProvider)) {
-      double dx = node.position.x - worldPos.x;
-      double dy = node.position.y - worldPos.y;
-      double distance = sqrt(dx * dx + dy * dy);
-
-      if (distance < node.radius) {
-        setState(() {
-          final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-
-          // タップされたノードがすでにアクティブなら、アクティブ状態を解除
-          if (node == currentActiveNode) {
-            Logger.debug('Deselecting Node: ${node.id}');
-            node.isActive = false;
-            ref.read(nodeStateProvider.notifier).setActiveNode(null);
-          } else {
-            // 新しいノードをアクティブにする
-            _toggleActiveNode(node);
-          }
-        });
-        isNodeSelected = true;
-        break; // ノードが選択されたのでループを抜ける
-      }
-    }
-
-    // ノードが選択されていない場合（背景をタップした場合）
-    if (!isNodeSelected) {
-      setState(() {
-        final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-        if (currentActiveNode != null) {
-          currentActiveNode.isActive = false;
-          ref.read(nodeStateProvider.notifier).setActiveNode(null);
-        }
-      });
-    }
-
-    return isNodeSelected;
-  }
-
-  void _toggleActiveNode(Node newNode) {
-    // 現在アクティブなノードを取得
-    final currentActiveNode = ref.read(nodeStateProvider).activeNode;
-
-    if (currentActiveNode != null) {
-      // 現在アクティブなノードを非アクティブにする
-      currentActiveNode.isActive = false;
-      ref.read(nodeStateProvider.notifier).setActiveNode(null);
-    }
-
-    // 新しいノードをアクティブにする
-    newNode.isActive = true;
-    ref.read(nodeStateProvider.notifier).setActiveNode(newNode);
-  }
-
-  void _checkAndUpdateParentChildRelationship(Node draggedNode) {
-    for (Node node in ref.read(nodesProvider)) {
-      if (node == draggedNode) continue;
-
-      // ドラッグされたノードと他のノードとの距離を計算
-      double distance = (draggedNode.position - node.position).length;
-
-      // 規定のスナップ距離内の場合のみ処理を実行
-      if (distance < NodeConstants.snapEffectRange) {
-        // 循環参照が発生するか確認
-        if (_wouldCreateCycle(draggedNode, node)) continue;
-
-        // 新しい親子関係を形成
-        if (node != draggedNode.parent) {
-          // 現在の親ノードからこのノードを削除
-          if (draggedNode.parent != null) {
-            _nodeMapModel.deleteChildNodeMap(draggedNode.id);
-            draggedNode.parent!.children.remove(draggedNode);
-          }
-
-          // ノードを新しい親ノードに紐づける
-          draggedNode.parent = node;
-          _nodeMapModel.insertNodeMap(
-              node.id, draggedNode.id, widget.projectId);
-          node.children.add(draggedNode);
-
-          // 色を更新
-          NodeColorUtils.updateNodeColor(node, widget.projectId);
-
-          // **孫ノードを子ノードに正しく紐づける**
-          for (Node child in draggedNode.children) {
-            child.parent = draggedNode; // 子ノードとして再設定
-            _nodeMapModel.insertNodeMap(
-                draggedNode.id, child.id, widget.projectId);
-            NodeColorUtils.updateNodeColor(child, widget.projectId);
-          }
-
-          // 物理演算用のフラグをリセット
-          draggedNode.isTemporarilyDetached = false;
-          node.isTemporarilyDetached = false;
-        }
-      }
-    }
-  }
-
-  // 循環参照が発生するかチェックするヘルパーメソッド
-  bool _wouldCreateCycle(Node draggedNode, Node potentialParent) {
-    // ドラッグされているノードが、新しい親の祖先になっているかチェック
-    Node? current = potentialParent;
-    while (current != null) {
-      if (current == draggedNode) return true;
-      current = current.parent;
-    }
-    return false;
   }
 }
