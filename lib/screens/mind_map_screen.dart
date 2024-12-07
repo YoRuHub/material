@@ -261,16 +261,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                     offsetY: screenState.offset.dy,
                     scaleZ: screenState.scale,
                   ),
-                  ToolBarWidget(
-                      alignNodesHorizontal: _alignNodesHorizontal,
-                      alignNodesVertical: _alignNodesVertical,
-                      detachChildren: _detachFromChildrenNode,
-                      detachParent: _detachFromParentNode,
-                      resetNodeColor: _resetNodeColor,
-                      duplicateActiveNode: _duplicateActiveNode,
-                      stopPhysics: _stopPhysics,
-                      deleteActiveNode: _deleteActiveNode,
-                      showNodeTitle: _showNodeTitle),
+                  const ToolBarWidget(),
                   AddNodeButton(onPressed: _addNode),
                 ],
               ),
@@ -321,102 +312,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         _scaffoldKey.currentState?.openEndDrawer();
       });
     });
-  }
-
-  // アクティブノードを複製（子ノードを含む）
-  Future<void> _duplicateActiveNode() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNodes = nodeState.activeNodes;
-    if (activeNodes.isNotEmpty) {
-      for (final activeNode in activeNodes) {
-        await NodeOperations.duplicateNode(
-          context: context,
-          ref: ref,
-          targetNode: activeNode,
-        );
-      }
-    }
-  }
-
-  //// 子ノードを切り離す
-  Future<void> _detachFromChildrenNode() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNodes = nodeState.activeNodes;
-    if (activeNodes.isNotEmpty) {
-      for (final activeNode in activeNodes) {
-        await NodeOperations.detachChildren(activeNode, ref);
-      }
-    }
-  }
-
-  /// 親ノードを切り離す
-  Future<void> _detachFromParentNode() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNodes = nodeState.activeNodes;
-    if (activeNodes.isNotEmpty) {
-      for (final activeNode in activeNodes) {
-        await NodeOperations.detachParent(activeNode, ref);
-      }
-    }
-  }
-
-  /// アクティブノードを削除（子ノードを含む）
-  Future<void> _deleteActiveNode() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final nodeStateNotifier = ref.read(nodeStateProvider.notifier);
-
-    final activeNodes = nodeState.activeNodes;
-    if (activeNodes.isNotEmpty) {
-      for (final activeNode in activeNodes) {
-        await NodeOperations.deleteNode(activeNode, ref);
-      }
-    }
-
-    //アクティブ状態をリセット
-    nodeStateNotifier.clearActiveNodes();
-  }
-
-  /// ノードを縦に並べ替え
-  Future<void> _alignNodesVertical() async {
-    await NodeAlignment.alignNodesVertical(
-        MediaQuery.of(context).size, setState, ref);
-  }
-
-  /// ノードを横に並べ替え
-  Future<void> _alignNodesHorizontal() async {
-    await NodeAlignment.alignNodesHorizontal(
-        MediaQuery.of(context).size, setState, ref);
-  }
-
-  Future<void> _resetNodeColor() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNodes = nodeState.activeNodes;
-
-    if (activeNodes.isNotEmpty) {
-      // アクティブノードのリストをループして処理
-      for (final activeNode in activeNodes) {
-        // 最上位の祖先を取得
-        Node? rootAncestor = activeNode;
-        while (rootAncestor?.parent != null) {
-          rootAncestor = rootAncestor!.parent;
-        }
-
-        // 最上位の祖先を基準に子孫ノードの色を更新
-        if (rootAncestor != null) {
-          NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
-        }
-      }
-    }
-  }
-
-  /// 物理演算を停止
-  Future<void> _stopPhysics() async {
-    ref.read(screenProvider.notifier).togglePhysics();
-  }
-
-  /// ノードのタイトルを表示
-  Future<void> _showNodeTitle() async {
-    ref.read(screenProvider.notifier).toggleNodeTitles();
   }
 
   /// 新しいノードを追加

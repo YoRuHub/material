@@ -1,29 +1,11 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_app/models/project.dart';
+import 'package:flutter_app/widgets/toolbar/toolbar_controller.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 
 class ToolBarWidget extends StatefulWidget {
-  final VoidCallback alignNodesHorizontal;
-  final VoidCallback alignNodesVertical;
-  final VoidCallback detachChildren;
-  final VoidCallback detachParent;
-  final VoidCallback resetNodeColor;
-  final VoidCallback stopPhysics;
-  final VoidCallback showNodeTitle;
-  final VoidCallback deleteActiveNode;
-  final Function duplicateActiveNode;
-
-  const ToolBarWidget(
-      {super.key,
-      required this.alignNodesHorizontal,
-      required this.alignNodesVertical,
-      required this.detachChildren,
-      required this.detachParent,
-      required this.resetNodeColor,
-      required this.stopPhysics,
-      required this.showNodeTitle,
-      required this.deleteActiveNode,
-      required this.duplicateActiveNode});
+  const ToolBarWidget({super.key});
 
   @override
   ToolBarWidgetState createState() => ToolBarWidgetState();
@@ -95,6 +77,15 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
             ref.watch(screenProvider.select((state) => state.isPhysicsEnabled));
         final isTitleVisible =
             ref.watch(screenProvider.select((state) => state.isTitleVisible));
+        final projectId =
+            ref.watch(screenProvider.select((state) => state.projectId));
+        final toolbarController = ref.watch(toolbarControllerProvider(
+          ToolbarControllerParams(
+            ref: ref,
+            context: context,
+            projectId: projectId,
+          ),
+        ));
         return Positioned(
           top: 40,
           child: Padding(
@@ -113,7 +104,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // 横整列
                   buildIconButton(
                     icon: Icons.share,
-                    onPressed: widget.alignNodesHorizontal,
+                    onPressed: toolbarController.alignNodesHorizontal,
                     action: 'alignNodesHorizontal',
                     isHovered: _isHovered['alignNodesHorizontal'] ?? false,
                     rotated: false,
@@ -121,7 +112,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // 縦整列
                   buildIconButton(
                     icon: Icons.share,
-                    onPressed: widget.alignNodesVertical,
+                    onPressed: toolbarController.alignNodesVertical,
                     action: 'alignNodesVertical',
                     isHovered: _isHovered['alignNodesVertical'] ?? false,
                     rotated: true,
@@ -129,7 +120,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // 子ノード切り離し
                   buildIconButton(
                     icon: Icons.hdr_weak,
-                    onPressed: widget.detachChildren,
+                    onPressed: toolbarController.detachChildren,
                     action: 'detachChildren',
                     isHovered: _isHovered['detachChildren'] ?? false,
                     rotated: true,
@@ -137,7 +128,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // 親ノード切り離し
                   buildIconButton(
                     icon: Icons.hdr_strong,
-                    onPressed: widget.detachParent,
+                    onPressed: toolbarController.detachParent,
                     action: 'detachParent',
                     isHovered: _isHovered['detachParent'] ?? false,
                     rotated: true,
@@ -145,7 +136,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // ノード複製
                   buildIconButton(
                     icon: Icons.control_point_duplicate,
-                    onPressed: widget.duplicateActiveNode,
+                    onPressed: toolbarController.duplicateActiveNode,
                     action: 'duplicate',
                     isHovered: _isHovered['duplicate'] ?? false,
                     rotated: false,
@@ -155,14 +146,14 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                       icon: isTitleVisible
                           ? Icons.visibility
                           : Icons.visibility_off,
-                      onPressed: widget.showNodeTitle,
+                      onPressed: toolbarController.toggleNodeTitles,
                       action: 'showTitle',
                       isHovered: _isHovered['showTitle']! || isTitleVisible,
                       rotated: false),
                   // ノード色リセット
                   buildIconButton(
                     icon: Icons.color_lens,
-                    onPressed: widget.resetNodeColor,
+                    onPressed: toolbarController.resetNodeColor,
                     action: 'resetNodeColor',
                     isHovered: _isHovered['resetNodeColor'] ?? false,
                     rotated: false,
@@ -170,10 +161,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // ノード固定
                   buildIconButton(
                     icon: isPhysicsEnabled ? Icons.lock_open : Icons.lock,
-                    onPressed: () {
-                      // Physicsの状態を切り替える
-                      ref.read(screenProvider.notifier).togglePhysics();
-                    },
+                    onPressed: toolbarController.togglePhysics,
                     action: 'lock',
                     isHovered: _isHovered['lock']! || !isPhysicsEnabled,
                     rotated: false,
@@ -181,7 +169,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
                   // ノード削除
                   buildIconButton(
                     icon: Icons.delete,
-                    onPressed: widget.deleteActiveNode,
+                    onPressed: toolbarController.deleteActiveNode,
                     action: 'delete',
                     isHovered: _isHovered['delete'] ?? false,
                     rotated: false,

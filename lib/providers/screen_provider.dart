@@ -9,6 +9,7 @@ class ScreenState {
   final bool isTitleVisible;
   final bool isDrawerOpen;
   final bool isPanning;
+  final bool isLinkMode;
 
   // デフォルト値を定義して初期化
   static const defaultState = ScreenState(
@@ -19,6 +20,7 @@ class ScreenState {
     isTitleVisible: true,
     isDrawerOpen: false,
     isPanning: false,
+    isLinkMode: false,
   );
 
   // コンストラクタ
@@ -29,7 +31,8 @@ class ScreenState {
       required this.isPhysicsEnabled,
       required this.isTitleVisible,
       required this.isDrawerOpen,
-      required this.isPanning});
+      required this.isPanning,
+      required this.isLinkMode});
 
   // copyWith メソッド
   ScreenState copyWith(
@@ -39,7 +42,8 @@ class ScreenState {
       bool? isPhysicsEnabled,
       bool? isTitleVisible,
       bool? isDrawerOpen,
-      bool? isPanning}) {
+      bool? isPanning,
+      bool? isLinkMode}) {
     return ScreenState(
         projectId: projectId ?? this.projectId,
         offset: offset ?? this.offset,
@@ -47,7 +51,8 @@ class ScreenState {
         isPhysicsEnabled: isPhysicsEnabled ?? this.isPhysicsEnabled,
         isTitleVisible: isTitleVisible ?? this.isTitleVisible,
         isDrawerOpen: isDrawerOpen ?? this.isDrawerOpen,
-        isPanning: isPanning ?? this.isPanning);
+        isPanning: isPanning ?? this.isPanning,
+        isLinkMode: isLinkMode ?? this.isLinkMode);
   }
 }
 
@@ -104,5 +109,9 @@ class ScreenNotifier extends StateNotifier<ScreenState> {
 
   void enablePanning() {
     state = state.copyWith(isPanning: true);
+  }
+
+  void toggleLinkMode() {
+    state = state.copyWith(isLinkMode: !state.isLinkMode);
   }
 }

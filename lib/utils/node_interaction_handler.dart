@@ -12,8 +12,6 @@ import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
-import 'logger.dart';
-
 class NodeInteractionHandler {
   final WidgetRef ref;
   final int projectId;

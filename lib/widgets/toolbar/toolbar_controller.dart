@@ -37,7 +37,7 @@ class ToolbarController {
   }
 
   Future<void> alignNodesVertical() async {
-    await NodeAlignment.alignNodesHorizontal(
+    await NodeAlignment.alignNodesVertical(
         MediaQuery.of(context).size, (fn) => fn(), ref);
   }
 
@@ -86,14 +86,6 @@ class ToolbarController {
     }
   }
 
-  void togglePhysics() {
-    ref.read(screenProvider.notifier).togglePhysics();
-  }
-
-  void toggleNodeTitles() {
-    ref.read(screenProvider.notifier).toggleNodeTitles();
-  }
-
   Future<void> deleteActiveNode() async {
     final nodeState = ref.read(nodeStateProvider);
     final nodeStateNotifier = ref.read(nodeStateProvider.notifier);
@@ -105,5 +97,17 @@ class ToolbarController {
     }
 
     nodeStateNotifier.clearActiveNodes();
+  }
+
+  void togglePhysics() {
+    ref.read(screenProvider.notifier).togglePhysics();
+  }
+
+  void toggleNodeTitles() {
+    ref.read(screenProvider.notifier).toggleNodeTitles();
+  }
+
+  void toggleLinkMode() {
+    ref.read(screenProvider.notifier).toggleLinkMode();
   }
 }
