@@ -3,6 +3,9 @@ import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/utils/logger.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import '../providers/screen_provider.dart';
 
 class NodeColorUtils {
   /// 次の世代の色を取得
@@ -44,14 +47,15 @@ class NodeColorUtils {
   }
 
   /// 再帰的にノードの色を更新（強制更新バージョン・非同期対応）
-  static Future<void> forceUpdateNodeColor(Node node, int projectId) async {
+  static Future<void> forceUpdateNodeColor(WidgetRef ref, Node node) async {
     node.color = _getColorForGeneration(_calculateGeneration(node));
+    final projectId = ref.read(screenProvider).projectId;
     final nodeModel = NodeModel();
     await nodeModel.upsertNode(
         node.id, node.title, node.contents, node.color, projectId);
 
     for (Node child in node.children) {
-      await forceUpdateNodeColor(child, projectId);
+      await forceUpdateNodeColor(ref, child);
     }
   }
 

@@ -9,6 +9,7 @@ import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_alignment.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_app/utils/node_interaction_handler.dart';
@@ -48,14 +49,13 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
   Widget? currentDrawer;
-
   late NodeInteractionHandler _nodeInteractionHandler;
+
   @override
   void initState() {
     super.initState();
+
     nodes = [];
-    _nodeInteractionHandler =
-        NodeInteractionHandler(ref: ref, projectId: widget.projectId);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(seconds: 3),
@@ -65,26 +65,41 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
 
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      ref.read(nodeStateProvider.notifier).resetState();
-      ref.read(nodesProvider.notifier).clearNodes();
-      ref.read(screenProvider.notifier).resetScreen();
-      ref
-          .read(projectNotifierProvider.notifier)
-          .setCurrentProject(widget.projectId);
-    });
+    // 必須の_nodeInteractionHandlerを初期化
+    _nodeInteractionHandler =
+        NodeInteractionHandler(ref: ref, projectId: widget.projectId);
 
-    _initializeNodes();
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _prepareInitialization();
+    });
   }
 
-  Future<void> _initializeNodes() async {
-    final nodesData = await _nodeModel.fetchAllNodes(widget.projectId);
+  Future<void> _prepareInitialization() async {
+    try {
+      // ポストフレームコールバックを使用して初期化を確実に実行
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        ref.read(nodeStateProvider.notifier).resetState();
+        ref.read(nodesProvider.notifier).clearNodes();
+        ref.read(screenProvider.notifier).resetScreen();
+        ref.read(screenProvider.notifier).setProjectId(widget.projectId);
+        final projectId = ref.read(screenProvider).projectId;
+        ref.read(projectNotifierProvider.notifier).setCurrentProject(projectId);
+
+        // ノードの初期化
+        await _initializeNodes(projectId);
+      });
+    } catch (e) {
+      Logger.error('スクリーンの初期化中にエラーが発生しました: $e');
+    }
+  }
+
+  Future<void> _initializeNodes(int projectId) async {
+    final nodesData = await _nodeModel.fetchAllNodes(projectId);
     for (var node in nodesData) {
       if (mounted) {
         await NodeOperations.addNode(
           context: context,
           ref: ref,
-          projectId: widget.projectId,
           nodeId: node['id'] as int,
           title: node['title'] as String,
           contents: node['contents'] as String,
@@ -94,7 +109,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       }
     }
 
-    final nodeMap = await _nodeMapModel.fetchAllNodeMap(widget.projectId);
+    final nodeMap = await _nodeMapModel.fetchAllNodeMap(projectId);
     for (var entry in nodeMap) {
       int parentId = entry.parentId;
       int childId = entry.childId;
@@ -109,9 +124,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           );
 
       if (parentNode != null && childNode != null) {
-        NodeOperations.linkChildNode(
-            ref, parentNode.id, childNode, widget.projectId);
-        NodeColorUtils.updateNodeColor(childNode, widget.projectId);
+        NodeOperations.linkChildNode(ref, parentNode.id, childNode);
+        NodeColorUtils.updateNodeColor(childNode, projectId);
       }
     }
   }
@@ -293,9 +307,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   Future<void> _openExportDrawer() async {
     setState(() {
-      currentDrawer = ExportDrawerWidget(
-        projectId: widget.projectId,
-      );
+      currentDrawer = const ExportDrawerWidget();
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _scaffoldKey.currentState?.openEndDrawer();
@@ -304,12 +316,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   Future<void> _openInportDrawer() async {
     setState(() {
-      currentDrawer = InportDrawerWidget(
-        projectId: widget.projectId,
-      );
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scaffoldKey.currentState?.openEndDrawer();
+      currentDrawer = const InportDrawerWidget();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scaffoldKey.currentState?.openEndDrawer();
+      });
     });
   }
 
@@ -319,10 +329,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       await NodeOperations.duplicateNode(
-          context: context,
-          ref: ref,
-          targetNode: activeNode,
-          projectId: widget.projectId);
+          context: context, ref: ref, targetNode: activeNode);
     }
   }
 
@@ -330,7 +337,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   Future<void> _detachFromChildrenNode() async {
     NodeState nodeState = ref.read(nodeStateProvider);
     final activeNode = nodeState.activeNode;
-
     if (activeNode != null) {
       await NodeOperations.detachChildren(activeNode, ref);
     }
@@ -353,7 +359,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final activeNode = nodeState.activeNode;
     if (activeNode != null) {
       // 子ノードも再帰的に削除
-      await NodeOperations.deleteNode(activeNode, widget.projectId, ref);
+      await NodeOperations.deleteNode(activeNode, ref);
     }
     //アクティブ状態をリセット
     nodeStateNotifier.setActiveNode(null);
@@ -383,7 +389,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       // 最上位の祖先を基準に子孫ノードの色を更新
       if (rootAncestor != null) {
-        NodeColorUtils.forceUpdateNodeColor(rootAncestor, widget.projectId);
+        NodeColorUtils.forceUpdateNodeColor(ref, rootAncestor);
       }
     }
   }
@@ -403,7 +409,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     await NodeOperations.addNode(
       context: context,
       ref: ref,
-      projectId: widget.projectId,
       nodeId: 0,
       title: '',
       contents: '',

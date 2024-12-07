@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
 
 class ScreenState {
+  final int projectId;
   final Offset offset;
   final double scale;
   final bool isPhysicsEnabled;
@@ -11,6 +12,7 @@ class ScreenState {
 
   // デフォルト値を定義して初期化
   static const defaultState = ScreenState(
+    projectId: 0,
     offset: Offset.zero,
     scale: 1.0,
     isPhysicsEnabled: true,
@@ -21,7 +23,8 @@ class ScreenState {
 
   // コンストラクタ
   const ScreenState(
-      {required this.offset,
+      {required this.projectId,
+      required this.offset,
       required this.scale,
       required this.isPhysicsEnabled,
       required this.isTitleVisible,
@@ -30,13 +33,15 @@ class ScreenState {
 
   // copyWith メソッド
   ScreenState copyWith(
-      {Offset? offset,
+      {int? projectId,
+      Offset? offset,
       double? scale,
       bool? isPhysicsEnabled,
       bool? isTitleVisible,
       bool? isDrawerOpen,
       bool? isPanning}) {
     return ScreenState(
+        projectId: projectId ?? this.projectId,
         offset: offset ?? this.offset,
         scale: scale ?? this.scale,
         isPhysicsEnabled: isPhysicsEnabled ?? this.isPhysicsEnabled,
@@ -54,6 +59,10 @@ final screenProvider =
 class ScreenNotifier extends StateNotifier<ScreenState> {
   // 初期状態を defaultState に変更
   ScreenNotifier() : super(ScreenState.defaultState);
+
+  Future<void> setProjectId(int projectId) async {
+    state = state.copyWith(projectId: projectId);
+  }
 
   void setOffset(Offset offset) {
     state = state.copyWith(offset: offset);

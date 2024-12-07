@@ -17,7 +17,6 @@ class NodeOperations {
   static Future<Node> addNode({
     required BuildContext context,
     required WidgetRef ref,
-    required int projectId,
     int nodeId = 0,
     String title = '',
     String contents = '',
@@ -25,6 +24,7 @@ class NodeOperations {
     String createdAt = '',
     Node? parentNode,
   }) async {
+    final projectId = ref.read(screenProvider).projectId;
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final NodeModel nodeModel = NodeModel();
@@ -65,7 +65,7 @@ class NodeOperations {
         createdAt: newNodeCreatedAt);
 
     if (parentNode != null) {
-      await linkChildNode(ref, parentNode.id, newNode, projectId);
+      await linkChildNode(ref, parentNode.id, newNode);
     }
 
     nodesNotifier.addNode(newNode);
@@ -75,7 +75,8 @@ class NodeOperations {
 
   /// ノードの紐付け
   static Future<void> linkChildNode(
-      WidgetRef ref, int parentNodeId, Node childNode, int projectId) async {
+      WidgetRef ref, int parentNodeId, Node childNode) async {
+    final projectId = ref.read(screenProvider).projectId;
     ref
         .read(nodesProvider.notifier)
         .linkChildNodeToParent(parentNodeId, childNode, projectId);
@@ -88,12 +89,10 @@ class NodeOperations {
       {required BuildContext context,
       required Node targetNode,
       required WidgetRef ref,
-      required int projectId,
       Node? newParent}) async {
     final newNode = await NodeOperations.addNode(
       context: context,
       ref: ref,
-      projectId: projectId,
       nodeId: 0,
       title: targetNode.title,
       contents: targetNode.contents,
@@ -107,7 +106,6 @@ class NodeOperations {
           context: context,
           targetNode: child,
           ref: ref,
-          projectId: projectId,
           newParent: newNode,
         );
       }
@@ -117,15 +115,16 @@ class NodeOperations {
   }
 
   /// ノードの削除
-  static Future<void> deleteNode(
-      Node targetNode, int projectId, WidgetRef ref) async {
+  static Future<void> deleteNode(Node targetNode, WidgetRef ref) async {
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
+    final projectId = ref.read(screenProvider).projectId;
+
     // 子ノードを逆順に削除
     for (var i = targetNode.children.length - 1; i >= 0; i--) {
-      await deleteNode(targetNode.children[i], projectId, ref);
+      await deleteNode(targetNode.children[i], ref);
     }
 
     // 子ノードを削除

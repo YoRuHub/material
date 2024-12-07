@@ -8,10 +8,10 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class ProjectNotifier extends StateNotifier<List<Project>> {
   // Add a new field to track the current project ID
-  int? _currentProjectId;
+  int _currentProjectId = 0;
 
   // Getter for the current project ID
-  int? get currentProjectId => _currentProjectId;
+  int get currentProjectId => _currentProjectId;
 
   ProjectNotifier() : super([]);
   final _projectModel = ProjectModel();
@@ -32,12 +32,12 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
   }
 
   void clearCurrentProject() {
-    _currentProjectId = null;
+    _currentProjectId = 0;
     Logger.debug('Current project cleared');
   }
 
   Project? getCurrentProject() {
-    if (_currentProjectId == null) return null;
+    if (_currentProjectId == 0) return null;
 
     try {
       return state.firstWhere((p) => p.id == _currentProjectId);

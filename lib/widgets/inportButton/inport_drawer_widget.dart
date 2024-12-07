@@ -8,11 +8,8 @@ import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class InportDrawerWidget extends ConsumerStatefulWidget {
-  final int projectId;
-
   const InportDrawerWidget({
     super.key,
-    required this.projectId,
   });
 
   @override
@@ -59,7 +56,6 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
         Node newNode = await NodeOperations.addNode(
           context: context,
           ref: ref,
-          projectId: widget.projectId,
           nodeId: 0,
           title: title,
           contents: contents,
@@ -83,12 +79,7 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
           if (childNode == null) continue;
 
           // 新しいNodeオブジェクトで親子関係を追加
-          await NodeOperations.linkChildNode(
-            ref,
-            parentNode.id,
-            childNode,
-            widget.projectId,
-          );
+          await NodeOperations.linkChildNode(ref, parentNode.id, childNode);
         }
       }
 

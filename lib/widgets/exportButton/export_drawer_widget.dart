@@ -8,12 +8,11 @@ import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-class ExportDrawerWidget extends ConsumerStatefulWidget {
-  final int projectId;
+import '../../providers/screen_provider.dart';
 
+class ExportDrawerWidget extends ConsumerStatefulWidget {
   const ExportDrawerWidget({
     super.key,
-    required this.projectId,
   });
 
   @override
@@ -33,12 +32,13 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
 
   Future<void> _initializeNodeYaml() async {
     try {
+      final projectId = ref.read(screenProvider).projectId;
       final NodeModel nodeModel = NodeModel();
-      final nodeList = await nodeModel.fetchAllNodes(widget.projectId);
+      final nodeList = await nodeModel.fetchAllNodes(projectId);
 
       final NodeMapModel nodeMapModel = NodeMapModel();
       final List<NodeMap> rawNodeMapList =
-          await nodeMapModel.fetchAllNodeMap(widget.projectId);
+          await nodeMapModel.fetchAllNodeMap(projectId);
 
       // NodeMap を Map<String, dynamic> に変換
       final nodeMapList = rawNodeMapList.map((nodeMap) {
