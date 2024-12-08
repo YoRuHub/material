@@ -18,7 +18,7 @@ class NodeConstants {
   static const double linkIdealDistance = 1000.0;
 
   /// ノードがスナップするための閾値距離（ユーザー操作で接近時に使用）
-  static const double snapTriggerDistance = 10.0;
+  static const double snapTriggerDistance = 30.0;
 
   /// スナップ効果が適用される最大距離（この範囲内でノードがスナップされる）
   static const double snapEffectRange = 35.0;

@@ -32,6 +32,11 @@ class NodePhysics {
       _applyLinkForces(node);
       _updateNodePosition(node); // ノード位置の更新
     }
+
+    // ドラッグ中のノードのスナップ処理
+    if (draggedNode != null) {
+      _applySnapForce(draggedNode, nodes); // ドラッグ中のノードのスナップ
+    }
   }
 
   /// 反発力の適用
@@ -50,6 +55,24 @@ class NodePhysics {
         double repulsionStrength = (settings.idealNodeDistance - distance) *
             NodeConstants.repulsionCoefficient;
         node.velocity += direction * repulsionStrength;
+      }
+    }
+  }
+
+  /// ノードのスナップ処理（ドラッグ中のノードが近くのノードに吸着する）
+  static void _applySnapForce(Node draggedNode, List<Node> nodes) {
+    for (var node in nodes) {
+      if (draggedNode == node) continue;
+
+      vector_math.Vector2 direction = draggedNode.position - node.position;
+      double distance = direction.length;
+
+      if (distance < NodeConstants.snapTriggerDistance) {
+        direction.normalize();
+        // スナップ距離内に近づいた場合、ドラッグ中のノードをターゲットノードの位置にスナップ
+        draggedNode.position = node.position;
+        draggedNode.velocity = vector_math.Vector2.zero(); // スナップ後は速度をリセット
+        break; // 最初のノードにスナップしたら、これ以上の処理を停止
       }
     }
   }
