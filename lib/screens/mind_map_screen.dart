@@ -16,6 +16,7 @@ import 'package:flutter_app/utils/node_interaction_handler.dart';
 import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
+import 'package:flutter_app/widgets/aiSupportButton/ai_support_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_button.dart';
 import 'package:flutter_app/widgets/exportButton/export_drawer_widget.dart';
 import 'package:flutter_app/widgets/inportButton/inport_button.dart';
@@ -25,6 +26,7 @@ import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
 import 'package:flutter_app/widgets/settingButton/setting_drawer_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../widgets/aiSupportButton/ai_support_drawer_widget.dart';
 import '../widgets/toolbar/tool_bar.dart';
 
 class MindMapScreen extends ConsumerStatefulWidget {
@@ -195,6 +197,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
         actions: [
+          AiSupportButton(onPressed: () {
+            _openAiSupportDrawer();
+            _scaffoldKey.currentState?.openEndDrawer();
+          }),
           InportButton(onPressed: () {
             _openInportDrawer();
             _scaffoldKey.currentState?.openEndDrawer();
@@ -332,6 +338,15 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   Future<void> _openInportDrawer() async {
     setState(() {
       currentDrawer = const InportDrawerWidget();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scaffoldKey.currentState?.openEndDrawer();
+      });
+    });
+  }
+
+  Future<void> _openAiSupportDrawer() async {
+    setState(() {
+      currentDrawer = const AiSupportDrawerWidget();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scaffoldKey.currentState?.openEndDrawer();
       });

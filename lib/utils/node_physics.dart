@@ -1,4 +1,3 @@
-import 'dart:math';
 import 'package:flutter_app/providers/settings_provider.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
