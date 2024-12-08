@@ -4,6 +4,7 @@ class YamlConverter {
   static String convertNodesToYaml(
     List<Map<String, dynamic>> nodes,
     List<Map<String, dynamic>> nodeMaps,
+    List<Map<String, dynamic>> nodeLinkMaps, // nodeLinkMapの追加
   ) {
     final nodeYaml = {
       'nodes': nodes.asMap().map((index, node) {
@@ -34,7 +35,7 @@ class YamlConverter {
       }),
     };
 
-    // node_mapsの処理は以前と同じ
+    // node_mapsの処理
     final groupedNodeMaps = <String, List<int>>{};
     for (var map in nodeMaps) {
       final parentId = map['parent_id'].toString();
@@ -42,9 +43,18 @@ class YamlConverter {
       groupedNodeMaps.putIfAbsent(parentId, () => []).add(childId);
     }
 
+    // node_link_mapの処理
+    final groupedNodeLinkMaps = <String, List<int>>{};
+    for (var link in nodeLinkMaps) {
+      final sourceId = link['source_id'].toString();
+      final targetId = link['target_id'] as int;
+      groupedNodeLinkMaps.putIfAbsent(sourceId, () => []).add(targetId);
+    }
+
     final yamlData = {
       ...nodeYaml,
       'node_maps': groupedNodeMaps,
+      'node_link_maps': groupedNodeLinkMaps, // node_link_mapの追加
     };
 
     return _convertMapToYaml(yamlData);
@@ -109,9 +119,18 @@ class YamlConverter {
       return MapEntry(parentId, childIds);
     });
 
+    // node_link_maps情報を変換
+    final nodeLinkMaps =
+        (decodedYaml['node_link_maps'] as YamlMap).map((key, value) {
+      final sourceId = int.parse(key.toString());
+      final targetIds = List<int>.from(value);
+      return MapEntry(sourceId, targetIds);
+    });
+
     return {
       'nodes': nodes.values.toList(),
       'node_maps': nodeMaps,
+      'node_link_maps': nodeLinkMaps, // node_link_mapのインポート処理を追加
     };
   }
 

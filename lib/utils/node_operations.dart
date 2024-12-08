@@ -11,6 +11,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../constants/node_constants.dart';
+import 'logger.dart';
 
 class NodeOperations {
   /// ノードの追加
@@ -296,5 +297,117 @@ class NodeOperations {
     }
 
     return basePosition;
+  }
+
+  // 新しく作成するリンク処理関数
+  static void linkNode({
+    required WidgetRef ref,
+    required Node activeNode,
+    required Node hoveredNode,
+  }) {
+    final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
+    final projectId = ref.read(screenProvider).projectId;
+    bool isAlreadyLinked = activeNode.targetNodes.contains(hoveredNode) ||
+        hoveredNode.targetNodes.contains(activeNode);
+
+    if (isAlreadyLinked) {
+      // 既存のリンク解除
+      Logger.debug('Unlinking nodes ${activeNode.id} and ${hoveredNode.id}');
+      ref
+          .read(nodesProvider.notifier)
+          .unlinkTargetNodeFromSource(activeNode.id, hoveredNode.id);
+      ref
+          .read(nodesProvider.notifier)
+          .unlinkTargetNodeFromSource(hoveredNode.id, activeNode.id);
+
+      nodeLinkMapModel.deleteNodeMap(activeNode.id, hoveredNode.id, projectId);
+      nodeLinkMapModel.deleteNodeMap(hoveredNode.id, activeNode.id, projectId);
+    } else {
+      // リンク前のチェック
+      if (canLinkNodes(activeNode, hoveredNode)) {
+        Logger.debug(
+            'Linking source ${activeNode.id} to target ${hoveredNode.id}');
+        ref
+            .read(nodesProvider.notifier)
+            .linkTargetNodeToSource(activeNode.id, hoveredNode);
+        nodeLinkMapModel.insertNodeMap(
+            activeNode.id, hoveredNode.id, projectId);
+      } else {
+        Logger.debug('Cannot link directly related nodes');
+      }
+    }
+  }
+
+  static bool canLinkNodes(Node sourceNode, Node targetNode) {
+    // ノードが同じかどうかを確認
+    if (sourceNode == targetNode) return false;
+
+    // 同じ親ノードを持つ子ノード（兄弟ノード）かどうかを確認
+    if (sourceNode.parent == targetNode.parent && sourceNode.parent != null) {
+      return true;
+    }
+
+    // 直系の親子関係かどうかを確認
+    if (sourceNode.parent == targetNode || targetNode.parent == sourceNode) {
+      return false;
+    }
+
+    // 直接的な子ノード関係かどうかを確認
+    if (sourceNode.children.contains(targetNode) ||
+        targetNode.children.contains(sourceNode)) {
+      return false;
+    }
+
+    // ソースノードとターゲットノードのすべての祖先を取得
+    Set<Node> sourceAncestors = getAllAncestors(sourceNode);
+    Set<Node> targetAncestors = getAllAncestors(targetNode);
+
+    // Rootと孫ノードの接続を許可
+    // 条件：一方のノードが他方のノードの祖先で、直接的な親子関係でないこと
+    if (sourceAncestors.contains(targetNode) ||
+        targetAncestors.contains(sourceNode)) {
+      return true;
+    }
+
+    // 同じ祖父母を持つ後代（従兄弟/堂兄弟）かどうかを確認
+    Set<Node> commonAncestors = sourceAncestors.intersection(targetAncestors);
+
+    // 同じ祖父母を持つ後代ノードの接続を許可
+    if (commonAncestors.isNotEmpty) {
+      return true;
+    }
+
+    return true;
+  }
+
+  static Set<Node> getAllAncestors(Node node) {
+    // Create an empty set to store ancestors
+    Set<Node> ancestors = {};
+
+    // Start with the node's parent
+    Node? current = node.parent;
+
+    // Continue climbing up the tree until there are no more parents
+    while (current != null) {
+      // Add the current parent to the ancestors set
+      ancestors.add(current);
+
+      // Move to the parent of the current node
+      current = current.parent;
+    }
+
+    // Return the complete set of ancestors
+    return ancestors;
+  }
+
+  // transformPoint関数の修正（非同期を同期に変更）
+  static Offset transformPoint(double x, double y,
+      {required double scale, required Offset offset}) {
+    // スケールを適用して座標を変換
+    double transformedX = x * scale + offset.dx;
+    double transformedY = y * scale + offset.dy;
+
+    // 座標を返す
+    return Offset(transformedX, transformedY);
   }
 }

@@ -8,6 +8,8 @@ import 'package:flutter_app/utils/snackbar_helper.dart';
 import 'package:flutter_app/utils/yaml_converter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../database/models/node_link_map_model.dart';
+import '../../models/node_link_map.dart';
 import '../../providers/screen_provider.dart';
 
 class ExportDrawerWidget extends ConsumerStatefulWidget {
@@ -40,6 +42,10 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
       final List<NodeMap> rawNodeMapList =
           await nodeMapModel.fetchAllNodeMap(projectId);
 
+      final nodeLinkMapModel = NodeLinkMapModel();
+      final List<NodeLinkMap> rawNodeLinkMapList =
+          await nodeLinkMapModel.fetchAllNodeMap(projectId);
+
       // NodeMap を Map<String, dynamic> に変換
       final nodeMapList = rawNodeMapList.map((nodeMap) {
         return {
@@ -48,9 +54,16 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
         };
       }).toList();
 
+      final nodeLinkMapList = rawNodeLinkMapList.map((nodeMap) {
+        return {
+          'source_id': nodeMap.sourceId,
+          'target_id': nodeMap.targetId,
+        };
+      }).toList();
+
       // YamlConverterを使用して変換
-      final yamlString =
-          YamlConverter.convertNodesToYaml(nodeList, nodeMapList);
+      final yamlString = YamlConverter.convertNodesToYaml(
+          nodeList, nodeMapList, nodeLinkMapList);
 
       setState(() {
         _yamlContent = yamlString;

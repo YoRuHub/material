@@ -21,6 +21,14 @@ class DragPosition extends ChangeNotifier {
     _y = null;
     notifyListeners();
   }
+
+  /// x, y を Offset 型で返す
+  Offset? toOffset() {
+    if (_x != null && _y != null) {
+      return Offset(_x!, _y!); // x と y が null でない場合のみ Offset を返す
+    }
+    return null; // x または y が null の場合は null を返す
+  }
 }
 
 /// ドラッグ位置を管理するProvider

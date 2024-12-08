@@ -12,9 +12,7 @@ import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
-
-import '../database/models/node_link_map_model.dart';
-import 'logger.dart';
+import 'node_operations.dart';
 
 class NodeInteractionHandler {
   final WidgetRef ref;
@@ -23,7 +21,6 @@ class NodeInteractionHandler {
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
   final _nodeMapModel = NodeMapModel();
-  final _nodeLinkMapModel = NodeLinkMapModel();
   NodeInteractionHandler({required this.ref, required this.projectId});
 
   void onPanStart(DragStartDetails details) {
@@ -101,7 +98,6 @@ class NodeInteractionHandler {
     final linkMode = ref.read(screenProvider).isLinkMode;
     final scale = ref.read(screenProvider).scale; // scaleの取得
     final offset = ref.read(screenProvider).offset; // offsetの取得
-    final projectId = ref.read(screenProvider).projectId;
 
     // ドラッグノードが存在する場合
     if (draggedNode != null) {
@@ -112,61 +108,20 @@ class NodeInteractionHandler {
 
     // リンクモードが有効な場合
     if (linkMode) {
-      final activeNodes = ref.read(nodeStateProvider).activeNodes;
       final dragPosition = ref.read(dragPositionProvider);
       final nodes = ref.read(nodesProvider);
 
-      // ドラッグ位置との重なり判定
-      for (var node in nodes) {
-        final Offset center = transformPoint(node.position.x, node.position.y,
-            scale: scale, offset: offset);
-        final double scaledRadius = node.radius * scale;
+      // タッチ判定
+      final hoveredNode = _getHoveredNode(nodes, dragPosition, scale, offset);
 
-        bool isHovered = dragPosition.x != null &&
-            dragPosition.y != null &&
-            (center -
-                        transformPoint(dragPosition.x!, dragPosition.y!,
-                            scale: scale, offset: offset))
-                    .distance <=
-                scaledRadius;
-
-        // ノードがドラッグ位置に重なっている場合
-        if (isHovered) {
-          if (activeNodes.isNotEmpty) {
-            for (final activeNode in activeNodes) {
-              bool isAlreadyLinked = activeNode.targetNodes.contains(node) ||
-                  node.targetNodes.contains(activeNode);
-
-              if (isAlreadyLinked) {
-                // Existing unlinking logic remains the same
-                Logger.debug('Unlinking nodes ${activeNode.id} and ${node.id}');
-                ref
-                    .read(nodesProvider.notifier)
-                    .unlinkTargetNodeFromSource(activeNode.id, node.id);
-                ref
-                    .read(nodesProvider.notifier)
-                    .unlinkTargetNodeFromSource(node.id, activeNode.id);
-
-                _nodeLinkMapModel.deleteNodeMap(
-                    activeNode.id, node.id, projectId);
-                _nodeLinkMapModel.deleteNodeMap(
-                    node.id, activeNode.id, projectId);
-              } else {
-                // Add check before linking
-                if (canLinkNodes(activeNode, node)) {
-                  Logger.debug(
-                      'Linking source ${activeNode.id} to target ${node.id}');
-                  ref
-                      .read(nodesProvider.notifier)
-                      .linkTargetNodeToSource(activeNode.id, node);
-                  _nodeLinkMapModel.insertNodeMap(
-                      activeNode.id, node.id, projectId);
-                } else {
-                  // Optional: Show a user feedback (e.g., toast or dialog)
-                  Logger.debug('Cannot link directly related nodes');
-                }
-              }
-            }
+      // リンク処理
+      if (hoveredNode != null) {
+        // activeNodeを外で取得
+        final activeNodes = ref.read(nodeStateProvider).activeNodes;
+        if (activeNodes.isNotEmpty) {
+          for (final activeNode in activeNodes) {
+            NodeOperations.linkNode(
+                ref: ref, activeNode: activeNode, hoveredNode: hoveredNode);
           }
         }
       }
@@ -175,6 +130,35 @@ class NodeInteractionHandler {
     // ドラッグ位置リセット
     ref.read(dragPositionProvider).reset();
     ref.read(screenProvider.notifier).disablePanning();
+  }
+
+  Node? _getHoveredNode(
+    List<Node> nodes,
+    DragPosition dragPosition,
+    double scale,
+    Offset offset,
+  ) {
+    for (var node in nodes) {
+      final Offset center = NodeOperations.transformPoint(
+          node.position.x, node.position.y,
+          scale: scale, offset: offset);
+      final double scaledRadius = node.radius * scale;
+
+      bool isHovered = dragPosition.x != null &&
+          dragPosition.y != null &&
+          (center -
+                      NodeOperations.transformPoint(
+                          dragPosition.x!, dragPosition.y!,
+                          scale: scale, offset: offset))
+                  .distance <=
+              scaledRadius;
+
+      if (isHovered) {
+        return node; // 重なっているノードを返す
+      }
+    }
+
+    return null; // 重なっているノードがない場合
   }
 
   bool canLinkNodes(Node sourceNode, Node targetNode) {
@@ -237,17 +221,6 @@ class NodeInteractionHandler {
 
     // Return the complete set of ancestors
     return ancestors;
-  }
-
-// transformPoint関数の修正（非同期を同期に変更）
-  Offset transformPoint(double x, double y,
-      {required double scale, required Offset offset}) {
-    // スケールを適用して座標を変換
-    double transformedX = x * scale + offset.dx;
-    double transformedY = y * scale + offset.dy;
-
-    // 座標を返す
-    return Offset(transformedX, transformedY);
   }
 
   void onTapUp(TapUpDetails details) {

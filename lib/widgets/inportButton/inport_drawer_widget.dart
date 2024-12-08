@@ -36,21 +36,21 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
       // YAMLデータをMapに変換
       final importedData = YamlConverter.importYamlToMap(yamlContent);
 
-      // ノード情報とマッピングを取り出す
+      // ノード情報、ノードマッピング、ノードリンク情報を取り出す
       final nodesList = importedData['nodes'] as List<Map<String, dynamic>>;
       final nodeMaps = importedData['node_maps'] as Map<int, List<int>>;
+      final nodeLinkMaps =
+          importedData['node_link_maps'] as Map<int, List<int>>;
 
       // 古いノードIDと新しいNodeオブジェクトの対応を保存するマップ
       final Map<int, Node> idMapping = {};
 
       // 各ノードを追加し、新しいNodeオブジェクトをマップに登録
       for (var node in nodesList) {
-        final oldNodeId = node['id'] as int; // 必要であれば、このキーを確認
+        final oldNodeId = node['id'] as int;
         final title = node['title'] as String;
         final contents = node['contents'] as String;
-
-        // 色を文字列からColorに変換
-        final Color color = Color(node['color']);
+        final color = Color(node['color']); // 色を文字列からColorに変換
 
         // 新しいノードを作成
         Node newNode = await NodeOperations.addNode(
@@ -80,6 +80,24 @@ class InportDrawerWidgetState extends ConsumerState<InportDrawerWidget> {
 
           // 新しいNodeオブジェクトで親子関係を追加
           await NodeOperations.linkChildNode(ref, parentNode.id, childNode);
+        }
+      }
+
+      // ノードリンクマッピングの処理
+      for (var sourceId in nodeLinkMaps.keys) {
+        final targetIds = nodeLinkMaps[sourceId]!;
+
+        // ノード間のリンクを作成
+        final sourceNode = idMapping[sourceId];
+        if (sourceNode == null) continue;
+
+        for (var targetId in targetIds) {
+          final targetNode = idMapping[targetId];
+          if (targetNode == null) continue;
+
+          // 新しいNodeオブジェクトでリンクを追加（必要に応じてリンク操作を追加）
+          NodeOperations.linkNode(
+              ref: ref, activeNode: sourceNode, hoveredNode: targetNode);
         }
       }
 
