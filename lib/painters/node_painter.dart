@@ -6,27 +6,24 @@ import 'package:flutter_app/providers/screen_provider.dart';
 import '../models/node.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../providers/node_provider.dart';
+
 /// ノードの描画を行うクラス
 class NodePainter extends CustomPainter {
-  final List<Node> nodes;
   final double signalProgress;
-  final double scale;
-  final Offset offset;
   final BuildContext context; // BuildContextを追加
   final WidgetRef ref; // Riverpodの参照を追加
 
   /// コンストラクタ
-  /// [nodes] 描画対象のノード
   /// [signalProgress] 信号の進行割合
-  /// [scale] スケールの倍率
-  /// [offset] オフセット位置
-  NodePainter(this.nodes, this.signalProgress, this.scale, this.offset,
-      this.context, this.ref);
+  NodePainter(this.signalProgress, this.context, this.ref);
 
   /// 座標をスケールとオフセットで変換する
   /// [x] X座標
   /// [y] Y座標
   Offset transformPoint(double x, double y) {
+    double scale = ref.read(screenProvider).scale;
+    Offset offset = ref.read(screenProvider).offset;
     return Offset(
       x * scale + offset.dx,
       y * scale + offset.dy,
@@ -89,9 +86,10 @@ class NodePainter extends CustomPainter {
     List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
     final isTitleVisible = ref.read(screenProvider).isTitleVisible;
     final isLinkMode = ref.read(screenProvider).isLinkMode;
-
+    final scale = ref.read(screenProvider).scale;
     // ノード間の接続線の描画
-    for (var node in nodes) {
+    for (var node in ref.read(nodesProvider)) {
+      // 親ノードとの線の描画
       if (node.parent != null) {
         bool isActiveLineage = activeNodes.any((activeNode) =>
             isNodeInActiveLineage(node, activeNode) ||
@@ -130,35 +128,87 @@ class NodePainter extends CustomPainter {
         canvas.drawCircle(Offset(signalX, signalY),
             isActiveLineage ? 3 * scale : 2 * scale, signalPaint);
       }
+
+      // sourceNodesの線の描画
+      if (node.sourceNodes.isNotEmpty) {
+        for (var sourceNode in node.sourceNodes) {
+          final Paint sourceLinePaint = Paint()
+            ..color = Colors.cyan.withOpacity(0.5)
+            ..strokeWidth = scale
+            ..style = PaintingStyle.stroke
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
+
+          final Offset start = transformPoint(
+            sourceNode.position.x,
+            sourceNode.position.y,
+          );
+
+          final Offset end = transformPoint(
+            node.position.x,
+            node.position.y,
+          );
+
+          // Draw the base line
+          canvas.drawLine(start, end, sourceLinePaint);
+
+          // Add signal effect
+          double opacity = 1 * (0.6 + 0.4 * sin(signalProgress * 3.14159 * 5));
+          final Paint signalPaint = Paint()
+            ..color = Colors.white.withOpacity(opacity)
+            ..style = PaintingStyle.fill
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale * 1.5);
+
+          // Calculate signal position along the line
+          final double signalX =
+              start.dx + (end.dx - start.dx) * signalProgress;
+          final double signalY =
+              start.dy + (end.dy - start.dy) * signalProgress;
+
+          canvas.drawCircle(Offset(signalX, signalY), 2 * scale, signalPaint);
+        }
+      }
     }
 
     // LinkMode時のアクティブノードとドラッグ位置の線の描画
     if (isLinkMode && activeNodes.isNotEmpty) {
       final dragPosition = ref.read(dragPositionProvider);
-      // xとyがnullでない場合のみ描画
       if (dragPosition.x != null && dragPosition.y != null) {
         final Offset dragOffset =
             transformPoint(dragPosition.x!, dragPosition.y!);
 
         for (var activeNode in activeNodes) {
-          final Offset nodeOffset = transformPoint(
-            activeNode.position.x,
-            activeNode.position.y,
-          );
+          final Offset nodeOffset =
+              transformPoint(activeNode.position.x, activeNode.position.y);
 
+          // Line paint for the connection
           final Paint linkPaint = Paint()
-            ..color = Colors.cyan.withOpacity(0.8)
-            ..strokeWidth = 2 * scale
+            ..color = Colors.cyan
+            ..strokeWidth = scale
             ..style = PaintingStyle.stroke
             ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
 
           canvas.drawLine(nodeOffset, dragOffset, linkPaint);
+
+          // Signal effect
+          double opacity = 1 * (0.6 + 0.4 * sin(signalProgress * 3.14159 * 5));
+          final Paint signalPaint = Paint()
+            ..color = Colors.white.withOpacity(opacity)
+            ..style = PaintingStyle.fill
+            ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale * 1.5);
+
+          // Calculate signal position along the line
+          final double signalX =
+              nodeOffset.dx + (dragOffset.dx - nodeOffset.dx) * signalProgress;
+          final double signalY =
+              nodeOffset.dy + (dragOffset.dy - nodeOffset.dy) * signalProgress;
+
+          canvas.drawCircle(Offset(signalX, signalY), 2 * scale, signalPaint);
         }
       }
     }
 
     // ノードの描画
-    for (var node in nodes) {
+    for (var node in ref.read(nodesProvider)) {
       final Offset center = transformPoint(node.position.x, node.position.y);
       final double scaledRadius = node.radius * scale;
 
@@ -170,7 +220,12 @@ class NodePainter extends CustomPainter {
                   .distance <=
               scaledRadius;
 
-      // ドラッグ位置がノードに重なっている場合の強調表示
+      // ノードがアクティブノードに含まれる場合は協調しない
+      if (activeNodes.contains(node)) {
+        isHovered = false;
+      }
+
+      // ノードがドラッグ位置に重なっている場合の強調表示
       if (isHovered) {
         final Paint hoverPaint = Paint()
           ..color = Colors.white.withOpacity(0.8)

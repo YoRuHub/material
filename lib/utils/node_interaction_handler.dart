@@ -13,6 +13,9 @@ import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 
+import '../database/models/node_link_map_model.dart';
+import 'logger.dart';
+
 class NodeInteractionHandler {
   final WidgetRef ref;
   final int projectId;
@@ -20,11 +23,13 @@ class NodeInteractionHandler {
   Offset _offsetStart = Offset.zero;
   Offset _dragStart = Offset.zero;
   final _nodeMapModel = NodeMapModel();
+  final _nodeLinkMapModel = NodeLinkMapModel();
   NodeInteractionHandler({required this.ref, required this.projectId});
 
   void onPanStart(DragStartDetails details) {
     final ScreenNotifier screenNotifier = ref.read(screenProvider.notifier);
     final screenState = ref.read(screenProvider);
+    final isLinkMode = ref.read(screenProvider).isLinkMode;
 
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
@@ -32,23 +37,34 @@ class NodeInteractionHandler {
       screenState.scale,
     );
 
+    // isLinkModeがtrueのとき、ノードとの重なりをチェックしてアクティブノードにする
+
     for (var node in ref.read(nodesProvider)) {
       double dx = node.position.x - worldPos.x;
       double dy = node.position.y - worldPos.y;
       double distance = sqrt(dx * dx + dy * dy);
 
+      // ノードの半径より近ければ、そのノードをアクティブにする
       if (distance < node.radius) {
         ref.read(nodeStateProvider.notifier).setDraggedNode(node);
+        if (isLinkMode) {
+          ref
+              .read(nodeStateProvider.notifier)
+              .setActiveNodes([node]); // アクティブノードとして設定
+        }
         screenNotifier.disablePanning();
         _dragStart = details.localPosition;
         return;
       }
     }
 
-    screenNotifier.enablePanning();
-    _offsetStart = screenState.offset;
-    _dragStart = details.localPosition;
-    ref.read(nodeStateProvider.notifier).setDraggedNode(null);
+    // リンクモードでない場合は、通常のドラッグ処理を行う
+    if (!isLinkMode) {
+      screenNotifier.enablePanning();
+      _offsetStart = screenState.offset;
+      _dragStart = details.localPosition;
+      ref.read(nodeStateProvider.notifier).setDraggedNode(null);
+    }
   }
 
   void onPanUpdate(DragUpdateDetails details) {
@@ -82,13 +98,156 @@ class NodeInteractionHandler {
 
   void onPanEnd(DragEndDetails details) {
     final draggedNode = ref.read(nodeStateProvider).draggedNode;
+    final linkMode = ref.read(screenProvider).isLinkMode;
+    final scale = ref.read(screenProvider).scale; // scaleの取得
+    final offset = ref.read(screenProvider).offset; // offsetの取得
+    final projectId = ref.read(screenProvider).projectId;
+
+    // ドラッグノードが存在する場合
     if (draggedNode != null) {
       _checkAndUpdateParentChildRelationship(draggedNode);
       draggedNode.velocity = vector_math.Vector2.zero();
       ref.read(nodeStateProvider.notifier).setDraggedNode(null);
     }
+
+    // リンクモードが有効な場合
+    if (linkMode) {
+      final activeNodes = ref.read(nodeStateProvider).activeNodes;
+      final dragPosition = ref.read(dragPositionProvider);
+      final nodes = ref.read(nodesProvider);
+
+      // ドラッグ位置との重なり判定
+      for (var node in nodes) {
+        final Offset center = transformPoint(node.position.x, node.position.y,
+            scale: scale, offset: offset);
+        final double scaledRadius = node.radius * scale;
+
+        bool isHovered = dragPosition.x != null &&
+            dragPosition.y != null &&
+            (center -
+                        transformPoint(dragPosition.x!, dragPosition.y!,
+                            scale: scale, offset: offset))
+                    .distance <=
+                scaledRadius;
+
+        // ノードがドラッグ位置に重なっている場合
+        if (isHovered) {
+          if (activeNodes.isNotEmpty) {
+            for (final activeNode in activeNodes) {
+              bool isAlreadyLinked = activeNode.targetNodes.contains(node) ||
+                  node.targetNodes.contains(activeNode);
+
+              if (isAlreadyLinked) {
+                // Existing unlinking logic remains the same
+                Logger.debug('Unlinking nodes ${activeNode.id} and ${node.id}');
+                ref
+                    .read(nodesProvider.notifier)
+                    .unlinkTargetNodeFromSource(activeNode.id, node.id);
+                ref
+                    .read(nodesProvider.notifier)
+                    .unlinkTargetNodeFromSource(node.id, activeNode.id);
+
+                _nodeLinkMapModel.deleteNodeMap(
+                    activeNode.id, node.id, projectId);
+                _nodeLinkMapModel.deleteNodeMap(
+                    node.id, activeNode.id, projectId);
+              } else {
+                // Add check before linking
+                if (canLinkNodes(activeNode, node)) {
+                  Logger.debug(
+                      'Linking source ${activeNode.id} to target ${node.id}');
+                  ref
+                      .read(nodesProvider.notifier)
+                      .linkTargetNodeToSource(activeNode.id, node);
+                  _nodeLinkMapModel.insertNodeMap(
+                      activeNode.id, node.id, projectId);
+                } else {
+                  // Optional: Show a user feedback (e.g., toast or dialog)
+                  Logger.debug('Cannot link directly related nodes');
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+
+    // ドラッグ位置リセット
     ref.read(dragPositionProvider).reset();
     ref.read(screenProvider.notifier).disablePanning();
+  }
+
+  bool canLinkNodes(Node sourceNode, Node targetNode) {
+    // ノードが同じかどうかを確認
+    if (sourceNode == targetNode) return false;
+
+    // 同じ親ノードを持つ子ノード（兄弟ノード）かどうかを確認
+    if (sourceNode.parent == targetNode.parent && sourceNode.parent != null) {
+      return true;
+    }
+
+    // 直系の親子関係かどうかを確認
+    if (sourceNode.parent == targetNode || targetNode.parent == sourceNode) {
+      return false;
+    }
+
+    // 直接的な子ノード関係かどうかを確認
+    if (sourceNode.children.contains(targetNode) ||
+        targetNode.children.contains(sourceNode)) {
+      return false;
+    }
+
+    // ソースノードとターゲットノードのすべての祖先を取得
+    Set<Node> sourceAncestors = getAllAncestors(sourceNode);
+    Set<Node> targetAncestors = getAllAncestors(targetNode);
+
+    // Rootと孫ノードの接続を許可
+    // 条件：一方のノードが他方のノードの祖先で、直接的な親子関係でないこと
+    if (sourceAncestors.contains(targetNode) ||
+        targetAncestors.contains(sourceNode)) {
+      return true;
+    }
+
+    // 同じ祖父母を持つ後代（従兄弟/堂兄弟）かどうかを確認
+    Set<Node> commonAncestors = sourceAncestors.intersection(targetAncestors);
+
+    // 同じ祖父母を持つ後代ノードの接続を許可
+    if (commonAncestors.isNotEmpty) {
+      return true;
+    }
+
+    return true;
+  }
+
+  Set<Node> getAllAncestors(Node node) {
+    // Create an empty set to store ancestors
+    Set<Node> ancestors = {};
+
+    // Start with the node's parent
+    Node? current = node.parent;
+
+    // Continue climbing up the tree until there are no more parents
+    while (current != null) {
+      // Add the current parent to the ancestors set
+      ancestors.add(current);
+
+      // Move to the parent of the current node
+      current = current.parent;
+    }
+
+    // Return the complete set of ancestors
+    return ancestors;
+  }
+
+// transformPoint関数の修正（非同期を同期に変更）
+  Offset transformPoint(double x, double y,
+      {required double scale, required Offset offset}) {
+    // スケールを適用して座標を変換
+    double transformedX = x * scale + offset.dx;
+    double transformedY = y * scale + offset.dy;
+
+    // 座標を返す
+    return Offset(transformedX, transformedY);
   }
 
   void onTapUp(TapUpDetails details) {

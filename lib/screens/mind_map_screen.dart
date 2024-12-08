@@ -1,5 +1,6 @@
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/models/node_link_map_model.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
@@ -47,6 +48,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
+  late NodeLinkMapModel _nodeLinkMapModel;
   Widget? currentDrawer;
   late NodeInteractionHandler _nodeInteractionHandler;
 
@@ -63,6 +65,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
+    _nodeLinkMapModel = NodeLinkMapModel();
 
     // 必須の_nodeInteractionHandlerを初期化
     _nodeInteractionHandler =
@@ -125,6 +128,33 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       if (parentNode != null && childNode != null) {
         NodeOperations.linkChildNode(ref, parentNode.id, childNode);
         NodeColorUtils.updateNodeColor(childNode, projectId);
+      }
+    }
+
+    // ターゲットリンクを設定
+    final nodeLinkMap = await _nodeLinkMapModel.fetchAllNodeMap(projectId);
+
+    for (var entry in nodeLinkMap) {
+      int sourceId = entry.sourceId;
+      int targetId = entry.targetId;
+
+      // ノード検索
+      Node? sourceNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == sourceId,
+            orElse: () => null,
+          );
+
+      Node? targetNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == targetId,
+            orElse: () => null,
+          );
+
+      // リンクの設定
+      if (sourceNode != null && targetNode != null) {
+        Logger.debug('Linking source node $sourceId to target node $targetId');
+        await ref
+            .read(nodesProvider.notifier)
+            .linkTargetNodeToSource(sourceId, targetNode);
       }
     }
   }
@@ -239,12 +269,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                                     AppBar().preferredSize.height,
                               ),
                               painter: NodePainter(
-                                  ref.read(nodesProvider),
-                                  _signalAnimation.value,
-                                  screenState.scale,
-                                  screenState.offset,
-                                  context,
-                                  ref),
+                                  _signalAnimation.value, context, ref),
                             );
                           },
                         ),
@@ -330,6 +355,16 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           parentNode: activeNode,
         );
       }
+    } else {
+      await NodeOperations.addNode(
+        context: context,
+        ref: ref,
+        nodeId: 0,
+        title: '',
+        contents: '',
+        color: null,
+        parentNode: null,
+      );
     }
   }
 }

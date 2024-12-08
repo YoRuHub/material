@@ -1,4 +1,4 @@
-import 'package:flutter_app/models/node_map.dart';
+import 'package:flutter_app/models/node_link_map.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'base_model.dart';
 
@@ -9,7 +9,7 @@ class NodeLinkMapModel extends BaseModel {
   static const String columnProjectId = 'project_id';
 
   /// データベースから全てのノードマップを取得
-  Future<List<NodeMap>> fetchAllNodeMap(int projectId) async {
+  Future<List<NodeLinkMap>> fetchAllNodeMap(int projectId) async {
     try {
       // データを取得
       final result = await select(
@@ -21,7 +21,7 @@ class NodeLinkMapModel extends BaseModel {
       // 結果が空でない場合にログとともに返す
       if (result.isNotEmpty) {
         final nodeMap = result
-            .map((row) => NodeMap(
+            .map((row) => NodeLinkMap(
                 row[columnSourceId], row[columnTargetId], row[columnProjectId]))
             .toList();
         return nodeMap;
@@ -68,8 +68,20 @@ class NodeLinkMapModel extends BaseModel {
     }
   }
 
+  Future<void> deleteNodeMap(int sourceId, int targetId, int projectId) async {
+    try {
+      await delete(
+          table,
+          '$columnSourceId = ? AND $columnTargetId = ? AND $columnProjectId = ?',
+          [sourceId, targetId, projectId]);
+    } catch (e) {
+      Logger.error('Error deleting node map: $e');
+      rethrow;
+    }
+  }
+
   /// ノードマップ(親)を削除
-  Future<void> deleteParentNodeMap(int sourceId) async {
+  Future<void> deleteSourceNodeMap(int sourceId) async {
     try {
       await delete(table, '$columnSourceId = ?', [sourceId]);
     } catch (e) {
@@ -79,7 +91,7 @@ class NodeLinkMapModel extends BaseModel {
   }
 
   /// ノードマップ(子)を削除
-  Future<void> deleteChildNodeMap(int targetId) async {
+  Future<void> deleteTargetNodeMap(int targetId) async {
     try {
       await delete(table, '$columnTargetId = ?', [targetId]);
     } catch (e) {

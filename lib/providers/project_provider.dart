@@ -6,6 +6,8 @@ import 'package:flutter_app/models/project.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../database/models/node_link_map_model.dart';
+
 class ProjectNotifier extends StateNotifier<List<Project>> {
   // Add a new field to track the current project ID
   int _currentProjectId = 0;
@@ -17,6 +19,7 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
   final _projectModel = ProjectModel();
   final _nodeModel = NodeModel();
   final _nodeMapModel = NodeMapModel();
+  final _nodeLinkMapModel = NodeLinkMapModel();
 
   void setCurrentProject(int projectId) {
     // Verify that the project ID exists in the state
@@ -122,6 +125,9 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
         // ノードマップテーブルから削除
         await _nodeMapModel.deleteChildNodeMap(node['id']);
         await _nodeMapModel.deleteParentNodeMap(node['id']);
+        // ノードリンクマップテーブルから削除
+        await _nodeLinkMapModel.deleteSourceNodeMap(node['id']);
+        await _nodeLinkMapModel.deleteTargetNodeMap(node['id']);
       }
       state = state.where((p) => p.id != id).toList();
     } catch (e) {

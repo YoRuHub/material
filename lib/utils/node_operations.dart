@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/database/models/node_link_map_model.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/providers/node_provider.dart';
@@ -116,6 +117,7 @@ class NodeOperations {
   static Future<void> deleteNode(Node targetNode, WidgetRef ref) async {
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
+    final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final projectId = ref.read(screenProvider).projectId;
@@ -125,19 +127,23 @@ class NodeOperations {
       await deleteNode(targetNode.children[i], ref);
     }
 
-    // 子ノードを削除
+    // 親ノードから削除
     final parentNode = targetNode.parent;
     if (parentNode != null) {
       await nodesNotifier.removeChildFromNode(parentNode.id, targetNode);
       nodeMapModel.deleteParentNodeMap(parentNode.id);
+      nodeLinkMapModel.deleteSourceNodeMap(parentNode.id);
     }
 
     // プロバイダーから削除
     nodesNotifier.removeNode(targetNode);
+    nodesNotifier.removeSourceNodeReferences(targetNode.id);
 
     // dbから削除
     await nodeModel.deleteNode(targetNode.id, projectId);
     await nodeMapModel.deleteParentNodeMap(targetNode.id);
+    await nodeLinkMapModel.deleteSourceNodeMap(targetNode.id);
+    await nodeLinkMapModel.deleteTargetNodeMap(targetNode.id);
   }
 
   /// 子ノードを切り離す

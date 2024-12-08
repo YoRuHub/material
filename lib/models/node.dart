@@ -17,8 +17,8 @@ class Node {
     required this.projectId,
     required this.createdAt,
     List<Node>? children,
-    List<Node>? sourceNodes,
     List<Node>? targetNodes,
+    List<Node>? sourceNodes,
   })  : children = children ?? [],
         sourceNodes = sourceNodes ?? [],
         targetNodes = targetNodes ?? [];
@@ -37,8 +37,7 @@ class Node {
   late String contents;
   final int projectId;
   final String createdAt;
-
   List<Node> children;
-  List<Node> sourceNodes;
   List<Node> targetNodes;
+  List<Node> sourceNodes;
 }
