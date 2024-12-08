@@ -41,6 +41,10 @@ class NodeStateNotifier extends StateNotifier<NodeState> {
     state = state.resetActiveWith(activeNodes: []);
   }
 
+  void clearSelectedNode() {
+    state = state.resetSelectedWith(selectedNode: null);
+  }
+
   // 状態をリセットする
   void resetState() {
     state = NodeState();
@@ -74,6 +78,12 @@ class NodeState {
   NodeState resetActiveWith({List<Node>? activeNodes}) {
     return NodeState(
       activeNodes: activeNodes ?? [],
+    );
+  }
+
+  NodeState resetSelectedWith({Node? selectedNode}) {
+    return NodeState(
+      selectedNode: selectedNode,
     );
   }
 }

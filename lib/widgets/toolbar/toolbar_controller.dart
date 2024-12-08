@@ -97,6 +97,7 @@ class ToolbarController {
     }
 
     nodeStateNotifier.clearActiveNodes();
+    nodeStateNotifier.clearSelectedNode();
   }
 
   void togglePhysics() {

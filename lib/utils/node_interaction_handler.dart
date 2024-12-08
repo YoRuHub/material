@@ -269,6 +269,7 @@ class NodeInteractionHandler {
         }
         ref.read(nodeStateProvider.notifier).setActiveNodes([]);
       }
+      ref.read(nodeStateProvider.notifier).clearSelectedNode();
     }
 
     return isNodeSelected;
