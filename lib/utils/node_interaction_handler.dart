@@ -319,6 +319,13 @@ class NodeInteractionHandler {
         // 循環参照が発生するか確認
         if (_wouldCreateCycle(draggedNode, node)) continue;
 
+        // **リンク済みの関係があれば解除**
+        if (draggedNode.targetNodes.contains(node) ||
+            node.targetNodes.contains(draggedNode)) {
+          NodeOperations.linkNode(
+              ref: ref, activeNode: draggedNode, hoveredNode: node);
+        }
+
         // 新しい親子関係を形成
         if (node != draggedNode.parent) {
           // 現在の親ノードからこのノードを削除

@@ -8,11 +8,89 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 /// メインの物理演算更新
 class NodePhysics {
+  /// 外部リンク（SourceNodes, TargetNodes）のノード間の力の更新
+  /// 外部リンクされたノード間に適度な引力を発生させる
+  /// 通常の親子関係よりも弱い力を適用する
+  ///
+  /// [node] 中心となるノード
+  static void updateExternalLinkedNodes(Node node, ref) {
+    Set<Node> externalLinkedNodes = _findExternalLinkedNodes(node);
+
+    final settings = ref.read(settingsNotifierProvider);
+    for (var linkedNode in externalLinkedNodes) {
+      if (linkedNode == node) continue;
+
+      vector_math.Vector2 direction = node.position - linkedNode.position;
+      double distance = direction.length;
+
+      // 外部リンクの理想距離は親子関係よりも大きく設定
+      double externalLinkDistance = settings.idealNodeDistance * 3;
+
+      if (distance > externalLinkDistance) {
+        vector_math.Vector2 targetPosition =
+            node.position - direction.normalized() * externalLinkDistance;
+
+        double strengthMultiplier =
+            (distance - externalLinkDistance) / externalLinkDistance;
+        strengthMultiplier =
+            min(NodeConstants.maxForceMultiplier * 0.5, strengthMultiplier);
+
+        // 外部リンクの力を通常の半分以下に設定
+        double externalAttractionCoefficient =
+            NodeConstants.attractionCoefficient * 0.25;
+
+        vector_math.Vector2 movement = (targetPosition - linkedNode.position) *
+            (externalAttractionCoefficient * strengthMultiplier);
+
+        linkedNode.velocity += movement;
+      }
+    }
+  }
+
+  /// 外部リンクされたノードの検索
+  /// 指定されたノードから繋がる全ての外部リンクノードを検索する
+  ///
+  /// [startNode] 検索を開始するノード
+  ///
+  /// Returns: 外部リンクされたノードのSet
+  static Set<Node> _findExternalLinkedNodes(Node startNode) {
+    Set<Node> externalLinkedNodes = {};
+    Set<Node> visited = {}; // 探索済みノードを追跡
+    List<Node> queue = [startNode];
+
+    while (queue.isNotEmpty) {
+      Node currentNode = queue.removeAt(0);
+
+      // 既に訪問済みのノードはスキップ
+      if (visited.contains(currentNode)) continue;
+
+      visited.add(currentNode);
+      externalLinkedNodes.add(currentNode);
+
+      // 外部リンクノードを収集
+      List<Node> relatedNodes = [
+        // SourceNodes
+        ...currentNode.sourceNodes,
+
+        // TargetNodes
+        ...currentNode.targetNodes,
+      ];
+
+      // 未訪問の関連ノードをキューに追加
+      for (var node in relatedNodes) {
+        if (!visited.contains(node)) {
+          queue.add(node);
+        }
+      }
+    }
+
+    return externalLinkedNodes;
+  }
+
   /// メインの物理演算更新
   /// [nodes] = ノードリスト
   /// [draggedNode] = ドラッグ中のノード
   /// [isPhysicsEnabled] = 物理演算を有効にするか
-
   static void updatePhysics({
     required List<Node> nodes,
     required Node? draggedNode,
@@ -34,6 +112,11 @@ class NodePhysics {
       if (!node.isTemporarilyDetached) {
         _applyRepulsionForces(node, nodes, draggedNode, ref);
         _applyAttractionForces(node, draggedNode, ref);
+        updateConnectedNodes(node, ref);
+
+        // 新たに外部リンクノードの力の更新を追加
+        updateExternalLinkedNodes(node, ref);
+
         _updateNodePosition(node);
       }
     }
@@ -250,6 +333,11 @@ class NodePhysics {
   /// その2つのノードを引き寄せる力の大きさを計算し
   /// その力に応じて velocity を更新する
   ///
+  /// [node] 中心となるノード/// 接続されたノード間の力の更新
+  /// 2つのノードが距離的に近づいている場合に
+  /// その2つのノードを引き寄せる力の大きさを計算し
+  /// その力に応じて velocity を更新する
+  ///
   /// [node] 中心となるノード
   static void updateConnectedNodes(Node node, ref) {
     Set<Node> connectedNodes = _findConnectedNodes(node);
@@ -270,9 +358,13 @@ class NodePhysics {
         strengthMultiplier =
             min(NodeConstants.maxForceMultiplier, strengthMultiplier);
 
+        // 親子関係の力を半分に減少させる
+        double attractionCoefficient =
+            NodeConstants.attractionCoefficient * 0.5; // 力を半分に
+
         vector_math.Vector2 movement =
             (targetPosition - connectedNode.position) *
-                (NodeConstants.attractionCoefficient * strengthMultiplier);
+                (attractionCoefficient * strengthMultiplier);
 
         connectedNode.velocity += movement;
       }
