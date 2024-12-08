@@ -2,7 +2,20 @@ class NodeConstants {
   // --- 距離関連定数 ---
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
   static const double nodePreferredDistance = 100.0;
+
+  /// 今これを使ってノード感の距離を決定している
   static const double idealNodeDistance = 100.0;
+  // 親子関係の引力パラメータ
+  static const double parentChildAttractionCoefficient = 0.05;
+
+  /// settingに移す
+  static const double parentChildIdealDistance = 100.0;
+
+  // リンク関係の引力パラメータsettingに移す
+  static const double linkAttractionCoefficient = 0.005;
+
+  ///settingに移す
+  static const double linkIdealDistance = 1000.0;
 
   /// ノードがスナップするための閾値距離（ユーザー操作で接近時に使用）
   static const double snapTriggerDistance = 10.0;
