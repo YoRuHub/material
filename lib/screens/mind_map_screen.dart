@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_link_map_model.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
@@ -54,6 +57,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   Widget? currentDrawer;
   late NodeInteractionHandler _nodeInteractionHandler;
 
+  late Timer _inactiveTimer; // タイマーを追加
+  final Duration _inactiveDuration = const Duration(
+      seconds: NodeConstants.inactiveDurationTime); // 操作がない時間（5秒）
+
   @override
   void initState() {
     super.initState();
@@ -73,8 +80,24 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _nodeInteractionHandler =
         NodeInteractionHandler(ref: ref, projectId: widget.projectId);
 
+    // 操作がない場合にアニメーションを停止するためのタイマー
+    _startInactiveTimer();
+
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _prepareInitialization();
+    });
+  }
+
+  // タイマーを開始
+  void _startInactiveTimer() {
+    _inactiveTimer = Timer.periodic(_inactiveDuration, (timer) {
+      Logger.debug('タイマーが発火しました。');
+
+      // 明示的にアニメーションを停止
+      if (_controller.isAnimating) {
+        _controller.stop();
+        Logger.debug('操作がない場合にアニメーションを停止します。');
+      }
     });
   }
 
@@ -179,6 +202,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   void dispose() {
     _controller.dispose();
+    _inactiveTimer.cancel(); // タイマーを停止
     super.dispose();
   }
 
@@ -261,6 +285,15 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         onPanUpdate: _nodeInteractionHandler.onPanUpdate,
                         onPanEnd: _nodeInteractionHandler.onPanEnd,
                         onTapUp: _nodeInteractionHandler.onTapUp,
+                        onPanDown: (details) {
+                          // 操作があったらタイマーをリセットしてアニメーションを再開
+                          _inactiveTimer.cancel(); // 現在のタイマーをキャンセル
+                          Logger.debug('操作が発生しました。アニメーションを再開します。');
+                          _controller.repeat(); // アニメーションを再開
+
+                          // 新しいタイマーを開始
+                          _startInactiveTimer();
+                        },
                         child: AnimatedBuilder(
                           animation: _controller,
                           builder: (context, child) {
