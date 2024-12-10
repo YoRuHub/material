@@ -48,6 +48,13 @@ class DatabaseSchemas {
         ideal_node_distance REAL DEFAULT 100.0
         )
     ''',
+    'api': '''
+      CREATE TABLE IF NOT EXISTS api (
+        product TEXT,
+        api_key TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      )
+    '''
   };
   // defaultDataSchemas
   static const Map<String, String> insertSchemas = {
