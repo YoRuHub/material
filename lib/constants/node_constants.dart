@@ -94,6 +94,6 @@ class NodeConstants {
   /// デタッチするノードの速度
   static const double touchSpeedMultiplier = 30;
 
-  ///　操作タイマーの間隔
-  static const int inactiveDurationTime = 60;
+  ///　操作タイマーの間隔（5分間の間隔を指定）
+  static const int inactiveDurationTime = 60 * 5;
 }

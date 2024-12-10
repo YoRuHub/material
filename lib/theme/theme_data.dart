@@ -10,7 +10,7 @@ ThemeData buildThemeData() {
       primary: Colors.cyan,
       secondary: Color.fromARGB(100, 0, 0, 0),
       onSecondary: Color.fromARGB(255, 0, 0, 0),
-      surface: Color.fromARGB(30, 255, 255, 255),
+      surface: Color.fromARGB(255, 30, 30, 30),
       onSurface: Color.fromARGB(100, 255, 255, 255),
       error: Color(0xFFEE4266),
       onError: Colors.white,
