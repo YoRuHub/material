@@ -79,10 +79,10 @@ class ModelSelectorWidget extends ConsumerWidget {
                   value: selectedGeminiModel,
                   isExpanded: true,
                   onChanged: onGeminiModelChanged,
-                  items: GeminiModel.values.map((GeminiModel model) {
+                  items: subModels.map((GeminiModel model) {
                     return DropdownMenuItem<GeminiModel>(
                       value: model,
-                      child: Text(subModels[model.index]),
+                      child: Text(model.displayName), // displayNameを使用
                     );
                   }).toList(),
                 ),

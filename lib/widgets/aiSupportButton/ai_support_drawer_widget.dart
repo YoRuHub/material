@@ -1,10 +1,9 @@
-// lib/screens/ai_support_drawer_widget.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_app/utils/api_utils.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../models/ai_model_data.dart';
-import '../../utils/snackbar_helper.dart';
 import 'model_selector_widget.dart';
 
 class AiSupportDrawerWidget extends ConsumerStatefulWidget {
@@ -14,25 +13,77 @@ class AiSupportDrawerWidget extends ConsumerStatefulWidget {
   AiSupportDrawerWidgetState createState() => AiSupportDrawerWidgetState();
 }
 
-class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget> {
+class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget>
+    with TickerProviderStateMixin {
   final TextEditingController _textController = TextEditingController();
 
   // メインAIモデルの選択状態
   AiModel _selectedMainModel = AiModel.gemini;
 
   // Geminiのサブモデル選択状態
-  GeminiModel _selectedGeminiModel = GeminiModel.gemini15;
+  GeminiModel _selectedGeminiModel = GeminiModel.gemini15Flash;
+
+  // プロンプトのヒントテキスト
+  String _hintText = 'Enter your prompt...';
+
+  // ローディング状態
+  bool _isLoading = false;
+
+  // アニメーションコントローラ
+  late final AnimationController _controller;
+  late final Animation<double> _rotation;
 
   @override
   void initState() {
     super.initState();
     _updatePrompt();
+
+    // アニメーションコントローラの初期化
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 1),
+    );
+    _rotation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _controller, curve: Curves.linear),
+    );
   }
 
   // プロンプト更新
   void _updatePrompt() {
-    _textController.text =
-        AiModelData.getPrompt(_selectedMainModel, _selectedGeminiModel);
+    setState(() {
+      _hintText =
+          AiModelData.getPrompt(_selectedMainModel, _selectedGeminiModel);
+    });
+  }
+
+  // 非同期でAPIにリクエストを送信
+  Future<void> _sendPrompt() async {
+    setState(() {
+      _isLoading = true; // ローディング開始
+    });
+
+    _controller.repeat(); // アニメーション開始
+
+    // APIリクエストの非同期処理
+    final response = await ApiUtils.postToGemini(
+      ref: ref,
+      model: _selectedMainModel.name,
+      modelVersion: _selectedGeminiModel.name,
+      inputText: _textController.text,
+    );
+
+    Logger.debug('Response: $response');
+
+    setState(() {
+      _isLoading = false; // ローディング終了
+    });
+    _controller.stop(); // アニメーション停止
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose(); // AnimationControllerの破棄
+    super.dispose();
   }
 
   @override
@@ -60,6 +111,9 @@ class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget> {
                 onMainModelChanged: (AiModel? newValue) {
                   setState(() {
                     _selectedMainModel = newValue!;
+                    _selectedGeminiModel =
+                        AiModelData.getSubModels(_selectedMainModel)
+                            .first; // 最初のサブモデルに設定
                     _updatePrompt();
                   });
                 },
@@ -81,7 +135,7 @@ class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget> {
                   maxLines: null,
                   expands: true,
                   decoration: InputDecoration(
-                    hintText: 'Enter your prompt...',
+                    hintText: _hintText, // ヒントテキストを設定
                     border: OutlineInputBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
@@ -105,16 +159,20 @@ class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () {
-                        String targetModel =
-                            _selectedMainModel == AiModel.gemini
-                                ? AiModelData.subModels[AiModel.gemini]![
-                                    _selectedGeminiModel.index]
-                                : 'OpenAI';
-                        SnackBarHelper.success(
-                            context, 'Sent prompt to $targetModel.');
-                      },
-                      icon: const Icon(Icons.send),
+                      onPressed: _isLoading ? null : _sendPrompt, // ローディング中は無効化
+                      icon: _isLoading
+                          ? AnimatedBuilder(
+                              key: const ValueKey('refreshIcon'),
+                              animation: _rotation,
+                              builder: (context, child) {
+                                return Transform.rotate(
+                                  angle: _rotation.value * 6.3,
+                                  child: const Icon(Icons.refresh,
+                                      color: Colors.grey),
+                                );
+                              },
+                            )
+                          : const Icon(Icons.send),
                       label: const Text('Send Prompt'),
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),

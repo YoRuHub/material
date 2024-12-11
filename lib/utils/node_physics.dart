@@ -42,8 +42,8 @@ class NodePhysics {
   /// 反発力の適用
   static void _applyRepulsionForces(
       Node node, List<Node> nodes, WidgetRef ref) {
+    vector_math.Vector2 totalForce = vector_math.Vector2.zero();
     final settings = ref.read(settingsNotifierProvider);
-
     for (var otherNode in nodes) {
       if (node == otherNode) continue;
 
@@ -54,8 +54,15 @@ class NodePhysics {
         direction.normalize();
         double repulsionStrength = (settings.parentChildDistance - distance) *
             NodeConstants.repulsionCoefficient;
-        node.velocity += direction * repulsionStrength;
+        totalForce += direction * repulsionStrength;
       }
+    }
+
+    // If total force is extremely small, consider the node stationary
+    if (totalForce.length < NodeConstants.forceThreshold) {
+      node.velocity = vector_math.Vector2.zero();
+    } else {
+      node.velocity += totalForce;
     }
   }
 
@@ -137,7 +144,14 @@ class NodePhysics {
 
   /// ノードの位置を更新
   static void _updateNodePosition(Node node) {
+    vector_math.Vector2 oldPosition = node.position;
     node.position += node.velocity;
+
+    // If position change is microscopic, stop the node
+    if ((node.position - oldPosition).length < NodeConstants.forceThreshold) {
+      node.velocity = vector_math.Vector2.zero();
+    }
+
     node.velocity *= NodeConstants.velocityDampingFactor;
   }
 }

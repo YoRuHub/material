@@ -14,13 +14,16 @@ class NodeConstants {
   static const double repulsionCoefficient = 0.001;
 
   /// 速度の減衰率（フレームごとに速度が減少する割合）
-  static const double velocityDampingFactor = 0.9;
+  static const double velocityDampingFactor = 0;
 
   /// 親子関係の引力パラメータ
   static const double parentChildAttraction = 10;
 
   // リンク関係の引力パラメータ
   static const double linkAttraction = 1;
+
+  /// ノードが非常に遅いときに強い減衰を適用する速度の閾値
+  static const double forceThreshold = 0.1;
 
   // --- アニメーション関連定数 ---
   /// アニメーション全体のフレーム数（動きが滑らかになるステップ数）

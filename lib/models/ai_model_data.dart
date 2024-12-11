@@ -1,41 +1,45 @@
-// AIの種類
+// lib/models/ai_model_data.dart
+
 enum AiModel {
   gemini,
   openAi,
 }
 
-// Geminiのサブモデル
-enum GeminiModel {
-  gemini15,
-  gemini15Flash,
+class GeminiModel {
+  final String name;
+  final String displayName;
+
+  const GeminiModel._(this.name, this.displayName);
+
+  static const gemini15Flash =
+      GeminiModel._('gemini-1.5-flash', 'Gemini 1.5 Flash');
+
+  static List<GeminiModel> get values => [gemini15Flash];
 }
 
 class AiModelData {
-  // サブモデル表示用のMap
-  static final Map<AiModel, List<String>> subModels = {
-    AiModel.gemini: ['Gemini 1.5', 'Gemini 1.5 Flash'],
+  // AiModelごとのサブモデルリスト
+  static const Map<AiModel, List<GeminiModel>> subModels = {
+    AiModel.gemini: [GeminiModel.gemini15Flash],
+    AiModel.openAi: [], // OpenAIにはサブモデルがない例
   };
 
   // プロンプト例
-  static final Map<String, String> examplePrompts = {
-    'Gemini 1.5': 'Write a Python script to analyze stock market trends...',
-    'Gemini 1.5 Flash': 'Analyze real-time data quickly for insights...',
+  static const Map<String, String> examplePrompts = {
+    'gemini-1.5': 'Write a Python script to analyze stock market trends...',
+    'gemini-1.5-flash':
+        'Handle high-speed data processing for instant results...',
     'OpenAI':
         'Generate a creative short story about artificial intelligence...',
   };
 
-  // サブモデル選択の例
-  static List<String> getSubModels(AiModel model) {
+  // サブモデルリストを取得
+  static List<GeminiModel> getSubModels(AiModel model) {
     return subModels[model] ?? [];
   }
 
-  // プロンプト例取得
-  static String getPrompt(AiModel model, GeminiModel? geminiModel) {
-    if (model == AiModel.gemini && geminiModel != null) {
-      return examplePrompts[subModels[model]![geminiModel.index]] ?? '';
-    } else if (model == AiModel.openAi) {
-      return examplePrompts['OpenAI'] ?? '';
-    }
-    return '';
+  // プロンプト例を取得
+  static String getPrompt(AiModel model, GeminiModel geminiModel) {
+    return examplePrompts[geminiModel.name] ?? '';
   }
 }
