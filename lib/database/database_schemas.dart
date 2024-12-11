@@ -56,9 +56,10 @@ class DatabaseSchemas {
       CREATE TABLE IF NOT EXISTS api (
         product TEXT,
         api_key TEXT,
+        status TEXT DEFAULT 'none',
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-      )
-    '''
+      );
+    ''',
   };
   // defaultDataSchemas
   static const Map<String, String> insertSchemas = {

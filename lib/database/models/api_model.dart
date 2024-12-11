@@ -5,10 +5,11 @@ class ApiModel extends BaseModel {
   static const String table = 'api';
   static const String columnProduct = 'product';
   static const String columnApiKey = 'api_key';
+  static const String columnStatus = 'status';
   static const String columnCreatedAt = 'created_at';
 
   /// プロジェクトに属するノード全件取得
-  Future<String?> fetchApi(String product) async {
+  Future<Map<String, dynamic>?> fetchApi(String product) async {
     try {
       final result = await select(
         table,
@@ -18,7 +19,11 @@ class ApiModel extends BaseModel {
 
       if (result.isNotEmpty) {
         Logger.debug('Successfully fetched api: ${result[0][columnProduct]}');
-        return result[0][columnApiKey] as String?;
+        return {
+          'product': result[0][columnProduct],
+          'api_key': result[0][columnApiKey],
+          'status': result[0][columnStatus],
+        };
       } else {
         return null; // 結果が空の場合、nullを返す
       }
@@ -28,18 +33,14 @@ class ApiModel extends BaseModel {
     }
   }
 
-  Future<void> insertApi(String product, String apiKey) async {
+  Future<void> upsertApi(String product, String apiKey,
+      {String? status}) async {
     try {
-      await insert(table, {columnProduct: product, columnApiKey: apiKey});
-    } catch (e) {
-      Logger.error('Error inserting api: $e');
-      rethrow;
-    }
-  }
-
-  Future<void> upsertApi(String product, String apiKey) async {
-    try {
-      final data = {columnProduct: product, columnApiKey: apiKey};
+      final data = {
+        columnProduct: product,
+        columnApiKey: apiKey,
+        columnStatus: status
+      };
       await upsert(table, data, '$columnProduct = ?', [product]);
     } catch (e) {
       Logger.error('Error upserting api: $e');

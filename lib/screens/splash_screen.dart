@@ -7,6 +7,9 @@ import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
+import '../database/models/api_model.dart';
+import '../providers/api_provider.dart';
+
 class SplashScreen extends ConsumerStatefulWidget {
   const SplashScreen({super.key});
 
@@ -34,6 +37,8 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await _loadProjects();
       // 設定データの読み込み
       await _loadSettings();
+      // APIキーの読み込み
+      await _loadApiSettings();
 
       // 初期化処理が終わったら、HomeScreenに遷移
       if (mounted) {
@@ -86,6 +91,32 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await settingsNotifier.loadSettings(); // 設定を読み込む処理を追加
     } catch (e) {
       Logger.error('Error loading settings: ${e.toString()}');
+    }
+  }
+
+  Future<void> _loadApiSettings() async {
+    try {
+      final apiModel = ApiModel();
+
+      // AIモデル（例：Gemini、OpenAI）に基づいてAPIタイプを決定
+      final apiTypes = ['Gemini', 'OpenAI']; // 必要に応じて追加
+      for (var apiType in apiTypes) {
+        final apiData = await apiModel.fetchApi(apiType); // API設定を取得
+
+        if (apiData != null) {
+          // APIのステータスがnullまたは空であれば、noneとする
+          final apiStatus = apiData['status']?.isEmpty ?? true
+              ? ApiStatus.none
+              : apiData['status'] == 'valid'
+                  ? ApiStatus.valid
+                  : ApiStatus.invalid;
+
+          // プロバイダーに設定
+          ref.read(apiStatusProvider.notifier).updateStatus(apiType, apiStatus);
+        }
+      }
+    } catch (e) {
+      Logger.error('Error loading API settings: ${e.toString()}');
     }
   }
 }
