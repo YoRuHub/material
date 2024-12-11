@@ -203,7 +203,7 @@ class NodeOperations {
   /// ノード間の距離チェック
   static bool areNodesClose(Node node1, Node node2) {
     double distance = (node1.position - node2.position).length;
-    return distance < NodeConstants.snapTriggerDistance;
+    return distance < NodeConstants.snapEffectRange;
   }
 
   // ランダムな位置オフセットの生成
@@ -268,35 +268,22 @@ class NodeOperations {
     );
 
     // ノードの重なりチェックと調整
-    basePosition =
-        _adjustPositionToAvoidOverlap(basePosition, ref.read(nodesProvider));
+    basePosition = _adjustPositionSlightly(basePosition);
 
     return basePosition;
   }
 
   /// ノードの位置が重ならないように調整
-  static vector_math.Vector2 _adjustPositionToAvoidOverlap(
-    vector_math.Vector2 basePosition,
-    List<Node> nodes,
-  ) {
-    const double minDistance = NodeConstants.nodePreferredDistance; // 最小距離
+  static vector_math.Vector2 _adjustPositionSlightly(
+      vector_math.Vector2 basePosition) {
+    const double adjustmentFactor = 0.5; // ずらす範囲の調整係数
 
-    // 既存ノードと重ならないように少しずらす
-    for (var node in nodes) {
-      final distance =
-          CoordinateUtils.calculateDistance(basePosition, node.position);
-
-      // 距離が最小距離より小さい場合、重なっているので少しずらす
-      if (distance < minDistance) {
-        basePosition = basePosition +
-            vector_math.Vector2(
-              (Random().nextDouble() * 2 - 1) * minDistance,
-              (Random().nextDouble() * 2 - 1) * minDistance,
-            );
-      }
-    }
-
-    return basePosition;
+    // ランダムに少しだけずらす
+    return basePosition +
+        vector_math.Vector2(
+          (Random().nextDouble() * 2 - 1) * adjustmentFactor,
+          (Random().nextDouble() * 2 - 1) * adjustmentFactor,
+        );
   }
 
   // 新しく作成するリンク処理関数

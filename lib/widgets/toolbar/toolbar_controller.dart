@@ -33,12 +33,12 @@ class ToolbarController {
 
   Future<void> alignNodesHorizontal() async {
     await NodeAlignment.alignNodesHorizontal(
-        MediaQuery.of(context).size, (fn) => fn(), ref);
+        context, MediaQuery.of(context).size, (fn) => fn(), ref);
   }
 
   Future<void> alignNodesVertical() async {
     await NodeAlignment.alignNodesVertical(
-        MediaQuery.of(context).size, (fn) => fn(), ref);
+        context, MediaQuery.of(context).size, (fn) => fn(), ref);
   }
 
   Future<void> detachChildren() async {

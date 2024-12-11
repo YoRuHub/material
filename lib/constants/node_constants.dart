@@ -1,40 +1,26 @@
 class NodeConstants {
   // --- 距離関連定数 ---
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
-  static const double nodePreferredDistance = 100.0;
+  static const double parentChildDistance = 100.0;
 
-  /// 今これを使ってノード感の距離を決定している
-  static const double idealNodeDistance = 100.0;
-  // 親子関係の引力パラメータ
-  static const double parentChildAttractionCoefficient = 0.05;
-
-  /// settingに移す
-  static const double parentChildIdealDistance = 100.0;
-
-  // リンク関係の引力パラメータsettingに移す
-  static const double linkAttractionCoefficient = 0.005;
-
-  ///settingに移す
-  static const double linkIdealDistance = 1000.0;
+  /// リンク間の理想的な距離
+  static const double linkDistance = 1000.0;
 
   /// ノードがスナップするための閾値距離（ユーザー操作で接近時に使用）
-  static const double snapTriggerDistance = 30.0;
-
-  /// スナップ効果が適用される最大距離（この範囲内でノードがスナップされる）
-  static const double snapEffectRange = 35.0;
+  static const double snapEffectRange = 50.0;
 
   // --- 力・物理演算関連定数 ---
   /// ノード同士の反発力を決定する係数（小さいほど反発力が弱い）
-  static const double repulsionCoefficient = 0.0001;
-
-  /// ノード同士の引力を決定する係数（大きいほど引力が強い）
-  static const double attractionCoefficient = 0.01;
-
-  /// 力の最大倍率（物理演算における力の上限を制限するための係数）
-  static const double maxForceMultiplier = 0.1;
+  static const double repulsionCoefficient = 0.001;
 
   /// 速度の減衰率（フレームごとに速度が減少する割合）
   static const double velocityDampingFactor = 0.9;
+
+  /// 親子関係の引力パラメータ
+  static const double parentChildAttraction = 10;
+
+  // リンク関係の引力パラメータ
+  static const double linkAttraction = 1;
 
   // --- アニメーション関連定数 ---
   /// アニメーション全体のフレーム数（動きが滑らかになるステップ数）
@@ -61,25 +47,16 @@ class NodeConstants {
 
   // --- ノード関連定数 ---
   /// ノードの標準的な半径（UI上での見た目のサイズ）
-  static const double defaultNodeRadius = 20.0;
+  static const double defaultNodeRadius = 30.0;
 
   /// ズームアウト時の最小拡大率（0.0 - 1.0 の範囲）
-  static const double minScale = 0.1;
+  static const double minScale = 0.01;
 
   /// ズームイン時の最大拡大率
   static const double maxScale = 5.0;
 
-  /// 新規ノードのデフォルトX座標（初期配置時の基準値）
-  static const double defaultStartX = 100.0;
-
-  /// 新規ノードのデフォルトY座標（初期配置時の基準値）
-  static const double defaultStartY = 100.0;
-
   /// ノードをランダム配置する際の最大オフセット範囲
   static const double randomOffsetRange = 200.0;
-
-  /// ノード間の相互作用が発生する距離
-  static const double nodeInteractionDistance = 30.0;
 
   // --- その他定数 ---
   /// ドラッグ中のノードの追従速度（ユーザー操作時の動きの速さ）

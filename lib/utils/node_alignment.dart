@@ -5,18 +5,32 @@ import 'package:vector_math/vector_math.dart' as vector_math;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../models/node.dart';
 import '../constants/node_constants.dart';
+import '../providers/screen_provider.dart';
 import '../providers/settings_provider.dart';
+import 'coordinate_utils.dart';
 
 class NodeAlignment {
   // 垂直方向の配置
   static Future<void> alignNodesVertical(
+    BuildContext context,
     Size screenSize,
     void Function(VoidCallback fn) setState,
     WidgetRef ref,
   ) async {
     final List<Node> nodes = ref.read(nodesProvider);
     if (nodes.isEmpty) return;
+    // 画面中心座標を計算
+    final screenCenter = CoordinateUtils.calculateScreenCenter(
+      MediaQuery.of(context).size, // 画面サイズ
+      AppBar().preferredSize.height, // AppBarの高さ（指定がなければ0にしても良い）
+    );
 
+    // 画面の中央をワールド座標に変換
+    final basePosition = CoordinateUtils.screenToWorld(
+      screenCenter,
+      ref.read(screenProvider).offset,
+      ref.read(screenProvider).scale,
+    );
     // 一度だけ設定を取得
     final settings = ref.read(settingsNotifierProvider);
 
@@ -24,19 +38,14 @@ class NodeAlignment {
     List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
 
     // 画面の中心を計算
-    final double screenCenterX = screenSize.width / 2;
-    const double startY = NodeConstants.defaultStartY;
+    final double startX = basePosition.x; // ワールド座標のX中央
+    final double startY = basePosition.y; // ワールド座標のY中央
 
     // 各ルートノードのサブツリーの幅を計算
     Map<Node, double> nodeWidths = {};
     for (var root in rootNodes) {
       _calculateSubtreeWidth(root, nodeWidths, settings);
     }
-
-    // ルートノードの合計幅を計算
-    double totalWidth =
-        rootNodes.fold(0.0, (sum, node) => sum + nodeWidths[node]!);
-    double startX = screenCenterX - totalWidth / 2;
 
     // 各ルートノードとその子孫の目標位置を計算
     double currentX = startX;
@@ -55,6 +64,7 @@ class NodeAlignment {
 
   // 水平方向の配置
   static Future<void> alignNodesHorizontal(
+    BuildContext context,
     Size screenSize,
     void Function(VoidCallback fn) setState,
     WidgetRef ref,
@@ -62,26 +72,33 @@ class NodeAlignment {
     final List<Node> nodes = ref.read(nodesProvider);
     if (nodes.isEmpty) return;
 
+    // 画面中心座標を計算
+    final screenCenter = CoordinateUtils.calculateScreenCenter(
+      MediaQuery.of(context).size, // 画面サイズ
+      AppBar().preferredSize.height, // AppBarの高さ（指定がなければ0にしても良い）
+    );
+
+    // 画面の中央をワールド座標に変換
+    final basePosition = CoordinateUtils.screenToWorld(
+      screenCenter,
+      ref.read(screenProvider).offset,
+      ref.read(screenProvider).scale,
+    );
+
+    final double startX = basePosition.x; // ワールド座標のX中央
+    final double startY = basePosition.y; // ワールド座標のY中央
+
     // 一度だけ設定を取得
     final settings = ref.read(settingsNotifierProvider);
 
     // ルートノードを特定
     List<Node> rootNodes = nodes.where((node) => node.parent == null).toList();
 
-    // 画面の中心を計算
-    final double screenCenterY = screenSize.height / 2;
-    const double startX = NodeConstants.defaultStartX;
-
     // 各ルートノードのサブツリーの高さを計算
     Map<Node, double> nodeHeights = {};
     for (var root in rootNodes) {
       _calculateSubtreeHeight(root, nodeHeights, settings);
     }
-
-    // ルートノードの合計高さを計算
-    double totalHeight =
-        rootNodes.fold(0.0, (sum, node) => sum + nodeHeights[node]!);
-    double startY = screenCenterY - totalHeight / 2;
 
     // 各ルートノードとその子孫の目標位置を計算
     double currentY = startY;
@@ -105,15 +122,15 @@ class NodeAlignment {
     dynamic settings, // 取得した設定値
   ) {
     if (node.children.isEmpty) {
-      nodeWidths[node] = settings.idealNodeDistance;
-      return settings.idealNodeDistance;
+      nodeWidths[node] = settings.parentChildDistance;
+      return settings.parentChildDistance;
     }
 
     double width = node.children.fold(
         0.0,
         (sum, child) =>
             sum + _calculateSubtreeWidth(child, nodeWidths, settings));
-    nodeWidths[node] = max(width, settings.idealNodeDistance);
+    nodeWidths[node] = max(width, settings.parentChildDistance);
     return nodeWidths[node]!;
   }
 
@@ -124,15 +141,15 @@ class NodeAlignment {
     dynamic settings, // 取得した設定値
   ) {
     if (node.children.isEmpty) {
-      nodeHeights[node] = settings.idealNodeDistance;
-      return settings.idealNodeDistance;
+      nodeHeights[node] = settings.parentChildDistance;
+      return settings.parentChildDistance;
     }
 
     double height = node.children.fold(
         0.0,
         (sum, child) =>
             sum + _calculateSubtreeHeight(child, nodeHeights, settings));
-    nodeHeights[node] = max(height, settings.idealNodeDistance);
+    nodeHeights[node] = max(height, settings.parentChildDistance);
     return nodeHeights[node]!;
   }
 
@@ -161,7 +178,7 @@ class NodeAlignment {
       _calculateTargetPositionsVertical(
         child,
         childX + nodeWidths[child]! / 2,
-        y + settings.idealNodeDistance,
+        y + settings.parentChildDistance,
         nodeWidths,
         setState,
         settings,
@@ -194,7 +211,7 @@ class NodeAlignment {
     for (var child in node.children) {
       _calculateTargetPositionsHorizontal(
         child,
-        x + settings.idealNodeDistance,
+        x + settings.parentChildDistance,
         childY + nodeHeights[child]! / 2,
         nodeHeights,
         setState,

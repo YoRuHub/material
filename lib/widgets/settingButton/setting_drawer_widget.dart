@@ -27,6 +27,7 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
   @override
   Widget build(BuildContext context) {
     final settings = ref.watch(settingsNotifierProvider);
+    final settingsNotifier = ref.read(settingsNotifierProvider.notifier);
 
     return Drawer(
       child: ListView(
@@ -52,23 +53,70 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
 
           // ノード間隔設定セクション
           SliderSettingWidget(
-            title: 'ノードの間隔',
-            value: settings.idealNodeDistance,
+            title: '親子ノードの間隔',
+            value: settings.parentChildDistance,
             min: 50.0,
             max: 500.0,
             onChanged: (value) {
-              ref
-                  .read(settingsNotifierProvider.notifier)
-                  .updateIdealNodeDistance(value);
+              settingsNotifier.updateSetting('parent_child_distance', value);
             },
             onChangeEnd: (value) async {
               await _settingsModel
-                  .updateSettings({'ideal_node_distance': value});
+                  .upsertSettings({'parent_child_distance': value});
+              (value);
             },
             onTap: () {
-              ref
-                  .read(settingsNotifierProvider.notifier)
-                  .resetIdealNodeDistance();
+              settingsNotifier.resetSetting('parent_child_distance');
+            },
+          ),
+
+          SliderSettingWidget(
+            title: 'リンクノードの間隔',
+            value: settings.linkDistance,
+            min: 500.0,
+            max: 5000.0,
+            onChanged: (value) {
+              settingsNotifier.updateSetting('link_distance', value);
+            },
+            onChangeEnd: (value) async {
+              await _settingsModel.upsertSettings({'link_distance': value});
+              (value);
+            },
+            onTap: () {
+              settingsNotifier.resetSetting('link_distance');
+            },
+          ),
+          SliderSettingWidget(
+            title: '親子ノードの引力',
+            value: settings.parentChildAttraction,
+            min: 0.000,
+            max: 100,
+            onChanged: (value) {
+              settingsNotifier.updateSetting('parent_child_attraction', value);
+            },
+            onChangeEnd: (value) async {
+              await _settingsModel
+                  .upsertSettings({'parent_child_attraction': value});
+              (value);
+            },
+            onTap: () {
+              settingsNotifier.resetSetting('parent_child_attraction');
+            },
+          ),
+          SliderSettingWidget(
+            title: 'リンクノードの間隔',
+            value: settings.linkAttraction,
+            min: 0.000,
+            max: 100,
+            onChanged: (value) {
+              settingsNotifier.updateSetting('link_attraction', value);
+            },
+            onChangeEnd: (value) async {
+              await _settingsModel.upsertSettings({'link_attraction': value});
+              (value);
+            },
+            onTap: () {
+              settingsNotifier.resetSetting('link_attraction');
             },
           ),
 

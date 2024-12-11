@@ -28,8 +28,8 @@ class NodePhysics {
       if (node == draggedNode) continue;
 
       _applyRepulsionForces(node, nodes, ref); // 反発力の適用
-      _applyAttractionForces(node, ref); // 親子引力の適用
-      _applyLinkForces(node);
+      _applyParentChildForces(node, ref); // 親子引力の適用
+      _applyLinkForces(node, ref); // リンク引力の適用
       _updateNodePosition(node); // ノード位置の更新
     }
 
@@ -50,9 +50,9 @@ class NodePhysics {
       vector_math.Vector2 direction = node.position - otherNode.position;
       double distance = direction.length;
 
-      if (distance < settings.idealNodeDistance) {
+      if (distance < settings.parentChildDistance) {
         direction.normalize();
-        double repulsionStrength = (settings.idealNodeDistance - distance) *
+        double repulsionStrength = (settings.parentChildDistance - distance) *
             NodeConstants.repulsionCoefficient;
         node.velocity += direction * repulsionStrength;
       }
@@ -67,7 +67,7 @@ class NodePhysics {
       vector_math.Vector2 direction = draggedNode.position - node.position;
       double distance = direction.length;
 
-      if (distance < NodeConstants.snapTriggerDistance) {
+      if (distance < NodeConstants.snapEffectRange) {
         direction.normalize();
         // スナップ距離内に近づいた場合、ドラッグ中のノードをターゲットノードの位置にスナップ
         draggedNode.position = node.position;
@@ -78,13 +78,14 @@ class NodePhysics {
   }
 
   /// リンク関係の引力適用
-  static void _applyLinkForces(Node node) {
+  static void _applyLinkForces(Node node, WidgetRef ref) {
+    final settings = ref.read(settingsNotifierProvider);
     for (var target in node.sourceNodes) {
       _applyAttractionForce(
         node,
         target,
-        NodeConstants.linkAttractionCoefficient,
-        NodeConstants.linkIdealDistance,
+        settings.linkAttraction,
+        settings.linkDistance,
       );
     }
 
@@ -92,20 +93,21 @@ class NodePhysics {
       _applyAttractionForce(
         node,
         target,
-        NodeConstants.linkAttractionCoefficient,
-        NodeConstants.linkIdealDistance,
+        settings.linkAttraction,
+        settings.linkDistance,
       );
     }
   }
 
   /// 親子関係の引力適用
-  static void _applyParentChildForces(Node node) {
+  static void _applyParentChildForces(Node node, ref) {
+    final settings = ref.read(settingsNotifierProvider);
     for (var child in node.children) {
       _applyAttractionForce(
         node,
         child,
-        NodeConstants.parentChildAttractionCoefficient,
-        NodeConstants.parentChildIdealDistance,
+        settings.parentChildAttraction,
+        settings.parentChildDistance,
       );
     }
 
@@ -113,8 +115,8 @@ class NodePhysics {
       _applyAttractionForce(
         node,
         node.parent!,
-        NodeConstants.parentChildAttractionCoefficient,
-        NodeConstants.parentChildIdealDistance,
+        settings.parentChildAttraction,
+        settings.parentChildDistance,
       );
     }
   }
@@ -128,33 +130,7 @@ class NodePhysics {
     if (distance > idealDistance) {
       direction.normalize();
       double attractionStrength =
-          (distance - idealDistance) * attractionCoefficient;
-      node.velocity += direction * attractionStrength;
-    }
-  }
-
-  /// 親子関係の引力適用
-  static void _applyAttractionForces(Node node, WidgetRef ref) {
-    final settings = ref.read(settingsNotifierProvider);
-
-    if (node.parent != null) {
-      _applyAttraction(node, node.parent!, settings.idealNodeDistance);
-    }
-
-    for (var child in node.children) {
-      _applyAttraction(node, child, settings.idealNodeDistance);
-    }
-  }
-
-  /// 引力の計算と適用
-  static void _applyAttraction(Node node, Node target, double idealDistance) {
-    vector_math.Vector2 direction = target.position - node.position;
-    double distance = direction.length;
-
-    if (distance > idealDistance) {
-      direction.normalize();
-      double attractionStrength =
-          (distance - idealDistance) * NodeConstants.linkAttractionCoefficient;
+          (distance - idealDistance) * attractionCoefficient * 0.0001;
       node.velocity += direction * attractionStrength;
     }
   }
@@ -163,41 +139,5 @@ class NodePhysics {
   static void _updateNodePosition(Node node) {
     node.position += node.velocity;
     node.velocity *= NodeConstants.velocityDampingFactor;
-  }
-
-  /// 速度の減衰を適用
-  static void _applyDamping(Node node) {
-    node.velocity *= NodeConstants.velocityDampingFactor;
-  }
-
-  /// 反発力を適用
-  static void _applyRepulsion(Node node, List<Node> nodes) {
-    for (var otherNode in nodes) {
-      if (otherNode != node) {
-        vector_math.Vector2 direction = node.position - otherNode.position;
-        double distance = direction.length;
-
-        if (distance < 0.1) {
-          // ノード同士が近すぎる場合は少し間隔を空ける
-          direction = direction.normalized() * 0.1;
-          node.velocity += direction * NodeConstants.repulsionCoefficient;
-        } else if (distance < 50.0) {
-          // 距離が近いときに反発力を加える
-          direction.normalize();
-          double repulsionStrength =
-              (1 / distance) * NodeConstants.repulsionCoefficient;
-          node.velocity += direction * repulsionStrength;
-        }
-      }
-    }
-  }
-
-  static void applyForces(List<Node> nodes, WidgetRef ref) {
-    for (var node in nodes) {
-      _applyRepulsion(node, nodes); // 反発力
-      _applyParentChildForces(node); // 親子関係の引力
-      _applyLinkForces(node); // リンク関係の引力
-      _applyDamping(node); // 速度の減衰
-    }
   }
 }

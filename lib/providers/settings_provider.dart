@@ -6,48 +6,104 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 class SettingsNotifier extends StateNotifier<Settings> {
   SettingsNotifier()
-      : super(Settings(idealNodeDistance: NodeConstants.nodePreferredDistance));
+      : super(Settings(
+            parentChildDistance: NodeConstants.parentChildDistance,
+            linkDistance: NodeConstants.linkDistance,
+            parentChildAttraction: NodeConstants.parentChildAttraction,
+            linkAttraction: NodeConstants.linkAttraction));
 
   final _settingsModel = SettingsModel();
 
-  // 初期設定をデータベースから取得
+  /// 初期設定をデータベースから取得
   Future<void> loadSettings() async {
     try {
       final settings = await _settingsModel.fetchAllSettings();
-      final idealNodeDistance =
-          settings.isNotEmpty && settings.first['ideal_node_distance'] != null
-              ? (settings.first['ideal_node_distance'] as num).toDouble()
-              : NodeConstants.nodePreferredDistance;
+      final parentChildDistance = _getSettingValue(
+        settings,
+        'parent_child_distance',
+        NodeConstants.parentChildDistance,
+      );
+      final linkDistance = _getSettingValue(
+        settings,
+        'link_distance',
+        NodeConstants.linkDistance,
+      );
+      final parentChildAttraction = _getSettingValue(
+        settings,
+        'parent_child_attraction',
+        NodeConstants.parentChildAttraction,
+      );
+      final linkAttraction = _getSettingValue(
+        settings,
+        'link_attraction',
+        NodeConstants.linkAttraction,
+      );
 
-      // 状態を更新
-      state = Settings(idealNodeDistance: idealNodeDistance);
+      state = state.copyWith(
+        parentChildDistance: parentChildDistance,
+        linkDistance: linkDistance,
+        parentChildAttraction: parentChildAttraction,
+        linkAttraction: linkAttraction,
+      );
     } catch (e) {
-      Logger.error('Error loading settings: $e');
-
-      // 初期値に戻す
-      state = Settings(idealNodeDistance: NodeConstants.nodePreferredDistance);
+      _handleError('Error loading settings', e);
     }
   }
 
-  // 設定を更新するメソッド
-  Future<void> updateIdealNodeDistance(double newDistance) async {
+  /// 設定値を更新
+  Future<void> updateSetting(String settingKey, double value) async {
+    await _updateOrResetSetting(settingKey, value);
+  }
+
+  /// 設定値をリセット
+  Future<void> resetSetting(String settingKey) async {
+    double defaultValue;
+    if (settingKey == 'parent_child_distance') {
+      defaultValue = NodeConstants.parentChildDistance;
+    } else if (settingKey == 'link_distance') {
+      defaultValue = NodeConstants.linkDistance;
+    } else if (settingKey == 'parent_child_attraction') {
+      defaultValue = NodeConstants.parentChildAttraction;
+    } else if (settingKey == 'link_attraction') {
+      defaultValue = NodeConstants.linkAttraction;
+    } else {
+      throw ArgumentError('Unknown setting key: $settingKey');
+    }
+
+    await _updateOrResetSetting(settingKey, defaultValue);
+  }
+
+  /// 設定値の更新・リセットを共通化
+  Future<void> _updateOrResetSetting(String settingKey, double value) async {
     try {
-      // 状態を更新
-      state = Settings(idealNodeDistance: newDistance);
+      if (settingKey == 'parent_child_distance') {
+        state = state.copyWith(parentChildDistance: value);
+      } else if (settingKey == 'link_distance') {
+        state = state.copyWith(linkDistance: value);
+      } else if (settingKey == 'parent_child_attraction') {
+        state = state.copyWith(parentChildAttraction: value);
+      } else if (settingKey == 'link_attraction') {
+        state = state.copyWith(linkAttraction: value);
+      }
+
+      await _settingsModel.upsertSettings({settingKey: value});
     } catch (e) {
-      Logger.error('Error updating ideal node distance: $e');
+      _handleError('Error updating $settingKey', e);
     }
   }
 
-  Future<void> resetIdealNodeDistance() async {
-    try {
-      await _settingsModel.updateSettings(
-          {'ideal_node_distance': NodeConstants.nodePreferredDistance});
-      // 状態を更新
-      state = Settings(idealNodeDistance: NodeConstants.nodePreferredDistance);
-    } catch (e) {
-      Logger.error('Error resetting ideal node distance: $e');
-    }
+  /// データベースから設定値を取得するヘルパー関数
+  double _getSettingValue(
+      List<Map<String, dynamic>> settings, String key, double defaultValue) {
+    return settings.isNotEmpty && settings.first[key] != null
+        ? (settings.first[key] as num).toDouble()
+        : defaultValue;
+  }
+
+  /// エラーハンドリングの共通処理
+  void _handleError(String message, dynamic error) {
+    Logger.error('$message: $error');
+    // エラーハンドリングの処理が必要な場合ここで追加できます
   }
 }
 

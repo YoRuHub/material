@@ -45,9 +45,13 @@ class DatabaseSchemas {
     'settings': '''
       CREATE TABLE IF NOT EXISTS settings (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        ideal_node_distance REAL DEFAULT 100.0
+        parent_child_distance REAL,
+        link_distance REAL,
+        parent_child_attraction REAL,
+        link_attraction REAL
         )
     ''',
+
     'api': '''
       CREATE TABLE IF NOT EXISTS api (
         product TEXT,
@@ -58,10 +62,9 @@ class DatabaseSchemas {
   };
   // defaultDataSchemas
   static const Map<String, String> insertSchemas = {
-    'settings': '''
-     INSERT OR IGNORE INTO settings (id, ideal_node_distance) VALUES
-       (1, 100.0);
-    ''',
+    //   'settings': '''
+    //    INSERT OR IGNORE INTO settings (id, parent_child_distance, link_distance) VALUES (1, 100, 1000);
+    //   ''',
   };
 
   // ALTERテーブルスキーマ(Sample)
