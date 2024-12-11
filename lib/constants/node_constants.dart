@@ -1,7 +1,7 @@
 class NodeConstants {
   // --- 距離関連定数 ---
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
-  static const double parentChildDistance = 100.0;
+  static const double parentChildDistance = 150.0;
 
   /// リンク間の理想的な距離
   static const double linkDistance = 1000.0;
@@ -11,19 +11,16 @@ class NodeConstants {
 
   // --- 力・物理演算関連定数 ---
   /// ノード同士の反発力を決定する係数（小さいほど反発力が弱い）
-  static const double repulsionCoefficient = 0.001;
+  static const double repulsionCoefficient = 0.01;
 
   /// 速度の減衰率（フレームごとに速度が減少する割合）
-  static const double velocityDampingFactor = 0;
+  static const double velocityDampingFactor = 0.1;
 
   /// 親子関係の引力パラメータ
-  static const double parentChildAttraction = 10;
+  static const double parentChildAttraction = 80;
 
   // リンク関係の引力パラメータ
   static const double linkAttraction = 1;
-
-  /// ノードが非常に遅いときに強い減衰を適用する速度の閾値
-  static const double forceThreshold = 0.1;
 
   // --- アニメーション関連定数 ---
   /// アニメーション全体のフレーム数（動きが滑らかになるステップ数）

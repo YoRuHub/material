@@ -104,7 +104,7 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
             },
           ),
           SliderSettingWidget(
-            title: 'リンクノードの間隔',
+            title: 'リンクノードの引力',
             value: settings.linkAttraction,
             min: 0.000,
             max: 100,

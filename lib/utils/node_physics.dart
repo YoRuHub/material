@@ -57,13 +57,7 @@ class NodePhysics {
         totalForce += direction * repulsionStrength;
       }
     }
-
-    // If total force is extremely small, consider the node stationary
-    if (totalForce.length < NodeConstants.forceThreshold) {
-      node.velocity = vector_math.Vector2.zero();
-    } else {
-      node.velocity += totalForce;
-    }
+    node.velocity += totalForce;
   }
 
   /// ノードのスナップ処理（ドラッグ中のノードが近くのノードに吸着する）
@@ -144,14 +138,12 @@ class NodePhysics {
 
   /// ノードの位置を更新
   static void _updateNodePosition(Node node) {
-    vector_math.Vector2 oldPosition = node.position;
-    node.position += node.velocity;
-
-    // If position change is microscopic, stop the node
-    if ((node.position - oldPosition).length < NodeConstants.forceThreshold) {
-      node.velocity = vector_math.Vector2.zero();
+    // Only update position if velocity is significant
+    if (node.velocity.length > NodeConstants.velocityDampingFactor) {
+      node.position += node.velocity;
     }
 
-    node.velocity *= NodeConstants.velocityDampingFactor;
+    // Completely zero out the velocity
+    node.velocity = vector_math.Vector2.zero();
   }
 }
