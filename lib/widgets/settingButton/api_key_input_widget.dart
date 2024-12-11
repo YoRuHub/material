@@ -1,11 +1,8 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/database/models/api_model.dart';
 import 'package:flutter_app/utils/snackbar_helper.dart';
-
 import '../../providers/api_provider.dart';
-import '../../utils/api_utils.dart';
 
 class ApiKeyInputWidget extends ConsumerStatefulWidget {
   final String apiType; // Gemini、OpenAIなどのAPIタイプを指定
@@ -105,6 +102,17 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
     });
   }
 
+  String _getFormattedApiType() {
+    switch (widget.apiType.toLowerCase()) {
+      case 'gemini':
+        return 'Gemini';
+      case 'openAi':
+        return 'OpenAI';
+      default:
+        return widget.apiType; // 他のAPIタイプがあればそのまま返す
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final apiStatus = ref.watch(apiStatusProvider); // APIの有効性状態を監視
@@ -122,7 +130,7 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                '${widget.apiType} API Key',
+                '${_getFormattedApiType()} API Key',
                 style: const TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -133,7 +141,7 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
                 controller: _apiKeyController,
                 obscureText: _isObscured,
                 decoration: InputDecoration(
-                  hintText: 'Enter your ${widget.apiType} API Key',
+                  hintText: 'Enter your API key',
                   filled: true,
                   fillColor: Theme.of(context)
                       .colorScheme

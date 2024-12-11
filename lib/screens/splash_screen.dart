@@ -8,6 +8,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 
 import '../database/models/api_model.dart';
+import '../models/ai_model_data.dart';
 import '../providers/api_provider.dart';
 
 class SplashScreen extends ConsumerStatefulWidget {
@@ -98,11 +99,13 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
     try {
       final apiModel = ApiModel();
 
-      // AIモデル（例：Gemini、OpenAI）に基づいてAPIタイプを決定
-      final apiTypes = ['Gemini', 'OpenAI']; // 必要に応じて追加
-      for (var apiType in apiTypes) {
-        final apiData = await apiModel.fetchApi(apiType); // API設定を取得
+      // AiModel列挙型を使用してAPIタイプを取得
+      final apiTypes = AiModel.values.map((e) => e.name).toList();
 
+      for (var apiType in apiTypes) {
+        final apiData = await apiModel.fetchApi(apiType);
+
+        Logger.info('API settings for $apiType: $apiData');
         if (apiData != null) {
           // APIのステータスがnullまたは空であれば、noneとする
           final apiStatus = apiData['status']?.isEmpty ?? true
@@ -112,6 +115,7 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
                   : ApiStatus.invalid;
 
           // プロバイダーに設定
+          Logger.info('Loaded API settings for $apiType: $apiStatus');
           ref.read(apiStatusProvider.notifier).updateStatus(apiType, apiStatus);
         }
       }

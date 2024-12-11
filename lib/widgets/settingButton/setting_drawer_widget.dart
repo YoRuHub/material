@@ -121,7 +121,7 @@ class SettingDrawerWidgetState extends ConsumerState<SettingDrawerWidget> {
           ),
 
           // 汎用APIキー入力ウィジェットの利用（Gemini）
-          const ApiKeyInputWidget(apiType: 'Gemini'),
+          const ApiKeyInputWidget(apiType: 'gemini'),
         ],
       ),
     );

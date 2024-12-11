@@ -23,10 +23,10 @@ class ApiStatusNotifier extends StateNotifier<Map<String, ApiStatus>> {
 
     // APIごとに検証処理を実行
     switch (apiType) {
-      case 'Gemini':
+      case 'gemini':
         isValid = await ApiUtils.verifyGeminiApiKey(apiKey);
         break;
-      case 'OpenAI':
+      case 'openAi':
         isValid = await ApiUtils.verifyOpenAiApiKey(apiKey);
         break;
       // 他のAPIタイプがあれば追加

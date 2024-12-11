@@ -1,9 +1,9 @@
-// lib/widgets/model_selector_widget.dart
-
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../models/ai_model_data.dart';
+import '../../providers/api_provider.dart';
 
-class ModelSelectorWidget extends StatelessWidget {
+class ModelSelectorWidget extends ConsumerWidget {
   final AiModel selectedMainModel;
   final GeminiModel selectedGeminiModel;
   final ValueChanged<AiModel?> onMainModelChanged;
@@ -18,9 +18,12 @@ class ModelSelectorWidget extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     // AiModelDataからサブモデルを取得
     final subModels = AiModelData.getSubModels(selectedMainModel);
+
+    // APIの有効性状態を監視
+    final apiStatus = ref.watch(apiStatusProvider);
 
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -35,11 +38,23 @@ class ModelSelectorWidget extends StatelessWidget {
               DropdownButton<AiModel>(
                 value: selectedMainModel,
                 isExpanded: true,
-                onChanged: onMainModelChanged,
+                onChanged: (model) {
+                  // メインモデルが有効な場合のみ選択可能
+                  if (apiStatus[model?.name] == ApiStatus.valid) {
+                    onMainModelChanged(model);
+                  }
+                },
                 items: AiModel.values.map((AiModel model) {
+                  final isValid = apiStatus[model.name] == ApiStatus.valid;
                   return DropdownMenuItem<AiModel>(
                     value: model,
-                    child: Text(model == AiModel.gemini ? 'Gemini' : 'OpenAI'),
+                    enabled: isValid, // 無効なモデルは選択できない
+                    child: Text(
+                      model == AiModel.gemini ? 'Gemini' : 'OpenAI',
+                      style: TextStyle(
+                        color: isValid ? null : Colors.grey, // 無効な場合は色を変更
+                      ),
+                    ),
                   );
                 }).toList(),
               ),
@@ -49,7 +64,7 @@ class ModelSelectorWidget extends StatelessWidget {
 
         const SizedBox(width: 16.0), // 余白
 
-        // 右側：Geminiサブモデル選択 (幅2)
+        // 右側：Geminiサブモデル選択 (幅2) → OpenAI選択時は表示しない
         if (selectedMainModel == AiModel.gemini)
           Flexible(
             flex: 2, // 幅の比率 2

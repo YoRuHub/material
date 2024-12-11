@@ -16,6 +16,7 @@ class ApiModel extends BaseModel {
         whereClause: '$columnProduct = ?',
         whereArgs: [product],
       );
+      Logger.debug('Successfully fetched api: ${result.length} rows');
 
       if (result.isNotEmpty) {
         Logger.debug('Successfully fetched api: ${result[0][columnProduct]}');
