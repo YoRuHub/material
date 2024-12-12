@@ -79,7 +79,7 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
   // プロジェクトデータの読み込み
   Future<void> _loadProjects() async {
     try {
-      final projectNotifier = ref.read(projectNotifierProvider.notifier);
+      final projectNotifier = ref.read(projectProvider.notifier);
       await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
     } catch (e) {
       Logger.error('Error loading projects: ${e.toString()}');

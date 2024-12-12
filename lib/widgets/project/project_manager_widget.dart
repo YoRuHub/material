@@ -32,7 +32,7 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
     }
 
     await _handleProjectOperation(
-      () => ref.read(projectNotifierProvider.notifier).addProject(name),
+      () => ref.read(projectProvider.notifier).addProject(name),
       'Project added successfully!',
     );
     if (mounted) _nameController.clear();
@@ -47,9 +47,8 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
 
     if (newName != null && newName.isNotEmpty) {
       await _handleProjectOperation(
-        () => ref
-            .read(projectNotifierProvider.notifier)
-            .editProject(project.id, newName),
+        () =>
+            ref.read(projectProvider.notifier).editProject(project.id, newName),
         'Project edited successfully!',
       );
     } else if (newName?.isEmpty ?? false) {
@@ -65,9 +64,7 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
 
     if (confirmed == true) {
       await _handleProjectOperation(
-        () => ref
-            .read(projectNotifierProvider.notifier)
-            .deleteProject(project.id),
+        () => ref.read(projectProvider.notifier).deleteProject(project.id),
         'Project deleted successfully!',
       );
     }
@@ -91,7 +88,7 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final projects = ref.watch(projectNotifierProvider);
+    final projects = ref.watch(projectProvider);
     final filteredProjects = projects
         .where((project) =>
             project.title.toLowerCase().contains(_searchQuery.toLowerCase()))
@@ -121,7 +118,7 @@ class ProjectManagerWidgetState extends ConsumerState<ProjectManagerWidget> {
             onEdit: (index) => _editProject(filteredProjects[index]),
             onDelete: (index) => _deleteProject(filteredProjects[index]),
             onHover: (id, isHovered) => ref
-                .read(projectNotifierProvider.notifier)
+                .read(projectProvider.notifier)
                 .updateHoverState(id, isHovered),
           ),
         ),

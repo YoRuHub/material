@@ -1,31 +1,72 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:flutter_app/providers/screen_provider.dart';
 
-class PositionedText extends StatelessWidget {
-  final double offsetX;
-  final double offsetY;
-  final double scaleZ;
-
-  const PositionedText({
-    super.key,
-    required this.offsetX,
-    required this.offsetY,
-    required this.scaleZ,
-  });
+class PositionedText extends ConsumerWidget {
+  const PositionedText({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    // screenProviderからオフセット、スケール、モード状態を取得
+    final screenState = ref.watch(screenProvider);
+    final isPositionVisible = ref.watch(screenProvider).isPositionVisible;
+    final theme = Theme.of(context);
+
+    // 表示用のテキストを作成
+    final String positionText =
+        'X: ${screenState.offset.dx.toStringAsFixed(1)}, '
+        'Y: ${screenState.offset.dy.toStringAsFixed(1)}, '
+        'Scale: ${screenState.scale.toStringAsFixed(2)}, '
+        'Mode: ${_getModeText(screenState)}';
+
     return Positioned(
       top: 0,
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        child: Text(
-          'X: ${offsetX.toStringAsFixed(1)}, Y: ${offsetY.toStringAsFixed(1)}, Z: ${scaleZ.toStringAsFixed(2)}',
-          style: const TextStyle(
-            color: Colors.grey,
-            fontSize: 14,
-          ),
+      left: 0,
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            GestureDetector(
+              onTap: () {
+                // 表示・非表示の状態を切り替える
+                ref.read(screenProvider.notifier).togglePositionVisibility();
+              },
+              child: Icon(
+                isPositionVisible ? Icons.visibility : Icons.visibility_off,
+                color: theme.colorScheme.secondary,
+              ),
+            ),
+            const SizedBox(width: 8),
+            if (isPositionVisible)
+              Text(
+                positionText,
+                style: TextStyle(
+                  color: theme.colorScheme.secondary,
+                  fontSize: 16,
+                ),
+              ),
+          ],
         ),
       ),
     );
+  }
+
+  /// モードの状態をテキストとして返す
+  String _getModeText(screenState) {
+    String modeText = '';
+
+    if (screenState.isLinkMode) {
+      modeText += 'Link ';
+    }
+
+    if (!screenState.isPhysicsEnabled || screenState.isAnimating) {
+      modeText += 'Stop ';
+    }
+
+    if (modeText.isEmpty) {
+      modeText = 'None';
+    }
+    return modeText.trim(); // 余分な空白を削除
   }
 }

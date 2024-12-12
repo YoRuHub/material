@@ -10,6 +10,8 @@ class ScreenState {
   final bool isDrawerOpen;
   final bool isPanning;
   final bool isLinkMode;
+  final bool isPositionVisible;
+  final bool isAnimating;
 
   // デフォルト値を定義して初期化
   static const defaultState = ScreenState(
@@ -21,6 +23,8 @@ class ScreenState {
     isDrawerOpen: false,
     isPanning: false,
     isLinkMode: false,
+    isPositionVisible: true,
+    isAnimating: false,
   );
 
   // コンストラクタ
@@ -32,7 +36,9 @@ class ScreenState {
       required this.isTitleVisible,
       required this.isDrawerOpen,
       required this.isPanning,
-      required this.isLinkMode});
+      required this.isLinkMode,
+      required this.isPositionVisible,
+      required this.isAnimating});
 
   // copyWith メソッド
   ScreenState copyWith(
@@ -43,7 +49,9 @@ class ScreenState {
       bool? isTitleVisible,
       bool? isDrawerOpen,
       bool? isPanning,
-      bool? isLinkMode}) {
+      bool? isLinkMode,
+      bool? isPositionVisible,
+      bool? isAnimating}) {
     return ScreenState(
         projectId: projectId ?? this.projectId,
         offset: offset ?? this.offset,
@@ -52,7 +60,9 @@ class ScreenState {
         isTitleVisible: isTitleVisible ?? this.isTitleVisible,
         isDrawerOpen: isDrawerOpen ?? this.isDrawerOpen,
         isPanning: isPanning ?? this.isPanning,
-        isLinkMode: isLinkMode ?? this.isLinkMode);
+        isLinkMode: isLinkMode ?? this.isLinkMode,
+        isPositionVisible: isPositionVisible ?? this.isPositionVisible,
+        isAnimating: isAnimating ?? this.isAnimating);
   }
 }
 
@@ -113,5 +123,14 @@ class ScreenNotifier extends StateNotifier<ScreenState> {
 
   void toggleLinkMode() {
     state = state.copyWith(isLinkMode: !state.isLinkMode);
+  }
+
+  // スクリーン座標の表示状態をトグル
+  void togglePositionVisibility() {
+    state = state.copyWith(isPositionVisible: !state.isPositionVisible);
+  }
+
+  void toggleAnimating() {
+    state = state.copyWith(isAnimating: !state.isAnimating);
   }
 }

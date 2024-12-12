@@ -45,15 +45,23 @@ class MindMapScreen extends ConsumerStatefulWidget {
 
 class MindMapScreenState extends ConsumerState<MindMapScreen>
     with SingleTickerProviderStateMixin {
+  // animation
   late AnimationController _controller;
   late Animation<double> _signalAnimation;
-  late List<Node> nodes;
-
-  bool isFocusMode = false;
-
+  // database
   late NodeModel _nodeModel;
   late NodeMapModel _nodeMapModel;
   late NodeLinkMapModel _nodeLinkMapModel;
+  // provider
+  late ScreenNotifier _screenNotifier;
+  late NodeStateNotifier _nodeStateNotifier;
+  late NodesNotifier _nodesNotifirer;
+  late ProjectNotifier _projectNotifier;
+  late ScreenState _screenState;
+  late NodeState _nodeState;
+  // node
+  late List<Node> nodes;
+
   Widget? currentDrawer;
   late NodeInteractionHandler _nodeInteractionHandler;
 
@@ -64,7 +72,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   void initState() {
     super.initState();
-
     nodes = [];
     _controller = AnimationController(
       vsync: this,
@@ -72,9 +79,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     )..repeat();
 
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    // databaseを初期化
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
     _nodeLinkMapModel = NodeLinkMapModel();
+    // providerを初期化
+    _screenNotifier = ref.read(screenProvider.notifier);
+    _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
+    _nodesNotifirer = ref.read(nodesProvider.notifier);
+    _projectNotifier = ref.read(projectProvider.notifier);
+    _screenState = ref.read(screenProvider);
+    _nodeState = ref.read(nodeStateProvider);
 
     // 必須の_nodeInteractionHandlerを初期化
     _nodeInteractionHandler =
@@ -91,12 +106,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   // タイマーを開始
   void _startInactiveTimer() {
     _inactiveTimer = Timer.periodic(_inactiveDuration, (timer) {
-      Logger.debug('タイマーが発火しました。');
+      _screenNotifier.toggleAnimating();
 
-      // 明示的にアニメーションを停止
       if (_controller.isAnimating) {
         _controller.stop();
-        Logger.debug('操作がない場合にアニメーションを停止します。');
+        _screenNotifier.toggleAnimating();
       }
     });
   }
@@ -105,12 +119,12 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     try {
       // ポストフレームコールバックを使用して初期化を確実に実行
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        ref.read(nodeStateProvider.notifier).resetState();
-        ref.read(nodesProvider.notifier).clearNodes();
-        ref.read(screenProvider.notifier).resetScreen();
-        ref.read(screenProvider.notifier).setProjectId(widget.projectId);
-        final projectId = ref.read(screenProvider).projectId;
-        ref.read(projectNotifierProvider.notifier).setCurrentProject(projectId);
+        final projectId = widget.projectId;
+        _nodeStateNotifier.resetState();
+        _nodesNotifirer.clearNodes();
+        _screenNotifier.resetScreen();
+        _screenNotifier.setProjectId(projectId);
+        _projectNotifier.setCurrentProject(projectId);
 
         // ノードの初期化
         await _initializeNodes(projectId);
@@ -176,18 +190,15 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
       // リンクの設定
       if (sourceNode != null && targetNode != null) {
+        await _nodesNotifirer.linkTargetNodeToSource(sourceId, targetNode);
         Logger.debug('Linking source node $sourceId to target node $targetId');
-        await ref
-            .read(nodesProvider.notifier)
-            .linkTargetNodeToSource(sourceId, targetNode);
       }
     }
   }
 
   // Drawerの状態を確認し、アニメーションを制御
   void _checkDrawerStatus(BuildContext context) {
-    final isDrawerOpen = ref.watch(screenProvider).isDrawerOpen;
-
+    final isDrawerOpen = _screenState.isDrawerOpen;
     if (isDrawerOpen) {
       if (!_controller.isAnimating) {
         _controller.stop();
@@ -202,7 +213,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   void dispose() {
     _controller.dispose();
-    _inactiveTimer.cancel(); // タイマーを停止
+    _inactiveTimer.cancel();
     super.dispose();
   }
 
@@ -213,10 +224,9 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodes = ref.watch(nodesProvider);
     final nodeState = ref.watch(nodeStateProvider);
     final screenState = ref.watch(screenProvider);
-    ref.read(nodesProvider.notifier);
 
     return Scaffold(
-      key: _scaffoldKey, // グローバルキーを指定
+      key: _scaffoldKey,
       appBar: AppBar(
         title: Text(widget.projectTitle),
         backgroundColor: Theme.of(context).colorScheme.surface,
@@ -271,12 +281,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                               currentOffset: screenState.offset,
                             );
 
-                            ref
-                                .read(screenProvider.notifier)
-                                .setScale(newScale);
-                            ref
-                                .read(screenProvider.notifier)
-                                .setOffset(newOffset);
+                            _screenNotifier.setScale(newScale);
+                            _screenNotifier.setOffset(newOffset);
                           });
                         }
                       },
@@ -286,11 +292,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         onPanEnd: _nodeInteractionHandler.onPanEnd,
                         onTapUp: _nodeInteractionHandler.onTapUp,
                         onPanDown: (details) {
-                          // 操作があったらタイマーをリセットしてアニメーションを再開
-                          _inactiveTimer.cancel(); // 現在のタイマーをキャンセル
-                          Logger.debug('操作が発生しました。アニメーションを再開します。');
-                          _controller.repeat(); // アニメーションを再開
-
+                          _inactiveTimer.cancel();
+                          _controller.repeat();
                           // 新しいタイマーを開始
                           _startInactiveTimer();
                         },
@@ -319,11 +322,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
               ),
               Stack(
                 children: [
-                  PositionedText(
-                    offsetX: screenState.offset.dx,
-                    offsetY: screenState.offset.dy,
-                    scaleZ: screenState.scale,
-                  ),
+                  const PositionedText(),
                   const ToolBarWidget(),
                   AddNodeButton(onPressed: _addNode),
                 ],
@@ -336,9 +335,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                       node: nodeState.selectedNode!,
                       nodeModel: _nodeModel,
                       onNodeUpdated: (updatedNode) {
-                        ref
-                            .read(nodeStateProvider.notifier)
-                            .setSelectedNode(updatedNode);
+                        _nodeStateNotifier.setSelectedNode(updatedNode);
                       },
                     );
                   },
@@ -388,8 +385,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   /// 新しいノードを追加
   Future<void> _addNode() async {
-    NodeState nodeState = ref.read(nodeStateProvider);
-    final activeNodes = nodeState.activeNodes;
+    final activeNodes = _nodeState.activeNodes;
     if (activeNodes.isNotEmpty) {
       // アクティブノードのリストをループして処理
       for (final activeNode in activeNodes) {

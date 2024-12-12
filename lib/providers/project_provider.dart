@@ -154,7 +154,7 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
   }
 }
 
-final projectNotifierProvider =
+final projectProvider =
     StateNotifierProvider<ProjectNotifier, List<Project>>((ref) {
   return ProjectNotifier();
 });

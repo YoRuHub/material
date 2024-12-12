@@ -117,6 +117,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
+          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -131,11 +132,15 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                   child: TextField(
                     controller: titleController,
                     decoration: InputDecoration(
-                      fillColor: _isHoveringTitle
-                          ? Theme.of(context).colorScheme.onSecondary
-                          : Theme.of(context).colorScheme.secondary,
+                      fillColor: Theme.of(context)
+                          .colorScheme
+                          .surface
+                          .withOpacity(0.8),
                       filled: true,
-                      border: InputBorder.none,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12.0), // 丸みの度合いを設定
+                        borderSide: BorderSide.none, // 枠線なし
+                      ),
                       prefixIcon: const Icon(Icons.edit),
                       labelText: 'Title',
                     ),
@@ -155,11 +160,16 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                       keyboardType: TextInputType.multiline,
                       maxLines: 13,
                       decoration: InputDecoration(
-                        fillColor: _isHoveringContent
-                            ? Theme.of(context).colorScheme.onSecondary
-                            : Theme.of(context).colorScheme.secondary,
+                        fillColor: Theme.of(context)
+                            .colorScheme
+                            .surface
+                            .withOpacity(0.8),
                         filled: true,
-                        border: InputBorder.none,
+                        border: OutlineInputBorder(
+                          borderRadius:
+                              BorderRadius.circular(12.0), // 丸みの度合いを設定
+                          borderSide: BorderSide.none, // 枠線なし
+                        ),
                         hintText: "Content",
                       ),
                     ),
@@ -181,8 +191,14 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                       child: ElevatedButton(
                         onPressed: _clearContent,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor:
-                              Theme.of(context).colorScheme.secondary,
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surface
+                              .withOpacity(0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // ボタンの角を丸くする
+                          ),
                         ),
                         child: const Text('Clear'),
                       ),
@@ -194,6 +210,16 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                         onPressed: () async {
                           await _saveContent();
                         },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: Theme.of(context)
+                              .colorScheme
+                              .surface
+                              .withOpacity(0.8),
+                          shape: RoundedRectangleBorder(
+                            borderRadius:
+                                BorderRadius.circular(12.0), // ボタンの角を丸くする
+                          ),
+                        ),
                         child: const Text('Save'),
                       ),
                     ),
