@@ -1,9 +1,15 @@
+import 'dart:async';
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/api_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../models/node.dart';
+import 'json_converter.dart';
 import 'logger.dart';
+import 'node_operations.dart';
+import 'snackbar_helper.dart';
 
 class ApiUtils {
   /// Geminiモデルの初期化
@@ -56,6 +62,7 @@ class ApiUtils {
   }
 
   static Future<Map<String, dynamic>?> postToGemini({
+    required BuildContext context,
     required WidgetRef ref,
     required String model,
     required String modelVersion,
@@ -66,7 +73,7 @@ class ApiUtils {
     final apiStatus = apiInfo?['status'];
 
     // APIキーの基本的な検証
-    if (apiKey.isEmpty) {
+    if (apiKey == null || apiKey.isEmpty) {
       Logger.error("APIキーが空です。");
       return null;
     }
@@ -77,53 +84,83 @@ class ApiUtils {
       return null;
     }
 
-    // // クライアントの初期化
+    // クライアントの初期化
     final client = _initializeGeminiClient(apiKey, model: modelVersion);
 
     try {
       // 固定プロンプト
       final systemInstruction = Content.text(
           'Generate a structured JSON object containing a "nodes" array. '
-          'Each node should contain a "title", a "contents", and a "color" field, where "color" is a hex value in the format "#RRGGBB" or "#RRGGBBAA". '
-          'The "nodes" array should be an ordered list of nodes. For nodes with related content, establish logical connections between them using the "node_maps" and "node_link_maps" structures. '
+          'Each node should contain a "id", "title", a "contents", and a "color" field, where "color" is a hex value in the format "#RRGGBB" or "#RRGGBBAA". '
+          'The "nodes" array should be an ordered list of nodes. Each node should have a unique "id" field (e.g., "id": 1, "id": 2, etc.). '
+          'For nodes with related content, establish logical connections between them using the "node_maps" and "node_link_maps" structures. '
           '"node_maps" should represent hierarchical or group-based relationships (e.g., which nodes belong together), while "node_link_maps" should represent direct relationships (e.g., which nodes are linked or related in some way). '
           'Ensure that the resulting JSON object has a proper structure like this: '
-          '{"nodes": [{"title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3, 4]}}. '
+          '{"nodes": [{"id": 1, "title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3, 4]}}. '
           'Please ensure that the node mappings and links are meaningful and logically connected based on the content of each node. Do not simply follow an example format; instead, focus on logical relationships.');
 
       final response = await client.generateContent(
         [systemInstruction, Content.text(inputText)],
         generationConfig: GenerationConfig(
-          temperature: 0.5, // やや低い温度で一貫性を向上
+          temperature: 0.5,
           maxOutputTokens: 2048,
           responseMimeType: 'application/json',
         ),
       );
 
-      // 既存のパースと検証メソッドを活用
       final resultText = response.text;
       if (resultText == null || resultText.isEmpty) {
         Logger.error("Geminiからの応答が空です。");
         return null;
       }
 
-      Map<String, dynamic>? parsedResult = _parseNodeMapResponse(resultText);
-      if (parsedResult == null) {
-        Logger.error("レスポンスのJSONパースに失敗しました。");
+      // JSONレスポンスのパース
+      Map<String, dynamic>? parsedResult;
+      try {
+        parsedResult = _parseNodeMapResponse(resultText);
+      } on FormatException catch (e, stackTrace) {
+        Logger.error("JSONのフォーマットが不正です: $e");
+        Logger.debug("スタックトレース: $stackTrace");
         return null;
       }
 
-      if (!_validateNodeMapStructure(parsedResult)) {
-        Logger.error("ノードマップの構造が不正です。");
+      if (parsedResult == null) {
+        Logger.error("レスポンスのJSONパースに失敗しました: $resultText");
         return null;
       }
-      Logger.info("resultText: $resultText");
+
+      // 構造の検証
+      if (!_validateNodeMapStructure(parsedResult)) {
+        Logger.error("ノードマップの構造が不正です: $parsedResult");
+        return null;
+      }
+
+      // データのインポート
+      if (context.mounted) {
+        try {
+          await importJsonFromApi(
+            context: context,
+            ref: ref,
+            jsonContent: resultText,
+          );
+          Logger.info("JSONインポート処理が完了しました。");
+        } catch (e, stackTrace) {
+          Logger.error("JSONインポート中にエラーが発生しました: $e");
+          Logger.debug("スタックトレース: $stackTrace");
+          return null;
+        }
+      }
+
       Logger.info("Gemini APIリクエスト成功: ノードマップを生成しました。");
       return parsedResult;
-    } catch (e) {
-      Logger.error("Geminiリクエスト中にエラーが発生: $e");
-      return null;
+    } on TimeoutException catch (e, stackTrace) {
+      Logger.error("Gemini APIリクエストがタイムアウトしました: $e");
+      Logger.debug("スタックトレース: $stackTrace");
+    } on Exception catch (e, stackTrace) {
+      Logger.error("Gemini APIリクエスト中に予期しないエラーが発生: $e");
+      Logger.debug("スタックトレース: $stackTrace");
     }
+    return null;
   }
 
   /// レスポンステキストからJSONをパースする内部メソッド
@@ -180,6 +217,113 @@ class ApiUtils {
     }
 
     return true;
+  }
+
+  static Future<void> importJsonFromApi({
+    required BuildContext context,
+    required WidgetRef ref,
+    required String jsonContent,
+  }) async {
+    if (jsonContent.isEmpty) {
+      SnackBarHelper.error(context, 'JSON content is empty.');
+      return;
+    }
+
+    try {
+      // Validate the JSON structure using existing validation method
+      final parsedResult = _parseNodeMapResponse(jsonContent);
+      if (parsedResult == null) {
+        SnackBarHelper.error(context, 'Invalid JSON format.');
+        return;
+      }
+
+      // Use the existing structure validation method
+      if (!_validateNodeMapStructure(parsedResult)) {
+        SnackBarHelper.error(context, 'Invalid node map structure.');
+        return;
+      }
+
+      // Convert the JSON to a map using JsonConverter
+      final importedData = JsonConverter.importJsonToMap(jsonContent);
+
+      // Extract node information, mappings, and links
+      final nodesList = importedData['nodes'] as List<Map<String, dynamic>>;
+      final nodeMaps = importedData['node_maps'] as Map<int, List<int>>;
+      final nodeLinkMaps =
+          importedData['node_link_maps'] as Map<int, List<int>>;
+
+      // Map to store old node IDs and their corresponding new Node objects
+      final Map<int, Node> idMapping = {};
+
+      // Add each node and register new Node objects
+      for (var node in nodesList) {
+        final oldNodeId = node['id'] as int;
+        final title = node['title'] as String?;
+        final contents = node['contents'] as String?;
+        final color = Color(node['color']);
+
+        // Create a new node
+        Node newNode = await NodeOperations.addNode(
+          context: context,
+          ref: ref,
+          nodeId: 0,
+          title: title ?? '',
+          contents: contents ?? '',
+          color: color,
+        );
+
+        // Save the mapping between old and new node IDs
+        idMapping[oldNodeId] = newNode;
+      }
+
+      // Rebuild node mappings
+      for (var oldParentId in nodeMaps.keys) {
+        final oldChildIds = nodeMaps[oldParentId]!;
+
+        // Convert old IDs to new Node objects
+        final parentNode = idMapping[oldParentId];
+        if (parentNode == null) continue;
+
+        for (var oldChildId in oldChildIds) {
+          final childNode = idMapping[oldChildId];
+          if (childNode == null) continue;
+
+          // Add parent-child relationships with new Node objects
+          await NodeOperations.linkChildNode(ref, parentNode.id, childNode);
+        }
+      }
+
+      // Process node link mappings
+      for (var sourceId in nodeLinkMaps.keys) {
+        final targetIds = nodeLinkMaps[sourceId]!;
+
+        // Create links between nodes
+        final sourceNode = idMapping[sourceId];
+        if (sourceNode == null) continue;
+
+        for (var targetId in targetIds) {
+          final targetNode = idMapping[targetId];
+          if (targetNode == null) continue;
+
+          // Add links between new Node objects
+          NodeOperations.linkNode(
+              ref: ref, activeNode: sourceNode, hoveredNode: targetNode);
+        }
+      }
+
+      if (context.mounted) {
+        SnackBarHelper.success(
+          context,
+          'JSON imported and processed successfully.',
+        );
+      }
+    } catch (e) {
+      // Log and show error
+      Logger.error('Error importing JSON: $e');
+      if (context.mounted) {
+        SnackBarHelper.error(context, 'Failed to import JSON: $e');
+      }
+    }
   }
 
   static verifyOpenAiApiKey(String apiKey) {}

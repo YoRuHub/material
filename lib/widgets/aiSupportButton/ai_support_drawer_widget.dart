@@ -66,6 +66,7 @@ class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget>
 
     // APIリクエストの非同期処理
     final response = await ApiUtils.postToGemini(
+      context: context,
       ref: ref,
       model: _selectedMainModel.name,
       modelVersion: _selectedGeminiModel.name,

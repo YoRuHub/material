@@ -1,5 +1,7 @@
 import 'dart:convert';
 
+import 'package:flutter/material.dart';
+
 class JsonConverter {
   static String convertNodesToJson(
     List<Map<String, dynamic>> nodes,
@@ -68,29 +70,29 @@ class JsonConverter {
   static Map<String, dynamic> importJsonToMap(String jsonString) {
     final decodedJson = jsonDecode(jsonString);
 
-    // ノード情報を変換
-    final nodes = (decodedJson['nodes'] as Map).map((key, value) {
-      final node = value as Map;
-      final title = node['title'] ?? '';
-      final contents = node['contents'] ?? '';
-      final color = node['color'] ?? '';
+    // JSONの構造をそのまま変換
+    final nodesList = (decodedJson['nodes'] as List).map((node) {
+      final id = node['id'] as int? ?? 0;
+      final title = node['title'] as String? ?? '';
+      final contents = node['contents'] as String? ?? '';
+      final color = node['color'] as String? ?? '#FFFFFF';
 
-      return MapEntry(key, {
-        'id': int.parse(key.toString()), // nodeIdを整数に変換
-        'title': title is String && title != '""' ? title : null,
-        'contents': contents is String && contents != '""' ? contents : null,
-        'color': _parseColor(color), // カラーコードを元の整数に戻す
-      });
-    });
+      return {
+        'id': id,
+        'title': title,
+        'contents': contents,
+        'color': _parseColor(color), // カラーコードを整数に変換
+      };
+    }).toList();
 
-    // node_maps情報を変換
+    // node_maps情報の変換
     final nodeMaps = (decodedJson['node_maps'] as Map).map((key, value) {
       final parentId = int.parse(key.toString());
       final childIds = List<int>.from(value);
       return MapEntry(parentId, childIds);
     });
 
-    // node_link_maps情報を変換
+    // node_link_maps情報の変換
     final nodeLinkMaps =
         (decodedJson['node_link_maps'] as Map).map((key, value) {
       final sourceId = int.parse(key.toString());
@@ -99,18 +101,18 @@ class JsonConverter {
     });
 
     return {
-      'nodes': nodes.values.toList(),
-      'node_maps': nodeMaps,
-      'node_link_maps': nodeLinkMaps, // node_link_mapのインポート処理を追加
+      'nodes': nodesList, // ノードのリスト
+      'node_maps': nodeMaps, // 親子関係のマッピング
+      'node_link_maps': nodeLinkMaps, // リンクのマッピング
     };
   }
 
-  // カラーコードを元の整数に戻す処理
-  static int _parseColor(String color) {
-    if (color.startsWith('#')) {
-      final colorWithoutHash = color.substring(1);
-      return int.parse(colorWithoutHash, radix: 16);
+// カラーコードを整数に変換する関数
+  static int _parseColor(String colorString) {
+    if (colorString.startsWith('#')) {
+      // #RRGGBB形式を整数に変換
+      return int.parse('0xFF${colorString.substring(1)}');
     }
-    return 0; // 無効なカラーコードの場合は0を返す
+    throw FormatException('Invalid color format: $colorString');
   }
 }
