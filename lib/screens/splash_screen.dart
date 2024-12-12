@@ -105,7 +105,6 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       for (var apiType in apiTypes) {
         final apiData = await apiModel.fetchApi(apiType);
 
-        Logger.info('API settings for $apiType: $apiData');
         if (apiData != null) {
           // APIのステータスがnullまたは空であれば、noneとする
           final apiStatus = apiData['status']?.isEmpty ?? true
@@ -115,7 +114,6 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
                   : ApiStatus.invalid;
 
           // プロバイダーに設定
-          Logger.info('Loaded API settings for $apiType: $apiStatus');
           ref.read(apiStatusProvider.notifier).updateStatus(apiType, apiStatus);
         }
       }

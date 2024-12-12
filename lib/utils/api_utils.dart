@@ -94,10 +94,10 @@ class ApiUtils {
           'Each node should contain a "id", "title", a "contents", and a "color" field, where "color" is a hex value in the format "#RRGGBB" or "#RRGGBBAA". '
           'The "nodes" array should be an ordered list of nodes. Each node should have a unique "id" field (e.g., "id": 1, "id": 2, etc.). '
           'For nodes with related content, establish logical connections between them using the "node_maps" and "node_link_maps" structures. '
-          '"node_maps" should represent hierarchical or group-based relationships (e.g., which nodes belong together), while "node_link_maps" should represent direct relationships (e.g., which nodes are linked or related in some way). '
+          '"node_maps" should represent hierarchical or group-based relationships (e.g., which nodes belong together), while "node_link_maps" should represent direct relationships (e.g., which nodes are linked or related in one direction only, not cyclic). '
           'Ensure that the resulting JSON object has a proper structure like this: '
-          '{"nodes": [{"id": 1, "title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3, 4]}}. '
-          'Please ensure that the node mappings and links are meaningful and logically connected based on the content of each node. Do not simply follow an example format; instead, focus on logical relationships.');
+          '{"nodes": [{"id": 1, "title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3]}}. '
+          'Please ensure that the node mappings and links are meaningful, logically connected based on the content of each node, and not cyclic. Do not simply follow an example format; instead, focus on logical relationships, ensuring that links and parent-child relationships are one-way and non-circular.');
 
       final response = await client.generateContent(
         [systemInstruction, Content.text(inputText)],
