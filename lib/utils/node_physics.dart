@@ -73,11 +73,11 @@ class NodePhysics {
 
       // 子の数に応じて距離を調整（最低距離を確保する）
       double idealDistance = settings.parentChildDistance *
-          (1 + node.children.length * 0.3); // 子の数だけ距離を増加
+          (1 + node.children.length * 0.5); // 子の数だけ距離を増加
 
       // 子ノードを円状に均等に配置する角度計算
-      double angleStep = 2 * pi / siblingCount; // 全円を均等に分割
-      double nodeAngle = angleStep * siblingIndex;
+      double angleStep = pi / siblingCount; // 全円を均等に分割
+      double nodeAngle = angleStep * siblingIndex / 1;
 
       // 極座標から直交座標に変換
       vector_math.Vector2 targetPosition = vector_math.Vector2(

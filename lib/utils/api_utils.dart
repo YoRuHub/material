@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_app/database/models/api_model.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_generative_ai/google_generative_ai.dart';
+import '../models/ai_model_data.dart';
 import '../models/node.dart';
 import 'json_converter.dart';
 import 'logger.dart';
@@ -14,7 +15,10 @@ import 'snackbar_helper.dart';
 class ApiUtils {
   /// Geminiモデルの初期化
   static GenerativeModel _initializeGeminiClient(String apiKey,
-      {String model = 'gemini-1.5'}) {
+      {String? model}) {
+    // モデルがnullの場合、デフォルトのモデル名を使用
+    model ??= AiModelData.getDefaultGeminiModel().name;
+
     return GenerativeModel(
       model: model,
       apiKey: apiKey,
@@ -29,34 +33,29 @@ class ApiUtils {
       return false;
     }
 
-    // APIキーの基本的な形式検証（オプション：必要に応じてより詳細な検証を追加）
+    // APIキーの基本的な形式検証
     if (apiKey.length < 39 || !apiKey.startsWith('AI')) {
       Logger.error("APIキーの形式が不正です。");
       return false;
     }
 
     final client = _initializeGeminiClient(apiKey);
-    const prompt = 'test';
 
     try {
-      // コンテンツの生成を試みる
-      final content = [Content.text(prompt)];
-      final response = await client.generateContent(content);
+      // 任意の内容でリクエストを送信（テキストが返ってくれば良い）
+      final content = [Content.text('verify')];
+      final response = await client.generateContent(content,
+          generationConfig: GenerationConfig(
+              maxOutputTokens: 10, // Extremely low token limit
+              temperature: 0.0 // Minimal variability
+              ));
 
-      if (response.text != null && response.text!.isNotEmpty) {
-        Logger.info("Gemini APIキーが正常に検証されました。");
-        return true;
-      } else {
-        Logger.error("APIから空のレスポンスが返されました。");
-        return false;
-      }
-    } on GenerativeAIException catch (e) {
-      // Google Generative AIに特化した例外処理
-      Logger.error("APIキー検証中にエラーが発生しました: ${e.message}");
-      return false;
+      Logger.debug("API key verification response: ${response.text}");
+
+      // テキストが返ってきたら成功とみなす
+      return response.text != null && response.text!.isNotEmpty;
     } catch (e) {
-      // 予期せぬ一般的な例外の処理
-      Logger.error("予期せぬエラーが発生しました: $e");
+      Logger.error("API key verification error: $e");
       return false;
     }
   }
