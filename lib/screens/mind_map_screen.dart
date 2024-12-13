@@ -58,7 +58,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late NodesNotifier _nodesNotifirer;
   late ProjectNotifier _projectNotifier;
   late ScreenState _screenState;
-  late NodeState _nodeState;
   // node
   late List<Node> nodes;
 
@@ -221,7 +220,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _nodesNotifirer = ref.read(nodesProvider.notifier);
     _projectNotifier = ref.read(projectProvider.notifier);
     _screenState = ref.read(screenProvider);
-    _nodeState = ref.read(nodeStateProvider);
   }
 
   @override

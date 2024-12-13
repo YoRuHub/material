@@ -6,7 +6,6 @@ import '../models/node.dart';
 import '../constants/node_constants.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../models/settings.dart';
 import '../providers/screen_provider.dart';
 
 /// ノード物理演算クラス
@@ -63,73 +62,34 @@ class NodePhysics {
     node.velocity += totalForce;
   }
 
-  /// 親との距離を調整し、孫ノードが親と子の延長線上に扇型に分散するように調整する
+  /// 親との距離を調整し、兄弟ノードを角度に基づいて展開する
   static void _applyParentChildForces(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
     if (node.parent != null) {
-      vector_math.Vector2 direction = node.position - node.parent!.position;
-      double idealDistance = node.children.isNotEmpty
-          ? settings.parentChildDistance * 3 // 子を持つノードは距離を10倍
-          : settings.parentChildDistance; // 子を持たない場合は通常の距離
+      // 同じ親を持つ兄弟ノードを取得
+      List<Node> siblings = node.parent!.children;
+      int siblingCount = siblings.length;
+      int siblingIndex = siblings.indexOf(node);
 
-      // 親と子の延長線上の位置を計算
-      direction.normalize();
-      vector_math.Vector2 targetPosition =
-          node.parent!.position + direction * idealDistance;
+      // 子の数に応じて距離を調整（最低距離を確保する）
+      double idealDistance = settings.parentChildDistance *
+          (1 + node.children.length * 0.3); // 子の数だけ距離を増加
 
-      // 相当の効果を調整
+      // 子ノードを円状に均等に配置する角度計算
+      double angleStep = 2 * pi / siblingCount; // 全円を均等に分割
+      double nodeAngle = angleStep * siblingIndex;
+
+      // 極座標から直交座標に変換
+      vector_math.Vector2 targetPosition = vector_math.Vector2(
+          node.parent!.position.x + idealDistance * cos(nodeAngle),
+          node.parent!.position.y + idealDistance * sin(nodeAngle));
+
+      // 現在位置と理想位置の間の引力ベクトルを計算
       vector_math.Vector2 attractionForce = targetPosition - node.position;
+
+      // 引力の強さを調整
       double attractionStrength = NodeConstants.parentChildAttraction * 0.0001;
       node.velocity += attractionForce * attractionStrength;
-    }
-
-    // 孫ノードに扇型分布を促す力を加える
-    if (node.children.isNotEmpty) {
-      _applyFanShapeForceToGrandchildren(node, settings);
-    }
-  }
-
-  /// 孫ノードが扇型に分散するように力を加える
-  static void _applyFanShapeForceToGrandchildren(
-      Node parentNode, Settings settings) {
-    final numGrandchildren = parentNode.children.length;
-    final angleStep = 180 / (numGrandchildren + 1); // 扇型の角度を均等に分ける
-
-    // 親ノードと子ノードの延長線上に孫ノードを配置
-    for (int i = 0; i < numGrandchildren; i++) {
-      final child = parentNode.children[i];
-
-      // 親と子の位置を基に延長線の方向を決定
-      final parentToChildDirection =
-          (child.position - parentNode.position).normalized();
-
-      // 延長線上に孫ノードを配置
-      final desiredDirection = parentToChildDirection;
-
-      // 延長線上で孫ノードがどれだけ遠くにいるか決定（距離は設定可能）
-      final extensionDistance = settings.parentChildDistance * 2; // 延長線上に配置する距離
-      final extendedPosition =
-          parentNode.position + desiredDirection * extensionDistance;
-
-      // 孫ノードに扇型の角度を加える
-      final angle = (i + 1) * angleStep; // 角度を計算
-      final radians = vector_math.radians(angle);
-      final fanOffset = vector_math.Vector2(cos(radians), sin(radians)) *
-          settings.parentChildDistance *
-          0.5;
-
-      // 孫ノードの最終的な位置
-      final targetPosition = extendedPosition + fanOffset;
-
-      // 孫ノードが扇型に広がる力を加える
-      vector_math.Vector2 direction = targetPosition - child.position;
-      double distance = direction.length;
-      double forceStrength = distance * 0.0001; // 力の強さを調整
-      child.velocity += direction * forceStrength;
-
-      // 適切な距離を保つために、力を調整
-      vector_math.Vector2 distanceToTarget = targetPosition - child.position;
-      child.velocity += distanceToTarget * 0.00005; // 距離補正用の力
     }
   }
 

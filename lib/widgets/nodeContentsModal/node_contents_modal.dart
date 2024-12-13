@@ -26,8 +26,6 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
   late TextEditingController titleController;
   late TextEditingController contentController;
 
-  bool _isHoveringTitle = false;
-  bool _isHoveringContent = false;
   Color _selectedColor = Colors.blue; // 初期値として青を設定
 
   @override
@@ -127,8 +125,6 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 MouseRegion(
-                  onEnter: (_) => setState(() => _isHoveringTitle = true),
-                  onExit: (_) => setState(() => _isHoveringTitle = false),
                   child: TextField(
                     controller: titleController,
                     decoration: InputDecoration(
@@ -153,8 +149,6 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                 const SizedBox(height: 16),
                 Expanded(
                   child: MouseRegion(
-                    onEnter: (_) => setState(() => _isHoveringContent = true),
-                    onExit: (_) => setState(() => _isHoveringContent = false),
                     child: TextField(
                       controller: contentController,
                       keyboardType: TextInputType.multiline,
