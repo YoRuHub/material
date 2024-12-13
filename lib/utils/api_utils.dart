@@ -87,16 +87,22 @@ class ApiUtils {
     final client = _initializeGeminiClient(apiKey, model: modelVersion);
 
     try {
-      // 固定プロンプト
       final systemInstruction = Content.text(
-          'Generate a structured JSON object containing a "nodes" array. '
-          'Each node should contain a "id", "title", a "contents", and a "color" field, where "color" is a hex value in the format "#RRGGBB" or "#RRGGBBAA". '
-          'The "nodes" array should be an ordered list of nodes. Each node should have a unique "id" field (e.g., "id": 1, "id": 2, etc.). '
-          'For nodes with related content, establish logical connections between them using the "node_maps" and "node_link_maps" structures. '
-          '"node_maps" should represent hierarchical or group-based relationships (e.g., which nodes belong together), while "node_link_maps" should represent direct relationships (e.g., which nodes are linked or related in one direction only, not cyclic). '
-          'Ensure that the resulting JSON object has a proper structure like this: '
-          '{"nodes": [{"id": 1, "title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3]}}. '
-          'Please ensure that the node mappings and links are meaningful, logically connected based on the content of each node, and not cyclic. Do not simply follow an example format; instead, focus on logical relationships, ensuring that links and parent-child relationships are one-way and non-circular.');
+          'You are a highly capable assistant. Provide accurate answers in Japanese based on the context and specific requests of the user\'s questions.\n'
+          'Provide detailed answers relevant to the question and avoid general responses or unnecessary information.\n'
+          'Please generate specific outputs following the instructions below:\n\n'
+          '1. Focus on answering based on the relevant content from the question.\n'
+          '2. Generate a structured JSON object that includes a "nodes" array.\n'
+          '3. Each node should have "id", "title", "contents", and "color" fields, with "color" specified in the "#RRGGBB" format.\n'
+          '4. The "nodes" array should list the nodes in order, and each node should have a unique "id" (e.g., "id": 1, "id": 2).\n'
+          '5. For nodes with related content, use "node_maps" and "node_link_maps" structures to establish logical relationships:\n'
+          '   - "node_maps" represents hierarchical or parent-child relationships (e.g., which nodes are included together).\n'
+          '   - "node_link_maps" indicates one-way links or relationships (e.g., one node links to another).\n'
+          '   - However, absolutely avoid circular links (bidirectional links). If a circular link exists, consider it invalid and exclude it.\n'
+          '6. Ensure the output follows this structure:\n'
+          '{"nodes": [{"id": 1, "title": "node title", "contents": "node content", "color": "#RRGGBB"}], "node_maps": {"1": [2]}, "node_link_maps": {"1": [3]}}.\n'
+          '7. Parent-child relationships and links must always be one-way and not circular, creating meaningful relationships.\n'
+          '8. Build logical relationships between links and parent-child connections based on the content of the nodes, rather than simply following the format.');
 
       final response = await client.generateContent(
         [systemInstruction, Content.text(inputText)],
@@ -195,26 +201,52 @@ class ApiUtils {
     if (!parsedResult.containsKey('nodes') ||
         !parsedResult.containsKey('node_maps') ||
         !parsedResult.containsKey('node_link_maps')) {
+      Logger.error(
+          'Error: Missing required fields: "nodes", "node_maps", or "node_link_maps".');
       return false;
     }
 
-    // ノードの基本的な検証
+    // ノードの検証
     final nodes = parsedResult['nodes'];
     if (nodes is! List || nodes.isEmpty) {
+      Logger.error('Error: "nodes" is not a valid list or is empty.');
       return false;
     }
 
-    // 各ノードの詳細検証 - 色のフォーマットを含む
+    // 各ノードの詳細検証
+    final seenIds = <int>{};
     for (var node in nodes) {
       if (node is! Map ||
+          !node.containsKey('id') ||
           !node.containsKey('title') ||
           !node.containsKey('contents') ||
           !node.containsKey('color') ||
           !_validateNodeColor(node['color'])) {
+        Logger.error(
+            'Error: Invalid node structure or missing fields in node.');
+        return false;
+      }
+
+      final id = node['id'];
+      if (id is! int || !seenIds.add(id)) {
+        Logger.error('Error: Duplicate or invalid "id" in nodes.');
         return false;
       }
     }
 
+    // node_maps の検証
+    if (parsedResult['node_maps'] is! Map<String, dynamic>) {
+      Logger.error('Error: "node_maps" is not a valid Map.');
+      return false;
+    }
+
+    // node_link_maps の検証
+    if (parsedResult['node_link_maps'] is! Map<String, dynamic>) {
+      Logger.error('Error: "node_link_maps" is not a valid Map.');
+      return false;
+    }
+
+    // 全ての検証が通過した場合は true を返す
     return true;
   }
 

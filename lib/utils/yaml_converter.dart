@@ -93,7 +93,6 @@ class YamlConverter {
     return yamlBuffer.toString();
   }
 
-  // YAMLをパースしてデータをインポートする処理
   static Map<String, dynamic> importYamlToMap(String yamlString) {
     final dynamic decodedYaml = loadYaml(yamlString);
 
@@ -112,20 +111,22 @@ class YamlConverter {
       });
     });
 
-    // node_maps情報を変換
-    final nodeMaps = (decodedYaml['node_maps'] as YamlMap).map((key, value) {
-      final parentId = int.parse(key.toString());
-      final childIds = List<int>.from(value);
-      return MapEntry(parentId, childIds);
-    });
+    // node_maps情報を変換（nullチェックを追加）
+    final nodeMaps = (decodedYaml['node_maps'] as YamlMap?)?.map((key, value) {
+          final parentId = int.parse(key.toString());
+          final childIds = List<int>.from(value);
+          return MapEntry(parentId, childIds);
+        }) ??
+        {}; // nullの場合は空のマップを設定
 
-    // node_link_maps情報を変換
+    // node_link_maps情報を変換（nullチェックを追加）
     final nodeLinkMaps =
-        (decodedYaml['node_link_maps'] as YamlMap).map((key, value) {
-      final sourceId = int.parse(key.toString());
-      final targetIds = List<int>.from(value);
-      return MapEntry(sourceId, targetIds);
-    });
+        (decodedYaml['node_link_maps'] as YamlMap?)?.map((key, value) {
+              final sourceId = int.parse(key.toString());
+              final targetIds = List<int>.from(value);
+              return MapEntry(sourceId, targetIds);
+            }) ??
+            {}; // nullの場合は空のマップを設定
 
     return {
       'nodes': nodes.values.toList(),

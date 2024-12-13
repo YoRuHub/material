@@ -7,32 +7,35 @@ class JsonConverter {
     List<Map<String, dynamic>> nodeLinkMaps,
   ) {
     final nodeJson = {
-      'nodes': nodes.asMap().map((index, node) {
-        final nodeId = node['id'].toString();
+      'nodes': nodes
+          .asMap()
+          .map((index, node) {
+            final nodeId = node['id'].toString();
 
-        final contents = node['contents'];
-        final formattedContents = contents != null && contents.contains('\n')
-            ? '|\n${contents.split('\n').map((line) => '      $line').join('\n')}' // 改行を含むコンテンツ
-            : contents != null && contents.isNotEmpty
-                ? '"$contents"'
-                : '""';
+            final contents = node['contents'];
+            final formattedContents = contents != null &&
+                    contents.contains('\n')
+                ? '|\n${contents.split('\n').map((line) => '      $line').join('\n')}' // 改行を含むコンテンツ
+                : contents != null && contents.isNotEmpty
+                    ? contents
+                    : ''; // 不要なクォートを削除
 
-        // colorが整数型であれば、16進数のカラーコードに変換
-        final color = node['color'];
-        final formattedColor = (color != null && color is int)
-            ? '#${color.toRadixString(16).padLeft(6, '0')}' // intをカラーコードに変換
-            : (color != null && color is String) // すでにカラーコードが文字列であればそのまま使用
-                ? color
-                : '""'; // colorがnullの場合は""を設定
+            // colorが整数型であれば、16進数のカラーコードに変換
+            final color = node['color'];
+            final formattedColor = (color != null && color is int)
+                ? '#${color.toRadixString(16).padLeft(6, '0')}' // intをカラーコードに変換
+                : (color != null && color is String) // すでにカラーコードが文字列であればそのまま使用
+                    ? color
+                    : ''; // colorがnullの場合は空文字を設定
 
-        return MapEntry(nodeId, {
-          'title': node['title'] != null && node['title'].isNotEmpty
-              ? '"${node['title']}"'
-              : '""', // タイトルが空の場合は""を設定
-          'contents': formattedContents,
-          'color': formattedColor,
-        });
-      }),
+            return MapEntry(nodeId, {
+              'title': node['title'] ?? '', // タイトルが空の場合は""を設定
+              'contents': formattedContents,
+              'color': formattedColor,
+            });
+          })
+          .values
+          .toList(), // Mapの値をリストに変換
     };
 
     // node_mapsの処理
@@ -105,7 +108,7 @@ class JsonConverter {
     };
   }
 
-// カラーコードを整数に変換する関数
+  // カラーコードを整数に変換する関数
   static int _parseColor(String colorString) {
     if (colorString.startsWith('#')) {
       // #RRGGBB形式を整数に変換
