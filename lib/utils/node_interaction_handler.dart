@@ -9,6 +9,7 @@ import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
@@ -289,6 +290,7 @@ class NodeInteractionHandler {
       newNode.isActive = true;
       activeNodes.add(newNode);
       ref.read(nodeStateProvider.notifier).setActiveNodes(activeNodes);
+      Logger.debug('アクティブノードを追加しました');
     } else {
       // 新しいノードがすでにアクティブノードリストにある場合、非アクティブにする
       newNode.isActive = false;

@@ -79,17 +79,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     )..repeat();
 
     _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
-    // databaseを初期化
+    // databaseの初期化などはそのまま
     _nodeModel = NodeModel();
     _nodeMapModel = NodeMapModel();
     _nodeLinkMapModel = NodeLinkMapModel();
-    // providerを初期化
-    _screenNotifier = ref.read(screenProvider.notifier);
-    _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
-    _nodesNotifirer = ref.read(nodesProvider.notifier);
-    _projectNotifier = ref.read(projectProvider.notifier);
-    _screenState = ref.read(screenProvider);
-    _nodeState = ref.read(nodeStateProvider);
 
     // 必須の_nodeInteractionHandlerを初期化
     _nodeInteractionHandler =
@@ -98,19 +91,20 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     // 操作がない場合にアニメーションを停止するためのタイマー
     _startInactiveTimer();
 
+    // 初期化処理をpost-frameで呼び出す
     WidgetsBinding.instance.addPostFrameCallback((_) async {
       await _prepareInitialization();
     });
   }
 
-  // タイマーを開始
   void _startInactiveTimer() {
     _inactiveTimer = Timer.periodic(_inactiveDuration, (timer) {
-      _screenNotifier.toggleAnimating();
-
+      _screenNotifier.enableAnimating();
+      Logger.debug('アニメーションを開始しました');
       if (_controller.isAnimating) {
         _controller.stop();
-        _screenNotifier.toggleAnimating();
+        _screenNotifier.disableAnimating();
+        Logger.debug('アニメーションを停止しました');
       }
     });
   }
@@ -218,6 +212,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _screenNotifier = ref.read(screenProvider.notifier);
+    _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
+    _nodesNotifirer = ref.read(nodesProvider.notifier);
+    _projectNotifier = ref.read(projectProvider.notifier);
+    _screenState = ref.read(screenProvider);
+    _nodeState = ref.read(nodeStateProvider);
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -385,7 +390,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
 
   /// 新しいノードを追加
   Future<void> _addNode() async {
-    final activeNodes = _nodeState.activeNodes;
+    final activeNodes = ref.watch(nodeStateProvider).activeNodes;
+
     if (activeNodes.isNotEmpty) {
       // アクティブノードのリストをループして処理
       for (final activeNode in activeNodes) {
