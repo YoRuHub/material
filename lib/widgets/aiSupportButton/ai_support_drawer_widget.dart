@@ -75,10 +75,13 @@ class AiSupportDrawerWidgetState extends ConsumerState<AiSupportDrawerWidget>
 
     Logger.debug('Response: $response');
 
-    setState(() {
-      _isLoading = false; // ローディング終了
-    });
-    _controller.stop(); // アニメーション停止
+    // ウィジェットがツリーにまだ存在しているかチェック
+    if (mounted) {
+      setState(() {
+        _isLoading = false; // ローディング終了
+      });
+      _controller.stop(); // アニメーション停止
+    }
   }
 
   @override
