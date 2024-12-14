@@ -88,7 +88,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         NodeInteractionHandler(ref: ref, projectId: widget.projectId);
 
     // 操作がない場合にアニメーションを停止するためのタイマー
-    _startInactiveTimer();
+    _startInactivityAnimationStopTimer();
 
     // 初期化処理をpost-frameで呼び出す
     WidgetsBinding.instance.addPostFrameCallback((_) async {
@@ -96,16 +96,21 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
-  void _startInactiveTimer() {
+  // 操作がない場合にアニメーションを停止する
+  void _startInactivityAnimationStopTimer() {
     _inactiveTimer = Timer.periodic(_inactiveDuration, (timer) {
-      _screenNotifier.enableAnimating();
-      Logger.debug('アニメーションを開始しました');
       if (_controller.isAnimating) {
         _controller.stop();
-        _screenNotifier.disableAnimating();
-        Logger.debug('アニメーションを停止しました');
+        Logger.debug('アニメーションが停止しました');
       }
     });
+  }
+
+  // アニメーションを再開する
+  void _startAnimationTimer() {
+    _inactiveTimer.cancel();
+    _controller.repeat();
+    _startInactivityAnimationStopTimer();
   }
 
   Future<void> _prepareInitialization() async {
@@ -206,7 +211,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   @override
   void dispose() {
     _controller.dispose();
-    _inactiveTimer.cancel();
+    _inactiveTimer.cancel(); // タイマーを停止
     super.dispose();
   }
 
@@ -293,12 +298,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         onPanStart: _nodeInteractionHandler.onPanStart,
                         onPanUpdate: _nodeInteractionHandler.onPanUpdate,
                         onPanEnd: _nodeInteractionHandler.onPanEnd,
-                        onTapUp: _nodeInteractionHandler.onTapUp,
-                        onPanDown: (details) {
-                          _inactiveTimer.cancel();
-                          _controller.repeat();
+                        onTapUp: (details) {
                           // 新しいタイマーを開始
-                          _startInactiveTimer();
+                          _startAnimationTimer();
+                          _nodeInteractionHandler.onTapUp;
                         },
                         child: AnimatedBuilder(
                           animation: _controller,

@@ -129,12 +129,4 @@ class ScreenNotifier extends StateNotifier<ScreenState> {
   void togglePositionVisibility() {
     state = state.copyWith(isPositionVisible: !state.isPositionVisible);
   }
-
-  void enableAnimating() {
-    state = state.copyWith(isAnimating: true);
-  }
-
-  void disableAnimating() {
-    state = state.copyWith(isAnimating: false);
-  }
 }

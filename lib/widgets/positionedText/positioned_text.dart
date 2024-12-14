@@ -34,7 +34,7 @@ class PositionedText extends ConsumerWidget {
               },
               child: Icon(
                 isPositionVisible ? Icons.visibility : Icons.visibility_off,
-                color: theme.colorScheme.secondary,
+                color: theme.colorScheme.onSurface,
               ),
             ),
             const SizedBox(width: 8),
@@ -42,7 +42,7 @@ class PositionedText extends ConsumerWidget {
               Text(
                 positionText,
                 style: TextStyle(
-                  color: theme.colorScheme.secondary,
+                  color: theme.colorScheme.onSurface,
                   fontSize: 16,
                 ),
               ),
@@ -60,7 +60,7 @@ class PositionedText extends ConsumerWidget {
       modeText += 'Link ';
     }
 
-    if (!screenState.isPhysicsEnabled || screenState.isAnimating) {
+    if (!screenState.isPhysicsEnabled) {
       modeText += 'Stop ';
     }
 
