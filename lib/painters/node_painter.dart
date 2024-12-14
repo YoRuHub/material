@@ -5,8 +5,8 @@ import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import '../models/node.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-
 import '../providers/node_provider.dart';
+import 'node_tool_painter.dart';
 
 /// ノードの描画を行うクラス
 class NodePainter extends CustomPainter {
@@ -87,6 +87,8 @@ class NodePainter extends CustomPainter {
     final isTitleVisible = ref.read(screenProvider).isTitleVisible;
     final isLinkMode = ref.read(screenProvider).isLinkMode;
     final scale = ref.read(screenProvider).scale;
+    final selectedNode = ref.read(nodeStateProvider).selectedNode;
+
     // ノード間の接続線の描画
     for (var node in ref.read(nodesProvider)) {
       // 親ノードとの線の描画
@@ -327,6 +329,11 @@ class NodePainter extends CustomPainter {
         ).createShader(Rect.fromCircle(center: center, radius: nucleusRadius));
 
       canvas.drawCircle(center, nucleusRadius, highlightPaint);
+    }
+
+    // 選択中のノードに対しての処理
+    if (selectedNode != null) {
+      NodeToolPainter(ref: ref, context: context).paint(canvas, size);
     }
   }
 

@@ -235,45 +235,98 @@ class NodeInteractionHandler {
 
   bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
     bool isNodeSelected = false;
+
+    // ノードが選択されているかチェック
     for (var node in ref.read(nodesProvider)) {
-      double dx = node.position.x - worldPos.x;
-      double dy = node.position.y - worldPos.y;
-      double distance = sqrt(dx * dx + dy * dy);
+      double distance = _calculateDistance(node.position, worldPos);
 
       if (distance < node.radius) {
-        // 現在のアクティブノードリストを取得
-        List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
-
-        // ノードがすでにアクティブリストにある場合
-        if (activeNodes.contains(node)) {
-          // ノードを非アクティブにする処理
-          node.isActive = false;
-          ref.read(nodeStateProvider.notifier).setActiveNodes(
-              activeNodes.where((activeNode) => activeNode != node).toList());
-        } else {
-          // ノードをアクティブリストに追加
-          _toggleActiveNode(node); // ノードをアクティブリストに追加
-          _toggleSelectedNode(node); // 選択されたノードの状態を切り替え
-        }
-
-        isNodeSelected = true;
+        isNodeSelected = _handleNodeSelection(node);
         break;
       }
     }
 
-    // ノードが選択されなかった場合、現在のアクティブノードを解除
+    // ノードが選択されなかった場合、選択解除処理
     if (!isNodeSelected) {
-      List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
-      if (activeNodes.isNotEmpty) {
-        for (var activeNode in activeNodes) {
-          activeNode.isActive = false;
-        }
-        ref.read(nodeStateProvider.notifier).setActiveNodes([]);
-      }
-      ref.read(nodeStateProvider.notifier).clearSelectedNode();
+      _handleDeselectNode(worldPos);
     }
 
     return isNodeSelected;
+  }
+
+// ノードとタップ位置の距離を計算する関数
+  double _calculateDistance(
+      vector_math.Vector2 nodePos, vector_math.Vector2 worldPos) {
+    double dx = nodePos.x - worldPos.x;
+    double dy = nodePos.y - worldPos.y;
+    return sqrt(dx * dx + dy * dy);
+  }
+
+// ノードが選択された場合の処理
+  bool _handleNodeSelection(Node node) {
+    bool isNodeSelected = false;
+
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+
+    if (activeNodes.contains(node)) {
+      node.isActive = false;
+      ref.read(nodeStateProvider.notifier).setActiveNodes(
+          activeNodes.where((activeNode) => activeNode != node).toList());
+      ref.read(nodeStateProvider.notifier).clearSelectedNode();
+    } else {
+      _toggleActiveNode(node);
+      _toggleSelectedNode(node);
+    }
+
+    isNodeSelected = true;
+    return isNodeSelected;
+  }
+
+// ノードが選択されなかった場合、選択解除処理
+  void _handleDeselectNode(vector_math.Vector2 worldPos) {
+    final selectedNode = ref.read(nodeStateProvider).selectedNode;
+    final scale = ref.read(screenProvider).scale;
+
+    if (selectedNode != null) {
+      double distance =
+          _calculateDistanceWithScale(selectedNode.position, worldPos, scale);
+
+      final double outerRadius = NodeConstants.defaultNodeRadius * 3 * scale;
+      final double innerRadius = NodeConstants.defaultNodeRadius * 1.5 * scale;
+
+      // 右側の場合のみ処理を行う
+      if (distance > innerRadius &&
+          distance < outerRadius &&
+          worldPos.x > selectedNode.position.x) {
+        return; // 右側で選択解除なし
+      }
+    }
+
+    _clearActiveNodes();
+    ref.read(nodeStateProvider.notifier).clearSelectedNode();
+  }
+
+// スケールを考慮したノードとタップ位置の距離を計算する関数
+  double _calculateDistanceWithScale(
+      vector_math.Vector2 nodePos, vector_math.Vector2 worldPos, double scale) {
+    double adjustedNodeX = nodePos.x * scale;
+    double adjustedNodeY = nodePos.y * scale;
+    double adjustedWorldPosX = worldPos.x * scale;
+    double adjustedWorldPosY = worldPos.y * scale;
+
+    return _calculateDistance(vector_math.Vector2(adjustedNodeX, adjustedNodeY),
+        vector_math.Vector2(adjustedWorldPosX, adjustedWorldPosY));
+  }
+
+// アクティブノードを解除する関数
+  void _clearActiveNodes() {
+    List<Node> activeNodes = ref.read(nodeStateProvider).activeNodes;
+    if (activeNodes.isNotEmpty) {
+      for (var activeNode in activeNodes) {
+        activeNode.isActive = false;
+      }
+      ref.read(nodeStateProvider.notifier).setActiveNodes([]);
+    }
   }
 
   void _toggleActiveNode(Node newNode) {
@@ -301,6 +354,7 @@ class NodeInteractionHandler {
 
   void _toggleSelectedNode(Node newNode) {
     final currentSelectedNode = ref.read(nodeStateProvider).selectedNode;
+    Logger.debug('現在の選択ノード:$currentSelectedNode');
     if (currentSelectedNode != null) {
       currentSelectedNode.isSelected = false;
       ref.read(nodeStateProvider.notifier).setSelectedNode(null);

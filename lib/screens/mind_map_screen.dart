@@ -298,10 +298,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                         onPanStart: _nodeInteractionHandler.onPanStart,
                         onPanUpdate: _nodeInteractionHandler.onPanUpdate,
                         onPanEnd: _nodeInteractionHandler.onPanEnd,
-                        onTapUp: (details) {
-                          // 新しいタイマーを開始
+                        onTapUp: _nodeInteractionHandler.onTapUp,
+                        onTapDown: (details) {
+                          // アニメーションを再開
                           _startAnimationTimer();
-                          _nodeInteractionHandler.onTapUp;
                         },
                         child: AnimatedBuilder(
                           animation: _controller,
