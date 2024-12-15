@@ -268,8 +268,8 @@ class NodePainter extends CustomPainter {
         center: const Alignment(0.0, 0.0),
         radius: 0.9,
         colors: [
-          Colors.white.withOpacity(0.2),
-          node.color!.withOpacity(0.3),
+          Colors.white.withOpacity(0.3),
+          node.color!.withOpacity(0.6),
           node.color!.withOpacity(1),
         ],
         stops: const [0.0, 0.5, 1.0],
