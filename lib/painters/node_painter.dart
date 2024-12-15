@@ -333,7 +333,12 @@ class NodePainter extends CustomPainter {
 
     // 選択中のノードに対しての処理
     if (selectedNode != null) {
-      NodeToolPainter(ref: ref, context: context).paint(canvas, size);
+      NodeToolPainter(ref: ref, context: context, tool: 'edit')
+          .paint(canvas, size);
+      NodeToolPainter(ref: ref, context: context, tool: 'add')
+          .paint(canvas, size);
+
+      //final test = NodeToolPainter(ref: ref, context: context, tool: 'add').isTapped(tapPosition);
     }
   }
 

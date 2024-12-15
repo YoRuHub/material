@@ -9,90 +9,161 @@ import '../utils/node_operations.dart';
 class NodeToolPainter extends CustomPainter {
   final WidgetRef ref;
   final BuildContext context;
+  final String tool;
 
   NodeToolPainter({
     required this.ref,
     required this.context,
+    required this.tool,
   });
 
   @override
   void paint(Canvas canvas, Size size) {
     final selectedNode = ref.read(nodeStateProvider).selectedNode;
+    if (selectedNode == null) return;
+
     final scale = ref.read(screenProvider).scale;
     final offset = ref.read(screenProvider).offset;
-    if (selectedNode != null) {
-      // scaleとoffsetを考慮した中心座標
-      final center = NodeOperations.transformPoint(
-          selectedNode.position.x, selectedNode.position.y,
-          scale: scale, offset: offset);
 
-      // ホバー状態による色の透明度の変更
-      final Paint paint = Paint()
-        ..color = Theme.of(context).colorScheme.onSurface.withOpacity(0.2)
-        ..style = PaintingStyle.fill;
+    // scaleとoffsetを考慮した中心座標
+    final center = NodeOperations.transformPoint(
+        selectedNode.position.x, selectedNode.position.y,
+        scale: scale, offset: offset);
 
-      // 扇形の半径（外側と内側）をscaleに応じて調整
-      final double outerRadius =
-          NodeConstants.defaultNodeRadius * 3 * scale; // 外側の半径
-      final double innerRadius =
-          NodeConstants.defaultNodeRadius * 1.5 * scale; // 内側の半径
+    final double outerRadius = NodeConstants.defaultNodeRadius * 2.5 * scale;
+    final double innerRadius = NodeConstants.defaultNodeRadius * 1.5 * scale;
 
-      // 扇形の開始角度とスイープ角度（ラジアン単位）
-      const double startAngle = -3.14 / 2;
-      const double sweepAngle = 3.14 / 4;
+    const double sweepAngle = pi / 4; // 扇形のスイープ角度
 
-      // 扇形の中心座標を計算
-      double middleRadius = (outerRadius + innerRadius) / 2; // 半径の中間値
-      const double centerAngle = startAngle + (sweepAngle / 2); // 扇形の中心角度
-      final Offset arcCenter = Offset(
-        center.dx + middleRadius * cos(centerAngle),
-        center.dy + middleRadius * sin(centerAngle),
-      );
+    // 'add'の時には角度をずらす
+    final double startAngle = tool == 'add' ? -pi / 2 + sweepAngle : -pi / 2;
 
-      // Editアイコンを描画
-      const IconData editIcon = Icons.edit; // 表示するアイコン
-      final iconSize = 24.0 * scale; // アイコンサイズもscaleに応じて変更
-      final TextPainter textPainter = TextPainter(
-        text: TextSpan(
-          text: String.fromCharCode(editIcon.codePoint),
-          style: TextStyle(
-            fontSize: iconSize, // scaleを反映したアイコンサイズ
-            fontFamily: editIcon.fontFamily,
-            package: editIcon.fontPackage,
-            color: Theme.of(context).colorScheme.onSurface,
-          ),
+    // 扇形の描画
+
+    // 塗りつぶしのペイント
+    final Paint fillPaint = Paint()
+      ..color = Theme.of(context).colorScheme.onSurface.withOpacity(0.1)
+      ..style = PaintingStyle.fill;
+
+    // 境界線のペイント
+    final Paint borderPaint = Paint()
+      ..color = Theme.of(context).colorScheme.onSurface.withOpacity(0.1)
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1; // 境界線の太さを設定
+
+    _drawArc(canvas, center, outerRadius, innerRadius, startAngle, sweepAngle,
+        fillPaint, borderPaint);
+
+    // アイコンの描画
+    final double middleRadius = (outerRadius + innerRadius) / 2;
+    final double centerAngle = startAngle + sweepAngle / 2;
+    final Offset arcCenter = Offset(
+      center.dx + middleRadius * cos(centerAngle),
+      center.dy + middleRadius * sin(centerAngle),
+    );
+    final IconData currentIcon = tool == 'add' ? Icons.add : Icons.edit;
+    _drawIcon(canvas, arcCenter, currentIcon, scale);
+  }
+
+  void _drawIcon(Canvas canvas, Offset position, IconData icon, double scale) {
+    final TextPainter textPainter = TextPainter(
+      text: TextSpan(
+        text: String.fromCharCode(icon.codePoint),
+        style: TextStyle(
+          fontSize: 24.0 * scale,
+          fontFamily: icon.fontFamily,
+          package: icon.fontPackage,
+          color: Theme.of(context).colorScheme.onSurface,
         ),
-        textDirection: TextDirection.ltr,
-      );
-      textPainter.layout();
-      textPainter.paint(
-          canvas,
-          Offset(arcCenter.dx - textPainter.width / 2,
-              arcCenter.dy - textPainter.height / 2));
+      ),
+      textDirection: TextDirection.ltr,
+    );
+    textPainter.layout();
+    textPainter.paint(
+      canvas,
+      position - Offset(textPainter.width / 2, textPainter.height / 2),
+    );
+  }
 
-      // 輪っか状の扇形のパスを作成
+  void _drawArc(
+      Canvas canvas,
+      Offset center,
+      double outerRadius,
+      double innerRadius,
+      double startAngle,
+      double sweepAngle,
+      Paint fillPaint,
+      Paint borderPaint) {
+    // 塗りつぶしのパス
+    final Path path = Path()
+      ..moveTo(center.dx + outerRadius * cos(startAngle),
+          center.dy + outerRadius * sin(startAngle))
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: outerRadius),
+        startAngle,
+        sweepAngle,
+        false,
+      )
+      ..lineTo(center.dx + innerRadius * cos(startAngle + sweepAngle),
+          center.dy + innerRadius * sin(startAngle + sweepAngle))
+      ..arcTo(
+        Rect.fromCircle(center: center, radius: innerRadius),
+        startAngle + sweepAngle,
+        -sweepAngle,
+        false,
+      )
+      ..close();
+
+    // 扇形の塗りつぶし
+    canvas.drawPath(path, fillPaint);
+
+    // 扇形の境界線
+    canvas.drawPath(path, borderPaint);
+  }
+
+// タップ判定のロジック
+  String isTapped(Offset tapPosition) {
+    final selectedNode = ref.read(nodeStateProvider).selectedNode;
+    if (selectedNode == null) return ''; // 選択されていない場合は空文字を返す
+
+    final scale = ref.read(screenProvider).scale;
+    final offset = ref.read(screenProvider).offset;
+
+    final center = NodeOperations.transformPoint(
+        selectedNode.position.x, selectedNode.position.y,
+        scale: scale, offset: offset);
+
+    final double outerRadius = NodeConstants.defaultNodeRadius * 2.5 * scale;
+    final double innerRadius = NodeConstants.defaultNodeRadius * 1.5 * scale;
+
+    const double sweepAngle = pi / 4; // 扇形のスイープ角度
+
+    // 'add' と 'edit' のパスを一つの関数で判定
+    String checkAreaTapped(double startAngle) {
       final Path path = Path()
         ..moveTo(center.dx + outerRadius * cos(startAngle),
             center.dy + outerRadius * sin(startAngle))
-        ..arcTo(
-          Rect.fromCircle(center: center, radius: outerRadius), // 外側の円
-          startAngle, // 開始角度
-          sweepAngle, // スイープ角度
-          false,
-        )
+        ..arcTo(Rect.fromCircle(center: center, radius: outerRadius),
+            startAngle, sweepAngle, false)
         ..lineTo(center.dx + innerRadius * cos(startAngle + sweepAngle),
             center.dy + innerRadius * sin(startAngle + sweepAngle))
-        ..arcTo(
-          Rect.fromCircle(center: center, radius: innerRadius), // 内側の円
-          startAngle + sweepAngle, // 内側の開始角度
-          -sweepAngle, // 内側は逆方向に弧を描く
-          false,
-        )
+        ..arcTo(Rect.fromCircle(center: center, radius: innerRadius),
+            startAngle + sweepAngle, -sweepAngle, false)
         ..close();
 
-      // 輪っか状の扇形を描画
-      canvas.drawPath(path, paint);
+      return path.contains(tapPosition)
+          ? (startAngle == -pi / 2 ? 'edit' : 'add')
+          : '';
     }
+
+    // 'add' と 'edit' のタップ判定
+    final addAreaTapped = checkAreaTapped(-pi / 2 + sweepAngle);
+    if (addAreaTapped.isNotEmpty) return addAreaTapped;
+
+    final editAreaTapped = checkAreaTapped(-pi / 2);
+    if (editAreaTapped.isNotEmpty) return editAreaTapped;
+
+    return ''; // どちらにも当たらない場合
   }
 
   @override

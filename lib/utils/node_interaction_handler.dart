@@ -1,5 +1,4 @@
 import 'dart:math';
-import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_app/constants/node_constants.dart';
 import 'package:flutter_app/database/models/node_map_model.dart';
@@ -13,6 +12,7 @@ import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
+import '../painters/node_tool_painter.dart';
 import 'node_operations.dart';
 
 class NodeInteractionHandler {
@@ -224,16 +224,17 @@ class NodeInteractionHandler {
     return ancestors;
   }
 
-  void onTapUp(TapUpDetails details) {
+  void onTapUp(TapUpDetails details, BuildContext context) {
     vector_math.Vector2 worldPos = CoordinateUtils.screenToWorld(
       details.localPosition,
       ref.read(screenProvider).offset,
       ref.read(screenProvider).scale,
     );
-    _checkForNodeSelection(worldPos);
+    _checkForNodeSelection(worldPos, context); // contextを渡す
   }
 
-  bool _checkForNodeSelection(vector_math.Vector2 worldPos) {
+  bool _checkForNodeSelection(
+      vector_math.Vector2 worldPos, BuildContext context) {
     bool isNodeSelected = false;
 
     // ノードが選択されているかチェック
@@ -241,14 +242,14 @@ class NodeInteractionHandler {
       double distance = _calculateDistance(node.position, worldPos);
 
       if (distance < node.radius) {
-        isNodeSelected = _handleNodeSelection(node);
+        isNodeSelected = _handleNodeSelection(node); // contextを渡す
         break;
       }
     }
 
     // ノードが選択されなかった場合、選択解除処理
     if (!isNodeSelected) {
-      _handleDeselectNode(worldPos);
+      _handleDeselectNode(worldPos, context); // contextを渡す
     }
 
     return isNodeSelected;
@@ -283,7 +284,7 @@ class NodeInteractionHandler {
   }
 
 // ノードが選択されなかった場合、選択解除処理
-  void _handleDeselectNode(vector_math.Vector2 worldPos) {
+  void _handleDeselectNode(vector_math.Vector2 worldPos, BuildContext context) {
     final selectedNode = ref.read(nodeStateProvider).selectedNode;
     final scale = ref.read(screenProvider).scale;
 
@@ -298,7 +299,19 @@ class NodeInteractionHandler {
       if (distance > innerRadius &&
           distance < outerRadius &&
           worldPos.x > selectedNode.position.x) {
-        return; // 右側で選択解除なし
+        final tapPosition = Offset(worldPos.x, worldPos.y);
+
+        // どのエリアがタップされたのかを取得
+        String tappedArea =
+            NodeToolPainter(ref: ref, context: context, tool: 'edit')
+                .isTapped(tapPosition);
+
+        if (tappedArea.isEmpty) {
+          tappedArea = NodeToolPainter(ref: ref, context: context, tool: 'add')
+              .isTapped(tapPosition);
+        }
+        // Tapped area によって処理を分ける
+        return;
       }
     }
 
