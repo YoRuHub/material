@@ -49,7 +49,7 @@ class NodeColorUtils {
   /// 再帰的にノードの色を更新（強制更新バージョン・非同期対応）
   static Future<void> forceUpdateNodeColor(WidgetRef ref, Node node) async {
     node.color = _getColorForGeneration(_calculateGeneration(node));
-    final projectId = ref.read(screenProvider).projectId;
+    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
     final nodeModel = NodeModel();
     await nodeModel.upsertNode(
         node.id, node.title, node.contents, node.color, projectId);

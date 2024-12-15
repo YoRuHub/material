@@ -15,6 +15,7 @@ import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node_tool_type.dart';
 import '../models/node_tool_widget.dart';
 import '../painters/node_tool_painter.dart';
+import '../screens/mind_map_screen.dart';
 import 'node_operations.dart';
 
 class NodeInteractionHandler {
@@ -289,8 +290,9 @@ class NodeInteractionHandler {
   Future<void> _handleDeselectNode(
       vector_math.Vector2 worldPos, BuildContext context) async {
     final selectedNode = ref.read(nodeStateProvider).selectedNode;
+    final projectNode = ref.read(screenProvider).projectNode;
     final scale = ref.read(screenProvider).scale;
-
+    Logger.debug('projectNode:$projectNode');
     if (selectedNode != null) {
       double distance =
           _calculateDistanceWithScale(selectedNode.position, worldPos, scale);
@@ -337,7 +339,17 @@ class NodeInteractionHandler {
                 );
                 return;
               case NodeToolType.join:
+                ref.read(screenProvider.notifier).pushNodeToStack(selectedNode);
+                Navigator.pushReplacement(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => MindMapScreen(
+                      projectNode: selectedNode,
+                    ),
+                  ),
+                );
                 return;
+
               case NodeToolType.delete:
                 await NodeOperations.deleteNode(
                   targetNode: selectedNode,

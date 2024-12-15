@@ -1,8 +1,10 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter/material.dart';
+import '../models/node.dart';
 
 class ScreenState {
-  final int projectId;
+  final Node? projectNode;
+  final Node? previousNode;
   final Offset offset;
   final double scale;
   final bool isPhysicsEnabled;
@@ -12,10 +14,12 @@ class ScreenState {
   final bool isLinkMode;
   final bool isPositionVisible;
   final bool isAnimating;
+  final List<Node> nodeStack; // ノードの履歴スタック
 
   // デフォルト値を定義して初期化
   static const defaultState = ScreenState(
-    projectId: 0,
+    projectNode: null,
+    previousNode: null,
     offset: Offset.zero,
     scale: 1.0,
     isPhysicsEnabled: true,
@@ -25,44 +29,54 @@ class ScreenState {
     isLinkMode: false,
     isPositionVisible: true,
     isAnimating: false,
+    nodeStack: [],
   );
 
   // コンストラクタ
-  const ScreenState(
-      {required this.projectId,
-      required this.offset,
-      required this.scale,
-      required this.isPhysicsEnabled,
-      required this.isTitleVisible,
-      required this.isDrawerOpen,
-      required this.isPanning,
-      required this.isLinkMode,
-      required this.isPositionVisible,
-      required this.isAnimating});
+  const ScreenState({
+    required this.projectNode,
+    required this.previousNode,
+    required this.offset,
+    required this.scale,
+    required this.isPhysicsEnabled,
+    required this.isTitleVisible,
+    required this.isDrawerOpen,
+    required this.isPanning,
+    required this.isLinkMode,
+    required this.isPositionVisible,
+    required this.isAnimating,
+    required this.nodeStack,
+  });
 
   // copyWith メソッド
-  ScreenState copyWith(
-      {int? projectId,
-      Offset? offset,
-      double? scale,
-      bool? isPhysicsEnabled,
-      bool? isTitleVisible,
-      bool? isDrawerOpen,
-      bool? isPanning,
-      bool? isLinkMode,
-      bool? isPositionVisible,
-      bool? isAnimating}) {
+  ScreenState copyWith({
+    Node? projectNode,
+    Node? previousNode,
+    Offset? offset,
+    double? scale,
+    bool? isPhysicsEnabled,
+    bool? isTitleVisible,
+    bool? isDrawerOpen,
+    bool? isPanning,
+    bool? isLinkMode,
+    bool? isPositionVisible,
+    bool? isAnimating,
+    List<Node>? nodeStack, // スタックをコピーするための追加
+  }) {
     return ScreenState(
-        projectId: projectId ?? this.projectId,
-        offset: offset ?? this.offset,
-        scale: scale ?? this.scale,
-        isPhysicsEnabled: isPhysicsEnabled ?? this.isPhysicsEnabled,
-        isTitleVisible: isTitleVisible ?? this.isTitleVisible,
-        isDrawerOpen: isDrawerOpen ?? this.isDrawerOpen,
-        isPanning: isPanning ?? this.isPanning,
-        isLinkMode: isLinkMode ?? this.isLinkMode,
-        isPositionVisible: isPositionVisible ?? this.isPositionVisible,
-        isAnimating: isAnimating ?? this.isAnimating);
+      projectNode: projectNode ?? this.projectNode,
+      previousNode: previousNode ?? this.previousNode,
+      offset: offset ?? this.offset,
+      scale: scale ?? this.scale,
+      isPhysicsEnabled: isPhysicsEnabled ?? this.isPhysicsEnabled,
+      isTitleVisible: isTitleVisible ?? this.isTitleVisible,
+      isDrawerOpen: isDrawerOpen ?? this.isDrawerOpen,
+      isPanning: isPanning ?? this.isPanning,
+      isLinkMode: isLinkMode ?? this.isLinkMode,
+      isPositionVisible: isPositionVisible ?? this.isPositionVisible,
+      isAnimating: isAnimating ?? this.isAnimating,
+      nodeStack: nodeStack ?? this.nodeStack, // スタックをコピー
+    );
   }
 }
 
@@ -75,8 +89,12 @@ class ScreenNotifier extends StateNotifier<ScreenState> {
   // 初期状態を defaultState に変更
   ScreenNotifier() : super(ScreenState.defaultState);
 
-  Future<void> setProjectId(int projectId) async {
-    state = state.copyWith(projectId: projectId);
+  Future<void> setProjectNode(Node projectNode) async {
+    state = state.copyWith(projectNode: projectNode);
+  }
+
+  Future<void> setPreviousNode(Node previousNode) async {
+    state = state.copyWith(previousNode: previousNode);
   }
 
   void setOffset(Offset offset) {
@@ -87,9 +105,37 @@ class ScreenNotifier extends StateNotifier<ScreenState> {
     state = state.copyWith(scale: scale);
   }
 
+  // ノードをスタックに追加
+  void pushNodeToStack(Node node) {
+    List<Node> newStack = List.from(state.nodeStack)..add(node);
+    state = state.copyWith(nodeStack: newStack);
+  }
+
+  // ノードをスタックから削除
+  void popNodeFromStack() {
+    if (state.nodeStack.isNotEmpty) {
+      List<Node> newStack = List.from(state.nodeStack)..removeLast();
+      state = state.copyWith(nodeStack: newStack);
+    }
+  }
+
   // 画面状態をリセットするメソッド
   void resetScreen() {
-    state = ScreenState.defaultState;
+    // nodeStackは消さないように、その他の状態をリセット
+    state = ScreenState(
+      projectNode: null,
+      previousNode: null,
+      offset: Offset.zero,
+      scale: 1.0,
+      isPhysicsEnabled: true,
+      isTitleVisible: true,
+      isDrawerOpen: false,
+      isPanning: false,
+      isLinkMode: false,
+      isPositionVisible: true,
+      isAnimating: false,
+      nodeStack: state.nodeStack, // nodeStackはそのまま保持
+    );
   }
 
   // 物理演算の状態をトグル

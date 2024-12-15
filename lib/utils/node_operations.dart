@@ -25,7 +25,7 @@ class NodeOperations {
     String createdAt = '',
     Node? parentNode,
   }) async {
-    final projectId = ref.read(screenProvider).projectId;
+    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final NodeModel nodeModel = NodeModel();
@@ -76,7 +76,7 @@ class NodeOperations {
   /// ノードの紐付け
   static Future<void> linkChildNode(
       WidgetRef ref, int parentNodeId, Node childNode) async {
-    final projectId = ref.read(screenProvider).projectId;
+    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
     ref
         .read(nodesProvider.notifier)
         .linkChildNodeToParent(parentNodeId, childNode, projectId);
@@ -122,7 +122,7 @@ class NodeOperations {
     final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
-    final projectId = ref.read(screenProvider).projectId;
+    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
 
     // 子ノードを逆順に削除
     for (var i = targetNode.children.length - 1; i >= 0; i--) {
@@ -294,7 +294,7 @@ class NodeOperations {
     required Node hoveredNode,
   }) {
     final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
-    final projectId = ref.read(screenProvider).projectId;
+    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
     bool isAlreadyLinked = activeNode.targetNodes.contains(hoveredNode) ||
         hoveredNode.targetNodes.contains(activeNode);
 

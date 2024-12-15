@@ -34,7 +34,7 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
 
   Future<void> _initializeNodeYaml() async {
     try {
-      final projectId = ref.read(screenProvider).projectId;
+      final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
       final NodeModel nodeModel = NodeModel();
       final nodeList = await nodeModel.fetchAllNodes(projectId);
 

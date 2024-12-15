@@ -79,8 +79,10 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
             ref.watch(screenProvider.select((state) => state.isTitleVisible));
         final isLinkMode =
             ref.watch(screenProvider.select((state) => state.isLinkMode));
-        final projectId =
-            ref.watch(screenProvider.select((state) => state.projectId));
+        final projectId = ref
+                .watch(screenProvider.select((state) => state.projectNode))
+                ?.id ??
+            0;
         final toolbarController = ref.watch(toolbarControllerProvider(
           ToolbarControllerParams(
             ref: ref,

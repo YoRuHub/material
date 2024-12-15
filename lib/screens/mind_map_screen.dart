@@ -10,7 +10,6 @@ import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
-import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import 'package:flutter_app/utils/coordinate_utils.dart';
 import 'package:flutter_app/utils/logger.dart';
@@ -33,11 +32,12 @@ import '../widgets/aiSupportButton/ai_support_drawer_widget.dart';
 import '../widgets/toolbar/tool_bar.dart';
 
 class MindMapScreen extends ConsumerStatefulWidget {
-  final int projectId;
-  final String projectTitle;
+  final Node? projectNode;
 
-  const MindMapScreen(
-      {super.key, required this.projectId, required this.projectTitle});
+  const MindMapScreen({
+    super.key,
+    required this.projectNode,
+  });
 
   @override
   MindMapScreenState createState() => MindMapScreenState();
@@ -56,7 +56,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late ScreenNotifier _screenNotifier;
   late NodeStateNotifier _nodeStateNotifier;
   late NodesNotifier _nodesNotifirer;
-  late ProjectNotifier _projectNotifier;
   late ScreenState _screenState;
   // node
   late List<Node> nodes;
@@ -84,8 +83,8 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _nodeLinkMapModel = NodeLinkMapModel();
 
     // 必須の_nodeInteractionHandlerを初期化
-    _nodeInteractionHandler =
-        NodeInteractionHandler(ref: ref, projectId: widget.projectId);
+    _nodeInteractionHandler = NodeInteractionHandler(
+        ref: ref, projectId: widget.projectNode?.id ?? 0);
 
     // 操作がない場合にアニメーションを停止するためのタイマー
     _startInactivityAnimationStopTimer();
@@ -117,12 +116,13 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     try {
       // ポストフレームコールバックを使用して初期化を確実に実行
       WidgetsBinding.instance.addPostFrameCallback((_) async {
-        final projectId = widget.projectId;
+        final projectId = widget.projectNode?.id ?? 0;
         _nodeStateNotifier.resetState();
         _nodesNotifirer.clearNodes();
         _screenNotifier.resetScreen();
-        _screenNotifier.setProjectId(projectId);
-        _projectNotifier.setCurrentProject(projectId);
+        if (widget.projectNode != null) {
+          _screenNotifier.setProjectNode(widget.projectNode as Node);
+        }
 
         // ノードの初期化
         await _initializeNodes(projectId);
@@ -223,7 +223,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _screenNotifier = ref.read(screenProvider.notifier);
     _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
     _nodesNotifirer = ref.read(nodesProvider.notifier);
-    _projectNotifier = ref.read(projectProvider.notifier);
     _screenState = ref.read(screenProvider);
   }
 
@@ -233,11 +232,38 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodeState = ref.watch(nodeStateProvider);
     final screenState = ref.watch(screenProvider);
 
+    // スタックが空でないことを確認してからアクセス
+    if (screenState.nodeStack.isNotEmpty) {
+      Logger.debug(
+          '_screenState.nodeStack last: ${screenState.nodeStack.last.title}');
+    } else {
+      Logger.debug('_screenState.nodeStack is empty');
+    }
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
-        title: Text(widget.projectTitle),
+        title: Text(widget.projectNode?.title ?? ''),
         backgroundColor: Theme.of(context).colorScheme.surface,
+        //previousNodeが存在する場合ボタンをひょうじ
+        leading: screenState.nodeStack.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  _screenNotifier.popNodeFromStack();
+                  Node? previousNode;
+                  if (screenState.nodeStack.length > 1) {
+                    previousNode =
+                        screenState.nodeStack[screenState.nodeStack.length - 2];
+                  }
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          MindMapScreen(projectNode: previousNode),
+                    ),
+                  );
+                })
+            : null,
         actions: [
           AiSupportButton(onPressed: () {
             _openAiSupportDrawer();

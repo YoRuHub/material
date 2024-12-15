@@ -1,12 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_app/database/database_helper.dart';
-import 'package:flutter_app/providers/project_provider.dart';
 import 'package:flutter_app/providers/settings_provider.dart';
-import 'package:flutter_app/screens/home_screen.dart'; // HomeScreenのインポート
+import 'package:flutter_app/screens/mind_map_screen.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
-
 import '../database/models/api_model.dart';
 import '../models/ai_model_data.dart';
 import '../providers/api_provider.dart';
@@ -34,8 +32,6 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       await Logger.initialize(true);
       // データベースの初期化
       await _initDatabase();
-      // プロジェクトデータの読み込み
-      await _loadProjects();
       // 設定データの読み込み
       await _loadSettings();
       // APIキーの読み込み
@@ -46,7 +42,8 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
         Navigator.pushReplacement(
           context,
           MaterialPageRoute(
-              builder: (context) => const ProviderScope(child: HomeScreen())),
+              builder: (context) =>
+                  const ProviderScope(child: MindMapScreen(projectNode: null))),
         );
       }
       Logger.info('App initialized.');
@@ -73,16 +70,6 @@ class SplashScreenState extends ConsumerState<SplashScreen> {
       dbHelper.initDatabaseTables();
     } catch (e) {
       Logger.error('Error initializing database: ${e.toString()}');
-    }
-  }
-
-  // プロジェクトデータの読み込み
-  Future<void> _loadProjects() async {
-    try {
-      final projectNotifier = ref.read(projectProvider.notifier);
-      await projectNotifier.loadProjects(); // プロジェクトを読み込む処理を追加
-    } catch (e) {
-      Logger.error('Error loading projects: ${e.toString()}');
     }
   }
 
