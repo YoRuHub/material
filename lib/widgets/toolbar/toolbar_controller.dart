@@ -92,7 +92,7 @@ class ToolbarController {
     List<Node> activeNodes = nodeState.activeNodes;
     if (activeNodes.isNotEmpty) {
       for (final activeNode in activeNodes) {
-        await NodeOperations.deleteNode(activeNode, ref);
+        await NodeOperations.deleteNode(targetNode: activeNode, ref: ref);
       }
     }
 

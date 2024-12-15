@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 
 enum NodeToolType {
+  join,
   add,
-  edit,
   delete,
 }
 
@@ -12,8 +12,8 @@ extension NodeToolTypeExtension on NodeToolType {
     switch (this) {
       case NodeToolType.add:
         return Icons.add;
-      case NodeToolType.edit:
-        return Icons.edit;
+      case NodeToolType.join:
+        return Icons.open_in_new;
       case NodeToolType.delete:
         return Icons.delete;
       default:
@@ -26,8 +26,8 @@ extension NodeToolTypeExtension on NodeToolType {
     switch (this) {
       case NodeToolType.add:
         return 'Add';
-      case NodeToolType.edit:
-        return 'Edit';
+      case NodeToolType.join:
+        return 'Join';
       case NodeToolType.delete:
         return 'Delete';
       default:
@@ -35,15 +35,14 @@ extension NodeToolTypeExtension on NodeToolType {
     }
   }
 
-  // 初期状態の色（アクティブな状態かどうかで変わる）
   Color get color {
     switch (this) {
       case NodeToolType.add:
         return Colors.grey;
-      case NodeToolType.edit:
+      case NodeToolType.join:
         return Colors.grey;
       case NodeToolType.delete:
-        return Colors.red;
+        return Colors.grey;
       default:
         return Colors.grey;
     }

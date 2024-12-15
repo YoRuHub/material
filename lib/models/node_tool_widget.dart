@@ -36,23 +36,23 @@ class NodeToolWidget {
 
 // NodeToolTypeに基づいてNodeToolを取得するマップ
 final Map<NodeToolType, NodeTool> nodeTools = {
+  NodeToolType.join: NodeTool(
+    type: NodeToolType.join,
+    name: NodeToolType.join.name,
+    icon: NodeToolType.join.icon,
+    color: NodeToolType.join.color,
+  ),
   NodeToolType.add: NodeTool(
     type: NodeToolType.add,
-    name: 'Add',
-    icon: Icons.add,
-    color: Colors.grey,
-  ),
-  NodeToolType.edit: NodeTool(
-    type: NodeToolType.edit,
-    name: 'Edit',
-    icon: Icons.edit,
-    color: Colors.grey,
+    name: NodeToolType.add.name,
+    icon: NodeToolType.add.icon,
+    color: NodeToolType.add.color,
   ),
   NodeToolType.delete: NodeTool(
     type: NodeToolType.delete,
-    name: 'Delete',
-    icon: Icons.delete,
-    color: Colors.red,
+    name: NodeToolType.delete.name,
+    icon: NodeToolType.delete.icon,
+    color: NodeToolType.delete.color,
   ),
 };
 

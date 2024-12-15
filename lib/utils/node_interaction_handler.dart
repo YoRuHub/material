@@ -336,13 +336,13 @@ class NodeInteractionHandler {
                   parentNode: selectedNode,
                 );
                 return;
-
-              case NodeToolType.edit:
+              case NodeToolType.join:
                 return;
-
               case NodeToolType.delete:
-                return;
-
+                await NodeOperations.deleteNode(
+                  targetNode: selectedNode,
+                  ref: ref,
+                );
               default:
                 break;
             }

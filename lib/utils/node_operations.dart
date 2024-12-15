@@ -115,7 +115,8 @@ class NodeOperations {
   }
 
   /// ノードの削除
-  static Future<void> deleteNode(Node targetNode, WidgetRef ref) async {
+  static Future<void> deleteNode(
+      {required Node targetNode, required WidgetRef ref}) async {
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
     final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
@@ -125,7 +126,7 @@ class NodeOperations {
 
     // 子ノードを逆順に削除
     for (var i = targetNode.children.length - 1; i >= 0; i--) {
-      await deleteNode(targetNode.children[i], ref);
+      await deleteNode(targetNode: targetNode.children[i], ref: ref);
     }
 
     // 親ノードから削除
