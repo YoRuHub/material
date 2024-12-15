@@ -1,10 +1,12 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter_app/models/node_tool_widget.dart';
 import 'package:flutter_app/providers/drag_position_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
 import '../models/node.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../models/node_tool_type.dart';
 import '../providers/node_provider.dart';
 import 'node_tool_painter.dart';
 
@@ -333,12 +335,24 @@ class NodePainter extends CustomPainter {
 
     // 選択中のノードに対しての処理
     if (selectedNode != null) {
-      NodeToolPainter(ref: ref, context: context, tool: 'edit')
-          .paint(canvas, size);
-      NodeToolPainter(ref: ref, context: context, tool: 'add')
-          .paint(canvas, size);
+      // NodeToolWidgetをリストとして生成
+      final List<NodeToolWidget> toolWidgets = NodeToolType.values
+          .asMap()
+          .entries
+          .map((entry) => NodeToolWidget(
+                tool: entry.value.tool,
+                id: entry.key,
+              ))
+          .toList();
 
-      //final test = NodeToolPainter(ref: ref, context: context, tool: 'add').isTapped(tapPosition);
+      // ループを使って描画
+      for (var toolWidget in toolWidgets) {
+        NodeToolPainter(
+          ref: ref,
+          context: context,
+          toolWidget: toolWidget,
+        ).paint(canvas, size);
+      }
     }
   }
 

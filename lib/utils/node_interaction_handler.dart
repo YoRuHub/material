@@ -12,6 +12,8 @@ import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_app/utils/node_color_utils.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
+import '../models/node_tool_type.dart';
+import '../models/node_tool_widget.dart';
 import '../painters/node_tool_painter.dart';
 import 'node_operations.dart';
 
@@ -284,7 +286,8 @@ class NodeInteractionHandler {
   }
 
 // ノードが選択されなかった場合、選択解除処理
-  void _handleDeselectNode(vector_math.Vector2 worldPos, BuildContext context) {
+  Future<void> _handleDeselectNode(
+      vector_math.Vector2 worldPos, BuildContext context) async {
     final selectedNode = ref.read(nodeStateProvider).selectedNode;
     final scale = ref.read(screenProvider).scale;
 
@@ -301,20 +304,54 @@ class NodeInteractionHandler {
           worldPos.x > selectedNode.position.x) {
         final tapPosition = Offset(worldPos.x, worldPos.y);
 
-        // どのエリアがタップされたのかを取得
-        String tappedArea =
-            NodeToolPainter(ref: ref, context: context, tool: 'edit')
-                .isTapped(tapPosition);
+        // 複数のNodeToolWidgetを生成
+        final List<NodeToolWidget> toolWidgets = NodeToolType.values
+            .asMap()
+            .entries
+            .map((entry) => NodeToolWidget(
+                  tool: entry.value.tool,
+                  id: entry.key,
+                ))
+            .toList();
 
-        if (tappedArea.isEmpty) {
-          tappedArea = NodeToolPainter(ref: ref, context: context, tool: 'add')
-              .isTapped(tapPosition);
+        // タップされたボタンを判定
+        for (var toolWidget in toolWidgets) {
+          if (!context.mounted) return;
+          NodeToolPainter painter = NodeToolPainter(
+            ref: ref,
+            context: context,
+            toolWidget: toolWidget,
+          );
+
+          final tapedWidget = painter.isTapped(tapPosition);
+
+          // タップしたツールに対応する処理を実行
+          if (tapedWidget != null) {
+            switch (toolWidget.tool.type) {
+              case NodeToolType.add:
+                await NodeOperations.addNode(
+                  context: context,
+                  ref: ref,
+                  nodeId: 0,
+                  parentNode: selectedNode,
+                );
+                return;
+
+              case NodeToolType.edit:
+                return;
+
+              case NodeToolType.delete:
+                return;
+
+              default:
+                break;
+            }
+          }
         }
-        // Tapped area によって処理を分ける
-        return;
       }
     }
 
+    // 選択されていなければ、アクティブなノードを解除し、選択をクリア
     _clearActiveNodes();
     ref.read(nodeStateProvider.notifier).clearSelectedNode();
   }
