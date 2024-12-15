@@ -256,12 +256,12 @@ class NodePainter extends CustomPainter {
                 center.dy + scaledRadius + 5));
       }
 
-      // アクティブノードがリストに含まれている場合に強調表示
+      // アクティブノードがリストに含まれている場合に強調表示 Todo:Settingsで管理
       if (activeNodes.contains(node)) {
         final Paint glowPaint = Paint()
           ..color = node.color!.withOpacity(0.9)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 15 * scale);
-        canvas.drawCircle(center, scaledRadius * 1.8, glowPaint);
+          ..maskFilter = MaskFilter.blur(BlurStyle.normal, 30 * scale);
+        canvas.drawCircle(center, scaledRadius * 1.3, glowPaint);
       }
 
       final gradient = RadialGradient(
@@ -269,8 +269,8 @@ class NodePainter extends CustomPainter {
         radius: 0.9,
         colors: [
           Colors.white.withOpacity(0.2),
-          node.color!.withOpacity(0.7),
-          node.color!.withOpacity(0.6),
+          node.color!.withOpacity(0.3),
+          node.color!.withOpacity(1),
         ],
         stops: const [0.0, 0.5, 1.0],
       );
@@ -289,8 +289,7 @@ class NodePainter extends CustomPainter {
         ..style = PaintingStyle.stroke
         ..strokeWidth = scale * 0.1;
 
-      canvas.drawCircle(
-          center, nucleusRadius - scale * 2, nuclearEnvelopePaint);
+      canvas.drawCircle(center, nucleusRadius * 0, nuclearEnvelopePaint);
 
       final Paint nucleolusPaint = Paint()
         ..color = node.color!.withOpacity(1)
@@ -325,8 +324,8 @@ class NodePainter extends CustomPainter {
           center: const Alignment(-0.3, -0.3),
           radius: 0.2,
           colors: [
-            Colors.white.withOpacity(0.4),
-            Colors.white.withOpacity(0.0),
+            Colors.white.withOpacity(0.3),
+            Colors.white.withOpacity(0.05),
           ],
         ).createShader(Rect.fromCircle(center: center, radius: nucleusRadius));
 
