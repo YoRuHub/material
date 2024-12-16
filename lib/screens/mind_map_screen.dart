@@ -8,6 +8,7 @@ import 'package:flutter_app/database/models/node_map_model.dart';
 import 'package:flutter_app/database/models/node_model.dart';
 import 'package:flutter_app/models/node.dart';
 import 'package:flutter_app/painters/node_painter.dart';
+import 'package:flutter_app/painters/screen_painter.dart';
 import 'package:flutter_app/providers/node_provider.dart';
 import 'package:flutter_app/providers/node_state_provider.dart';
 import 'package:flutter_app/providers/screen_provider.dart';
@@ -287,10 +288,17 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
           ),
         ],
       ),
-      endDrawer: currentDrawer,
+      endDrawer: Builder(
+        builder: (context) {
+          return SizedBox(
+            width: MediaQuery.of(context).size.width * 0.3,
+            child: currentDrawer,
+          );
+        },
+      ),
       body: Builder(
         builder: (context) {
-          _checkDrawerStatus(context); // Drawerの状態をチェック
+          _checkDrawerStatus(context);
           return Stack(
             children: [
               Column(
@@ -345,8 +353,12 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                                 MediaQuery.of(context).size.height -
                                     AppBar().preferredSize.height,
                               ),
-                              painter: NodePainter(
-                                  _signalAnimation.value, context, ref),
+                              painter: ScreenPainter(ref), // 背景ペインターを追加
+                              foregroundPainter: NodePainter(
+                                  // ノード描画を前景に
+                                  _signalAnimation.value,
+                                  context,
+                                  ref),
                             );
                           },
                         ),

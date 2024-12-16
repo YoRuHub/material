@@ -186,7 +186,7 @@ class NodePainter extends CustomPainter {
 
           // Line paint for the connection
           final Paint linkPaint = Paint()
-            ..color = Colors.cyan
+            ..color = Theme.of(context).colorScheme.primary
             ..strokeWidth = scale
             ..style = PaintingStyle.stroke
             ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
