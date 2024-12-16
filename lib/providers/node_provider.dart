@@ -1,3 +1,4 @@
+import 'package:collection/collection.dart';
 import 'package:flutter_app/utils/logger.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_app/models/node.dart';
@@ -45,7 +46,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
 
   // Find a node by ID
   Node? findNodeById(int nodeId) {
-    return state.firstWhere((node) => node.id == nodeId);
+    return state.firstWhereOrNull((node) => node.id == nodeId);
   }
 
   // Add a child to a specific parent node

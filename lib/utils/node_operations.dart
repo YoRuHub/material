@@ -116,36 +116,46 @@ class NodeOperations {
 
   /// ノードの削除
   static Future<void> deleteNode(
-      {required Node targetNode, required WidgetRef ref}) async {
+      {required int targetNodeId,
+      required WidgetRef ref,
+      required int projectId}) async {
     final nodeModel = NodeModel();
     final nodeMapModel = NodeMapModel();
     final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
-    final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
 
-    // 子ノードを逆順に削除
-    for (var i = targetNode.children.length - 1; i >= 0; i--) {
-      await deleteNode(targetNode: targetNode.children[i], ref: ref);
+    // 削除対象のIDをprojectIdとしているノードを取得
+    final targetNodes = await nodeModel.fetchProjectNodes(targetNodeId);
+    for (final node in targetNodes) {
+      deleteNode(targetNodeId: node['id'], ref: ref, projectId: targetNodeId);
     }
 
-    // 親ノードから削除
-    final parentNode = targetNode.parent;
-    if (parentNode != null) {
-      await nodesNotifier.removeChildFromNode(parentNode.id, targetNode);
-      nodeMapModel.deleteParentNodeMap(parentNode.id);
-      nodeLinkMapModel.deleteSourceNodeMap(parentNode.id);
+    //providerにあれば削除
+    final targetNode = nodesNotifier.findNodeById(targetNodeId);
+    if (targetNode != null) {
+      // 子ノードを逆順に削除
+      for (var i = targetNode.children.length - 1; i >= 0; i--) {
+        await deleteNode(
+            targetNodeId: targetNode.children[i].id,
+            ref: ref,
+            projectId: projectId);
+      }
+      // 親ノードから削除
+      final parentNode = targetNode.parent;
+      if (parentNode != null) {
+        await nodesNotifier.removeChildFromNode(parentNode.id, targetNode);
+        nodeMapModel.deleteParentNodeMap(parentNode.id);
+        nodeLinkMapModel.deleteSourceNodeMap(parentNode.id);
+      }
+      nodesNotifier.removeNode(targetNode);
+      nodesNotifier.removeSourceNodeReferences(targetNode.id);
     }
 
-    // プロバイダーから削除
-    nodesNotifier.removeNode(targetNode);
-    nodesNotifier.removeSourceNodeReferences(targetNode.id);
-
-    // dbから削除
-    await nodeModel.deleteNode(targetNode.id, projectId);
-    await nodeMapModel.deleteParentNodeMap(targetNode.id);
-    await nodeLinkMapModel.deleteSourceNodeMap(targetNode.id);
-    await nodeLinkMapModel.deleteTargetNodeMap(targetNode.id);
+    await nodeModel.deleteNode(targetNodeId, projectId);
+    await nodeMapModel.deleteParentNodeMap(targetNodeId);
+    await nodeLinkMapModel.deleteSourceNodeMap(targetNodeId);
+    await nodeLinkMapModel.deleteTargetNodeMap(targetNodeId);
   }
 
   /// 子ノードを切り離す

@@ -352,8 +352,9 @@ class NodeInteractionHandler {
 
               case NodeToolType.delete:
                 await NodeOperations.deleteNode(
-                  targetNode: selectedNode,
+                  targetNodeId: selectedNode.id,
                   ref: ref,
+                  projectId: projectNode?.id ?? 0,
                 );
               default:
                 break;
