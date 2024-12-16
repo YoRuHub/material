@@ -17,7 +17,7 @@ class NodesNotifier extends StateNotifier<List<Node>> {
   }
 
   // Remove a single node
-  void removeNode(Node node) {
+  Future<void> removeNode(Node node) async {
     state = state.where((n) => n.id != node.id).toList();
   }
 

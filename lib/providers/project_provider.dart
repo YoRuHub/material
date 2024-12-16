@@ -117,7 +117,7 @@ class ProjectNotifier extends StateNotifier<List<Project>> {
       // Future<void> を返すように変更
       await _projectModel.deleteProject(id);
       // ノード一覧
-      final nodeList = await _nodeModel.fetchAllNodes(id);
+      final nodeList = await _nodeModel.fetchProjectNodes(id);
       //　ノードマップ削除
       for (var node in nodeList) {
         // ノードテーブルから削除

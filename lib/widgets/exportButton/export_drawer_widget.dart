@@ -36,7 +36,7 @@ class ExportDrawerWidgetState extends ConsumerState<ExportDrawerWidget> {
     try {
       final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
       final NodeModel nodeModel = NodeModel();
-      final nodeList = await nodeModel.fetchAllNodes(projectId);
+      final nodeList = await nodeModel.fetchProjectNodes(projectId);
 
       final NodeMapModel nodeMapModel = NodeMapModel();
       final List<NodeMap> rawNodeMapList =

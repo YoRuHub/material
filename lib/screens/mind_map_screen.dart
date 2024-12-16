@@ -133,7 +133,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   }
 
   Future<void> _initializeNodes(int projectId) async {
-    final nodesData = await _nodeModel.fetchAllNodes(projectId);
+    final nodesData = await _nodeModel.fetchProjectNodes(projectId);
     for (var node in nodesData) {
       if (mounted) {
         await NodeOperations.addNode(

@@ -88,7 +88,7 @@ class NodePhysics {
       vector_math.Vector2 attractionForce = targetPosition - node.position;
 
       // 引力の強さを調整
-      double attractionStrength = NodeConstants.parentChildAttraction * 0.0001;
+      double attractionStrength = settings.parentChildAttraction * 0.0001;
       node.velocity += attractionForce * attractionStrength;
     }
   }

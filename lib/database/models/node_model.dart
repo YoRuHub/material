@@ -11,8 +11,12 @@ class NodeModel extends BaseModel {
   static const String columnProjectId = 'project_id';
   static const String columnCreatedAt = 'created_at';
 
+  /// すべてのノードを取得
+  Future<List<Map<String, dynamic>>> fetchAllNodes() async =>
+      await select(table);
+
   /// プロジェクトに属するノード全件取得
-  Future<List<Map<String, dynamic>>> fetchAllNodes(int projectId) async {
+  Future<List<Map<String, dynamic>>> fetchProjectNodes(int projectId) async {
     try {
       // ノードの取得
       final result = await select(
@@ -118,6 +122,17 @@ class NodeModel extends BaseModel {
       await resetAutoIncrement(table);
     } catch (e) {
       Logger.error('Error deleting node: $e');
+      rethrow;
+    }
+  }
+
+  /// プロジェクトに属するノードを全て削除
+  Future<void> deleteAllNodes(int projectId) async {
+    try {
+      await delete(table, '$columnProjectId = ?', [projectId]);
+      await resetAutoIncrement(table);
+    } catch (e) {
+      Logger.error('Error deleting all nodes: $e');
       rethrow;
     }
   }
