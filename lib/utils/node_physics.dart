@@ -35,8 +35,9 @@ class NodePhysics {
       _updateNodePosition(node); // ノード位置の更新
     }
 
-    // ドラッグ中のノードのスナップ処理
+    // ドラッグ中のノードにも親ノード引っ張り力を適用
     if (draggedNode != null) {
+      _applyParentPullForce(draggedNode, ref); // ドラッグ中の親ノード引っ張り
       _applySnapForce(draggedNode, nodes); // ドラッグ中のノードのスナップ
     }
   }
@@ -66,6 +67,7 @@ class NodePhysics {
   static void _applyParentChildForces(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
     if (node.parent != null) {
+      _applyParentPullForce(node, ref);
       // 同じ親を持つ兄弟ノードを取得
       List<Node> siblings = node.parent!.children;
       int siblingCount = siblings.length;
@@ -90,6 +92,24 @@ class NodePhysics {
       // 引力の強さを調整
       double attractionStrength = settings.parentChildAttraction * 0.0001;
       node.velocity += attractionForce * attractionStrength;
+    }
+  }
+
+  /// 親ノードを引っ張る力を適用
+  static void _applyParentPullForce(Node node, WidgetRef ref) {
+    final settings = ref.read(settingsNotifierProvider);
+    if (node.parent != null) {
+      vector_math.Vector2 direction = node.position - node.parent!.position;
+      double distance = direction.length;
+
+      // 親ノードとの引力の強さを調整
+      if (distance > settings.parentChildDistance) {
+        direction.normalize();
+        double pullStrength = (distance - settings.parentChildDistance) *
+            settings.parentChildAttraction *
+            0.0001; // 引っ張る力の係数
+        node.parent!.velocity += direction * pullStrength;
+      }
     }
   }
 

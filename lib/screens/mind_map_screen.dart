@@ -118,6 +118,13 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
         _nodeStateNotifier.resetState();
         _nodesNotifirer.clearNodes();
         _screenNotifier.resetScreen();
+        // 画面中央を設定
+        final screenCenter = CoordinateUtils.calculateScreenCenter(
+          MediaQuery.of(ref.context).size,
+          AppBar().preferredSize.height,
+        );
+        ref.read(screenProvider.notifier).setCenterPosition(screenCenter);
+
         if (widget.projectNode != null) {
           _screenNotifier.setProjectNode(widget.projectNode as Node);
         }

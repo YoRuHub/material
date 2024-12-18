@@ -297,7 +297,6 @@ class NodeInteractionHandler {
     final selectedNode = ref.read(nodeStateProvider).selectedNode;
     final projectNode = ref.read(screenProvider).projectNode;
     final scale = ref.read(screenProvider).scale;
-    Logger.debug('projectNode:$projectNode');
     if (selectedNode != null) {
       double distance =
           _calculateDistanceWithScale(selectedNode.position, worldPos, scale);
