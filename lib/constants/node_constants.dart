@@ -1,5 +1,9 @@
 class NodeConstants {
   // --- 距離関連定数 ---
+  /// maxVelocity
+  /// ノードの最大速度
+  static const double maxVelocity = 10.0;
+
   /// グループ別ノード間の理想的な距離
   static const double minGroupDistance = 150.0;
 
@@ -14,7 +18,7 @@ class NodeConstants {
 
   // --- 力・物理演算関連定数 ---
   /// ノード同士の反発力を決定する係数（小さいほど反発力が弱い）
-  static const double repulsionCoefficient = 0.05;
+  static const double repulsionCoefficient = 0.1;
 
   /// 速度の減衰率（フレームごとに速度が減少する割合）
   static const double velocityDampingFactor = 0.1;
@@ -26,7 +30,7 @@ class NodeConstants {
   static const double linkAttraction = 1;
 
   /// 引力係数
-  static const double attractionCoefficient = 0.0001;
+  static const double attractionCoefficient = 0.001;
 
   // --- アニメーション関連定数 ---
   /// アニメーション全体のフレーム数（動きが滑らかになるステップ数）

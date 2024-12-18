@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_app/providers/settings_provider.dart';
+import 'package:flutter_app/utils/logger.dart';
 import 'package:highlight/languages/d.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
@@ -53,6 +54,7 @@ class NodePhysics {
       if (node == otherNode || _isParentOrChild(node, otherNode)) continue;
       // ドラッグ中のノードは除外
       if (_isDraggedSnapEligible(node, otherNode, draggedNode)) continue;
+
       vector_math.Vector2 direction = node.position - otherNode.position;
       double distance = direction.length;
 
@@ -73,92 +75,132 @@ class NodePhysics {
     node.velocity += totalForce;
   }
 
-  /// 親との距離を調整し、兄弟ノードを角度に基づいて展開する
-  static void _applyParentChildForces(Node node, WidgetRef ref) {
+  static void _applyParentChildForces(Node node, WidgetRef ref,
+      {int depth = 1}) {
     final settings = ref.read(settingsNotifierProvider);
+
+    // 親ノードが存在する場合
     if (node.parent != null) {
-      List<Node> siblings = node.parent!.children;
+      Node parent = node.parent!;
+      List<Node> siblings = parent.children;
       int siblingCount = siblings.length;
       int siblingIndex = siblings.indexOf(node);
 
-      // 祖父母ノードがある場合は対角線上に配置
-      if (node.parent!.parent != null) {
-        Node grandparent = node.parent!.parent!;
+      // 親からの基本距離を階層（depth）に応じて加算
+      double baseDistance =
+          settings.parentChildDistance * (1 + 0.5 * node.children.length);
+      double idealDistance = baseDistance; // 階層が深いほど距離を増やす
 
-        // 祖父母と親のベクトルを計算
-        vector_math.Vector2 grandparentToParentVector =
-            node.parent!.position - grandparent.position;
+      // 兄弟ノードの角度配置
+      double angleStep = (2 * pi) / (siblingCount == 0 ? 1 : siblingCount);
+      double nodeAngle = angleStep * siblingIndex;
 
-        // 理想的な距離を計算（親子間距離の1.5倍）
-        double idealDistance = settings.parentChildDistance * 1.5;
+      // ターゲット位置を計算（理想的な配置）
+      vector_math.Vector2 targetPosition = vector_math.Vector2(
+        parent.position.x + idealDistance * cos(nodeAngle),
+        parent.position.y + idealDistance * sin(nodeAngle),
+      );
 
-        // 角度にランダム性を加える
-        double angleVariation =
-            (siblingIndex - (siblingCount - 1) / 2) * (pi / 6);
+      // 引力ベクトルを計算して適用
+      vector_math.Vector2 attractionForce = targetPosition - node.position;
+      double attractionStrength =
+          settings.parentChildAttraction * NodeConstants.attractionCoefficient;
+      node.velocity += attractionForce * attractionStrength;
 
-        // 回転行列を使用してベクトルを回転
-        vector_math.Vector2 rotatedVector = vector_math.Vector2(
-            grandparentToParentVector.x * cos(angleVariation) -
-                grandparentToParentVector.y * sin(angleVariation),
-            grandparentToParentVector.x * sin(angleVariation) +
-                grandparentToParentVector.y * cos(angleVariation));
-
-        // 対角線上のターゲット位置を計算
-        vector_math.Vector2 targetPosition =
-            node.parent!.position + rotatedVector.normalized() * idealDistance;
-
-        // 引力ベクトルを計算
-        vector_math.Vector2 attractionForce = targetPosition - node.position;
-
-        // 引力の強さを調整
-        double attractionStrength = settings.parentChildAttraction *
-            NodeConstants.attractionCoefficient;
-        node.velocity += attractionForce * attractionStrength;
+      // 最大速度のクリッピングを追加
+      const double maxVelocity = NodeConstants.maxVelocity; // 最大速度を設定
+      if (node.velocity.length > maxVelocity) {
+        node.velocity.normalize();
+        node.velocity *= maxVelocity;
       }
-      // 既存の兄弟ノード配置ロジックは維持
-      else {
-        // 既存のコード（円状配置）をそのまま維持
-        double angleStep = pi / siblingCount;
-        double nodeAngle = angleStep * siblingIndex;
 
-        double idealDistance =
-            settings.parentChildDistance * (1 + node.children.length * 0.5);
+      // 親ノードが適正距離に引っ張られるようにする
+      // 親ノードと子ノードの間の理想的な距離を計算
+      vector_math.Vector2 parentToChildDirection =
+          node.position - parent.position;
+      double distance = parentToChildDirection.length;
+      double idealParentDistance =
+          settings.parentChildDistance * (1 + node.children.length * 0.5);
 
-        vector_math.Vector2 targetPosition = vector_math.Vector2(
-            node.parent!.position.x + idealDistance * cos(nodeAngle),
-            node.parent!.position.y + idealDistance * sin(nodeAngle));
-
-        vector_math.Vector2 attractionForce = targetPosition - node.position;
-
-        double attractionStrength = settings.parentChildAttraction *
+      // 親ノードが適正距離よりも遠い場合、引力をかけて近づける
+      if (distance > idealParentDistance) {
+        parentToChildDirection.normalize();
+        double pullStrength = (distance - idealParentDistance) *
+            settings.parentChildAttraction *
             NodeConstants.attractionCoefficient;
-        node.velocity += attractionForce * attractionStrength;
+        vector_math.Vector2 pullForce = parentToChildDirection * pullStrength;
+
+        // 親ノードに引力を適用
+        parent.velocity += pullForce;
+
+        // 親ノードの速度制限
+        if (parent.velocity.length > maxVelocity) {
+          parent.velocity.normalize();
+          parent.velocity *= maxVelocity;
+        }
+      }
+
+      // 子ノード（孫ノード以降）にも再帰的に適用
+      for (var child in node.children) {
+        _applyParentChildForces(child, ref, depth: depth + 1);
       }
     }
   }
 
-  /// 親ノードとその祖先ノードを引っ張る力を適用
   static void _applyParentPullForce(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
 
     Node? currentNode = node.parent;
+    int depth = 0; // 祖先ノードの深さを追跡
 
+    // 孫ノードがドラッグ中の場合、その親ノードのみを引っ張るように変更
     while (currentNode != null) {
+      // 孫ノードがドラッグ中の場合、親ノードのみ引っ張る
+      if (node.children.isEmpty) {
+        // 子ノードがない場合（孫ノード）
+        if (currentNode != node.parent) {
+          currentNode = currentNode.parent; // 親ノードだけを引っ張る
+          continue;
+        }
+      }
+
       vector_math.Vector2 direction = node.position - currentNode.position;
       double distance = direction.length;
 
-      // 親ノードとの引力の強さを調整
-      if (distance > settings.parentChildDistance) {
-        direction.normalize();
-        double pullStrength = (distance - settings.parentChildDistance) *
-            settings.parentChildAttraction *
-            NodeConstants.attractionCoefficient;
+      // ドラッグ中のノードの子の数を考慮した適正距離を計算
+      double idealDistance =
+          settings.parentChildDistance * (1 + node.children.length * 0.5);
 
-        currentNode.velocity += direction * pullStrength;
+      // 引っ張る力の強さを設定（深さが増えるごとに緩やかに減少）
+      double pullStrengthCoefficient =
+          1.0 / (1 + depth * 0.5); // 深さが増えるごとに緩やかに減少
+
+      if (distance > idealDistance) {
+        direction.normalize();
+
+        // 引っ張る力を計算
+        double pullStrength = (distance - idealDistance) *
+            settings.parentChildAttraction *
+            NodeConstants.attractionCoefficient *
+            pullStrengthCoefficient; // 深さによって強さを調整
+
+        // 速度にクリッピング処理を追加
+        const double maxVelocity = 10.0; // 最大速度を設定
+        vector_math.Vector2 pullForce = direction * pullStrength;
+
+        currentNode.velocity += pullForce;
+        if (currentNode.velocity.length > maxVelocity) {
+          currentNode.velocity.normalize();
+          currentNode.velocity *= maxVelocity;
+        }
+      } else {
+        // 適正距離に到達したら速度をゼロにする
+        currentNode.velocity = vector_math.Vector2.zero();
       }
 
       // 次の祖先ノードに進む
       currentNode = currentNode.parent;
+      depth++; // 深さを増やす
     }
   }
 
@@ -237,10 +279,11 @@ class NodePhysics {
 
   /// ノードの位置を更新/// ノードの位置を更新
   static void _updateNodePosition(Node node) {
-    const double dampingFactor = 0.8; // 減衰を少し強める
+    const double dampingFactor = 0.6; // 減衰係数を強める
+    const double minVelocityThreshold = 0.05; // 停止の閾値
 
     // 速度が十分に小さい場合、動きを停止
-    if (node.velocity.length < 0.01) {
+    if (node.velocity.length < minVelocityThreshold) {
       node.velocity = vector_math.Vector2.zero();
     } else {
       node.velocity *= dampingFactor; // 減衰効果を適用
