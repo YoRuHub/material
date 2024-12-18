@@ -94,11 +94,6 @@ class NodeInteractionHandler {
       // 画面のオフセット更新
       final dragDelta = details.localPosition - _dragStart;
       ref.read(screenProvider.notifier).setOffset(_offsetStart + dragDelta);
-      final screenCenter = CoordinateUtils.calculateScreenCenter(
-        MediaQuery.of(ref.context).size,
-        AppBar().preferredSize.height,
-      );
-      ref.read(screenProvider.notifier).setCenterPosition(screenCenter);
     }
   }
 
@@ -113,6 +108,12 @@ class NodeInteractionHandler {
       _checkAndUpdateParentChildRelationship(draggedNode);
       draggedNode.velocity = vector_math.Vector2.zero();
       ref.read(nodeStateProvider.notifier).setDraggedNode(null);
+    } else {
+      final screenCenter = CoordinateUtils.calculateScreenCenter(
+        MediaQuery.of(ref.context).size,
+        AppBar().preferredSize.height,
+      );
+      ref.read(screenProvider.notifier).setCenterPosition(screenCenter);
     }
 
     // リンクモードが有効な場合

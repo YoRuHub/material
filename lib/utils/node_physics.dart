@@ -47,12 +47,17 @@ class NodePhysics {
       Node node, List<Node> nodes, WidgetRef ref) {
     vector_math.Vector2 totalForce = vector_math.Vector2.zero();
     final settings = ref.read(settingsNotifierProvider);
+
     for (var otherNode in nodes) {
       if (node == otherNode) continue;
+
+      // ドラッグ中のノードでスナップ可能な場合は反発しない
+      if (_isSnapEligible(node, otherNode)) continue;
 
       vector_math.Vector2 direction = node.position - otherNode.position;
       double distance = direction.length;
 
+      // 反発力の適用
       if (distance < settings.parentChildDistance) {
         direction.normalize();
         double repulsionStrength = (settings.parentChildDistance - distance) *
@@ -60,6 +65,7 @@ class NodePhysics {
         totalForce += direction * repulsionStrength;
       }
     }
+
     node.velocity += totalForce;
   }
 
@@ -67,7 +73,6 @@ class NodePhysics {
   static void _applyParentChildForces(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
     if (node.parent != null) {
-      _applyParentPullForce(node, ref);
       // 同じ親を持つ兄弟ノードを取得
       List<Node> siblings = node.parent!.children;
       int siblingCount = siblings.length;
@@ -90,16 +95,20 @@ class NodePhysics {
       vector_math.Vector2 attractionForce = targetPosition - node.position;
 
       // 引力の強さを調整
-      double attractionStrength = settings.parentChildAttraction * 0.0001;
+      double attractionStrength =
+          settings.parentChildAttraction * NodeConstants.attractionCoefficient;
       node.velocity += attractionForce * attractionStrength;
     }
   }
 
-  /// 親ノードを引っ張る力を適用
+  /// 親ノードとその祖先ノードを引っ張る力を適用
   static void _applyParentPullForce(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
-    if (node.parent != null) {
-      vector_math.Vector2 direction = node.position - node.parent!.position;
+
+    Node? currentNode = node.parent;
+
+    while (currentNode != null) {
+      vector_math.Vector2 direction = node.position - currentNode.position;
       double distance = direction.length;
 
       // 親ノードとの引力の強さを調整
@@ -107,9 +116,13 @@ class NodePhysics {
         direction.normalize();
         double pullStrength = (distance - settings.parentChildDistance) *
             settings.parentChildAttraction *
-            0.0001; // 引っ張る力の係数
-        node.parent!.velocity += direction * pullStrength;
+            NodeConstants.attractionCoefficient;
+
+        currentNode.velocity += direction * pullStrength;
       }
+
+      // 次の祖先ノードに進む
+      currentNode = currentNode.parent;
     }
   }
 
@@ -117,6 +130,9 @@ class NodePhysics {
   static void _applySnapForce(Node draggedNode, List<Node> nodes) {
     for (var node in nodes) {
       if (draggedNode == node) continue;
+
+      // 親・子関係にある場合はスキップ
+      if (_isParentOrChild(draggedNode, node)) continue;
 
       vector_math.Vector2 direction = draggedNode.position - node.position;
       double distance = direction.length;
@@ -128,6 +144,23 @@ class NodePhysics {
         break;
       }
     }
+  }
+
+  /// スナップ可能なノードかを判定
+  static bool _isSnapEligible(Node nodeA, Node nodeB) {
+    // 親や子ノードならスナップ不可 → false
+    if (_isParentOrChild(nodeA, nodeB)) {
+      return false;
+    }
+    return true; // それ以外のノードはスナップ可能
+  }
+
+  /// 親または子の関係かを判定
+  static bool _isParentOrChild(Node nodeA, Node nodeB) {
+    if (nodeA.parent == nodeB || nodeB.parent == nodeA) {
+      return true;
+    }
+    return false;
   }
 
   /// リンク関係の引力適用
@@ -160,18 +193,23 @@ class NodePhysics {
 
     if (distance > idealDistance) {
       direction.normalize();
-      double attractionStrength =
-          (distance - idealDistance) * attractionCoefficient * 0.0001;
+      double attractionStrength = (distance - idealDistance) *
+          attractionCoefficient *
+          NodeConstants.attractionCoefficient;
       node.velocity += direction * attractionStrength;
     }
   }
 
-  /// ノードの位置を更新
+  /// ノードの位置を更新/// ノードの位置を更新
   static void _updateNodePosition(Node node) {
-    if (node.velocity.length > NodeConstants.velocityDampingFactor) {
+    const double dampingFactor = 0.8; // 減衰を少し強める
+
+    // 速度が十分に小さい場合、動きを停止
+    if (node.velocity.length < 0.01) {
+      node.velocity = vector_math.Vector2.zero();
+    } else {
+      node.velocity *= dampingFactor; // 減衰効果を適用
       node.position += node.velocity;
     }
-
-    node.velocity = vector_math.Vector2.zero();
   }
 }

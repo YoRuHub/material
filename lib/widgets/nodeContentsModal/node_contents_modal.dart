@@ -9,7 +9,7 @@ import 'package:flutter_app/widgets/nodeContentsModal/colorPickerDialog/spherica
 class NodeContentsPanel extends StatefulWidget {
   final Node node;
   final NodeModel nodeModel;
-  final Function(Node) onNodeUpdated; // コールバック関数
+  final Function(Node) onNodeUpdated;
 
   const NodeContentsPanel({
     super.key,
@@ -26,7 +26,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
   late TextEditingController titleController;
   late TextEditingController contentController;
 
-  Color _selectedColor = Colors.blue; // 初期値として青を設定
+  Color _selectedColor = Colors.transparent;
 
   @override
   void initState() {
@@ -49,7 +49,7 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
         widget.node.id,
         titleController.text,
         contentController.text,
-        _selectedColor, // 選択された色を保存
+        _selectedColor,
         widget.node.projectId,
       );
 
@@ -86,11 +86,9 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
         onColorSelected: (color) {
           setState(() {
             if (color == null) {
-              // nullが選ばれた場合、世代に基づいて色を再設定;
               _selectedColor =
                   NodeColorUtils.getColorForCurrentGeneration(widget.node);
             } else {
-              // 色が選ばれた場合
               _selectedColor = color;
             }
           });
@@ -107,15 +105,26 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
 
   @override
   Widget build(BuildContext context) {
+    // 画面サイズを取得
+    final screenWidth = MediaQuery.of(context).size.width;
+    final screenHeight = MediaQuery.of(context).size.height;
+
+    // widthとheightに条件を加えて500より下回らないように設定
+    double panelWidth = screenWidth / 3;
+    double panelHeight = screenHeight / 2;
+
+    panelWidth = panelWidth < 300 ? 300 : panelWidth;
+    panelHeight = panelHeight < 500 ? 500 : panelHeight;
+
     return Positioned(
       top: 0,
       right: 0,
-      width: MediaQuery.of(context).size.width / 3,
-      height: MediaQuery.of(context).size.height / 2,
+      width: panelWidth,
+      height: panelHeight,
       child: Padding(
         padding: const EdgeInsets.all(16.0),
         child: Card(
-          color: Theme.of(context).colorScheme.onSurface.withOpacity(0.2),
+          color: Theme.of(context).colorScheme.onSurface,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
           ),
@@ -128,41 +137,36 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                   child: TextField(
                     controller: titleController,
                     decoration: InputDecoration(
-                      fillColor: Theme.of(context)
-                          .colorScheme
-                          .surface
-                          .withOpacity(0.8),
+                      fillColor: Theme.of(context).colorScheme.surface,
                       filled: true,
                       border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12.0), // 丸みの度合いを設定
-                        borderSide: BorderSide.none, // 枠線なし
+                        borderRadius: BorderRadius.circular(12.0),
+                        borderSide: BorderSide.none,
                       ),
-                      prefixIcon: const Icon(Icons.edit),
+                      prefixIcon: Icon(Icons.edit,
+                          color: Theme.of(context)
+                              .colorScheme
+                              .secondary
+                              .withOpacity(0.5)),
                       labelText: 'Title',
                     ),
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
+                    style: Theme.of(context).textTheme.titleMedium,
                   ),
                 ),
                 const SizedBox(height: 16),
                 Expanded(
                   child: MouseRegion(
                     child: TextField(
+                      style: Theme.of(context).textTheme.bodyLarge,
                       controller: contentController,
                       keyboardType: TextInputType.multiline,
                       maxLines: 13,
                       decoration: InputDecoration(
-                        fillColor: Theme.of(context)
-                            .colorScheme
-                            .surface
-                            .withOpacity(0.8),
+                        fillColor: Theme.of(context).colorScheme.surface,
                         filled: true,
                         border: OutlineInputBorder(
-                          borderRadius:
-                              BorderRadius.circular(12.0), // 丸みの度合いを設定
-                          borderSide: BorderSide.none, // 枠線なし
+                          borderRadius: BorderRadius.circular(12.0),
+                          borderSide: BorderSide.none,
                         ),
                         hintText: "Content",
                       ),
@@ -179,25 +183,22 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                       checkIcon: Icons.palette,
                       onTap: _pickColor,
                     ),
-                    const SizedBox(width: 8), // ボタン間のスペース
+                    const SizedBox(width: 8),
                     // Clearボタン
                     Expanded(
                       child: ElevatedButton(
                         onPressed: _clearContent,
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .surface
-                              .withOpacity(0.8),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.surface,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // ボタンの角を丸くする
+                            borderRadius: BorderRadius.circular(12.0),
                           ),
                         ),
                         child: const Text('Clear'),
                       ),
                     ),
-                    const SizedBox(width: 8), // ボタン間のスペース
+                    const SizedBox(width: 8),
                     // Saveボタン
                     Expanded(
                       child: ElevatedButton(
@@ -205,13 +206,10 @@ class NodeContentsPanelState extends State<NodeContentsPanel> {
                           await _saveContent();
                         },
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Theme.of(context)
-                              .colorScheme
-                              .surface
-                              .withOpacity(0.8),
+                          backgroundColor:
+                              Theme.of(context).colorScheme.surface,
                           shape: RoundedRectangleBorder(
-                            borderRadius:
-                                BorderRadius.circular(12.0), // ボタンの角を丸くする
+                            borderRadius: BorderRadius.circular(12.0),
                           ),
                         ),
                         child: const Text('Save'),

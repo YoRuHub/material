@@ -52,7 +52,10 @@ ThemeData buildThemeData() {
         ),
         bodySmall: TextStyle(
           color: Color.fromARGB(200, 200, 200, 200),
-        )),
+        ),
+        bodyLarge: TextStyle(
+            color: Color.fromARGB(200, 200, 200, 200),
+            fontWeight: FontWeight.bold)),
     // IconButton
     iconButtonTheme: IconButtonThemeData(
       style: ButtonStyle(

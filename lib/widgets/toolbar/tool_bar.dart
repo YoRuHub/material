@@ -98,7 +98,7 @@ class ToolBarWidgetState extends State<ToolBarWidget> {
               padding:
                   const EdgeInsets.symmetric(vertical: 8.0, horizontal: 8.0),
               decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.surface,
+                color: Theme.of(context).colorScheme.onSurface,
                 borderRadius: BorderRadius.circular(12.0),
               ),
               child: Column(

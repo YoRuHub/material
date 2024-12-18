@@ -24,7 +24,7 @@ class AddNodeButtonState extends State<AddNodeButton> {
             onExit: (_) => setState(() => _isHovered = false),
             child: FloatingActionButton(
               onPressed: () => widget.onPressed(),
-              backgroundColor: Theme.of(context).colorScheme.surface,
+              backgroundColor: Theme.of(context).colorScheme.onSurface,
               child: Icon(
                 Icons.add, // ノード追加アイコン
                 color: _isHovered
