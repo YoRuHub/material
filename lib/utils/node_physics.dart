@@ -237,7 +237,7 @@ class NodePhysics {
     const double dampingFactor = 0.8; // 減衰を少し強める
 
     // 速度が十分に小さい場合、動きを停止
-    if (node.velocity.length < 0.01) {
+    if (node.velocity.length < 0.1) {
       node.velocity = vector_math.Vector2.zero();
     } else {
       node.velocity *= dampingFactor; // 減衰効果を適用
