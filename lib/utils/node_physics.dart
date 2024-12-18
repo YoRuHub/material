@@ -73,31 +73,63 @@ class NodePhysics {
   static void _applyParentChildForces(Node node, WidgetRef ref) {
     final settings = ref.read(settingsNotifierProvider);
     if (node.parent != null) {
-      // 同じ親を持つ兄弟ノードを取得
       List<Node> siblings = node.parent!.children;
       int siblingCount = siblings.length;
       int siblingIndex = siblings.indexOf(node);
 
-      // 子の数に応じて距離を調整（最低距離を確保する）
-      double idealDistance = settings.parentChildDistance *
-          (1 + node.children.length * 0.5); // 子の数だけ距離を増加
+      // 祖父母ノードがある場合は対角線上に配置
+      if (node.parent!.parent != null) {
+        Node grandparent = node.parent!.parent!;
 
-      // 子ノードを円状に均等に配置する角度計算
-      double angleStep = pi / siblingCount; // 全円を均等に分割
-      double nodeAngle = angleStep * siblingIndex / 1;
+        // 祖父母と親のベクトルを計算
+        vector_math.Vector2 grandparentToParentVector =
+            node.parent!.position - grandparent.position;
 
-      // 極座標から直交座標に変換
-      vector_math.Vector2 targetPosition = vector_math.Vector2(
-          node.parent!.position.x + idealDistance * cos(nodeAngle),
-          node.parent!.position.y + idealDistance * sin(nodeAngle));
+        // 理想的な距離を計算（親子間距離の1.5倍）
+        double idealDistance = settings.parentChildDistance * 1.5;
 
-      // 現在位置と理想位置の間の引力ベクトルを計算
-      vector_math.Vector2 attractionForce = targetPosition - node.position;
+        // 角度にランダム性を加える
+        double angleVariation =
+            (siblingIndex - (siblingCount - 1) / 2) * (pi / 6);
 
-      // 引力の強さを調整
-      double attractionStrength =
-          settings.parentChildAttraction * NodeConstants.attractionCoefficient;
-      node.velocity += attractionForce * attractionStrength;
+        // 回転行列を使用してベクトルを回転
+        vector_math.Vector2 rotatedVector = vector_math.Vector2(
+            grandparentToParentVector.x * cos(angleVariation) -
+                grandparentToParentVector.y * sin(angleVariation),
+            grandparentToParentVector.x * sin(angleVariation) +
+                grandparentToParentVector.y * cos(angleVariation));
+
+        // 対角線上のターゲット位置を計算
+        vector_math.Vector2 targetPosition =
+            node.parent!.position + rotatedVector.normalized() * idealDistance;
+
+        // 引力ベクトルを計算
+        vector_math.Vector2 attractionForce = targetPosition - node.position;
+
+        // 引力の強さを調整
+        double attractionStrength = settings.parentChildAttraction *
+            NodeConstants.attractionCoefficient;
+        node.velocity += attractionForce * attractionStrength;
+      }
+      // 既存の兄弟ノード配置ロジックは維持
+      else {
+        // 既存のコード（円状配置）をそのまま維持
+        double angleStep = pi / siblingCount;
+        double nodeAngle = angleStep * siblingIndex;
+
+        double idealDistance =
+            settings.parentChildDistance * (1 + node.children.length * 0.5);
+
+        vector_math.Vector2 targetPosition = vector_math.Vector2(
+            node.parent!.position.x + idealDistance * cos(nodeAngle),
+            node.parent!.position.y + idealDistance * sin(nodeAngle));
+
+        vector_math.Vector2 attractionForce = targetPosition - node.position;
+
+        double attractionStrength = settings.parentChildAttraction *
+            NodeConstants.attractionCoefficient;
+        node.velocity += attractionForce * attractionStrength;
+      }
     }
   }
 
