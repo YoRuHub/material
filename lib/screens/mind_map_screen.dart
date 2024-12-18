@@ -20,16 +20,14 @@ import 'package:flutter_app/utils/node_operations.dart';
 import 'package:flutter_app/utils/node_physics.dart';
 import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
 import 'package:flutter_app/widgets/aiSupportButton/ai_support_button.dart';
-import 'package:flutter_app/widgets/exportButton/export_button.dart';
-import 'package:flutter_app/widgets/exportButton/export_drawer_widget.dart';
-import 'package:flutter_app/widgets/inportButton/inport_button.dart';
-import 'package:flutter_app/widgets/inportButton/inport_drawer_widget.dart';
 import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
 import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
 import 'package:flutter_app/widgets/settingButton/setting_button.dart';
 import 'package:flutter_app/widgets/settingButton/setting_drawer_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../widgets/aiSupportButton/ai_support_drawer_widget.dart';
+import '../widgets/importExportButton/import_export_button.dart';
+import '../widgets/importExportButton/import_export_drawer.dart';
 import '../widgets/toolbar/tool_bar.dart';
 
 class MindMapScreen extends ConsumerStatefulWidget {
@@ -57,7 +55,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
   late ScreenNotifier _screenNotifier;
   late NodeStateNotifier _nodeStateNotifier;
   late NodesNotifier _nodesNotifirer;
-  late ScreenState _screenState;
   // node
   late List<Node> nodes;
 
@@ -195,20 +192,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     }
   }
 
-  // Drawerの状態を確認し、アニメーションを制御
-  void _checkDrawerStatus(BuildContext context) {
-    final isDrawerOpen = _screenState.isDrawerOpen;
-    if (isDrawerOpen) {
-      if (!_controller.isAnimating) {
-        _controller.stop();
-      }
-    } else {
-      if (!_controller.isAnimating) {
-        _controller.repeat();
-      }
-    }
-  }
-
   @override
   void dispose() {
     _controller.dispose();
@@ -224,7 +207,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     _screenNotifier = ref.read(screenProvider.notifier);
     _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
     _nodesNotifirer = ref.read(nodesProvider.notifier);
-    _screenState = ref.read(screenProvider);
   }
 
   @override
@@ -233,19 +215,11 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodeState = ref.watch(nodeStateProvider);
     final screenState = ref.watch(screenProvider);
 
-    // スタックが空でないことを確認してからアクセス
-    if (screenState.nodeStack.isNotEmpty) {
-      Logger.debug(
-          '_screenState.nodeStack last: ${screenState.nodeStack.last.title}');
-    } else {
-      Logger.debug('_screenState.nodeStack is empty');
-    }
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
         title: Text(widget.projectNode?.title ?? ''),
-        backgroundColor: Theme.of(context).colorScheme.surface,
-        //previousNodeが存在する場合ボタンをひょうじ
+        backgroundColor: Theme.of(context).colorScheme.onSurface,
         leading: screenState.nodeStack.isNotEmpty
             ? IconButton(
                 icon: const Icon(Icons.arrow_back),
@@ -270,16 +244,10 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
             _openAiSupportDrawer();
             _scaffoldKey.currentState?.openEndDrawer();
           }),
-          InportButton(onPressed: () {
-            _openInportDrawer();
+          ImportExportButton(onPressed: () {
+            _openInportExportDrawer();
             _scaffoldKey.currentState?.openEndDrawer();
           }),
-          ExportButton(
-            onPressed: () {
-              _openExportDrawer();
-              _scaffoldKey.currentState?.openEndDrawer();
-            },
-          ),
           SettingButton(
             onPressed: () {
               _openSettingDrawer();
@@ -290,15 +258,19 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       ),
       endDrawer: Builder(
         builder: (context) {
-          return SizedBox(
-            width: MediaQuery.of(context).size.width * 0.3,
-            child: currentDrawer,
+          return ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: 320,
+            ),
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.3,
+              child: currentDrawer,
+            ),
           );
         },
       ),
       body: Builder(
         builder: (context) {
-          _checkDrawerStatus(context);
           return Stack(
             children: [
               Column(
@@ -403,27 +375,18 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     });
   }
 
-  Future<void> _openExportDrawer() async {
+  Future<void> _openAiSupportDrawer() async {
     setState(() {
-      currentDrawer = const ExportDrawerWidget();
-    });
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      _scaffoldKey.currentState?.openEndDrawer();
-    });
-  }
-
-  Future<void> _openInportDrawer() async {
-    setState(() {
-      currentDrawer = const InportDrawerWidget();
+      currentDrawer = const AiSupportDrawerWidget();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scaffoldKey.currentState?.openEndDrawer();
       });
     });
   }
 
-  Future<void> _openAiSupportDrawer() async {
+  Future<void> _openInportExportDrawer() async {
     setState(() {
-      currentDrawer = const AiSupportDrawerWidget();
+      currentDrawer = const ImportExportDrawer();
       WidgetsBinding.instance.addPostFrameCallback((_) {
         _scaffoldKey.currentState?.openEndDrawer();
       });

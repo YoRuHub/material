@@ -14,11 +14,10 @@ import '../constants/node_constants.dart';
 import 'logger.dart';
 
 class NodeOperations {
-  /// ノードの追加
   static Future<Node> addNode({
     required BuildContext context,
     required WidgetRef ref,
-    int nodeId = 0,
+    int nodeId = 0, // 既存ノードのID
     String title = '',
     String contents = '',
     Color? color,
@@ -29,11 +28,9 @@ class NodeOperations {
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final NodeModel nodeModel = NodeModel();
+
     // ノードの配置位置を取得
-    vector_math.Vector2 basePosition = _calculateBasePosition(
-      context,
-      ref,
-    );
+    vector_math.Vector2 basePosition = _calculateBasePosition(context, ref);
 
     // ノードのカラーを取得
     if (color == null) {
@@ -53,22 +50,33 @@ class NodeOperations {
 
     // ノード要素を作成
     final newNode = Node(
-        position: basePosition,
-        velocity: vector_math.Vector2(0, 0),
-        radius: NodeConstants.defaultNodeRadius,
-        parent: parentNode,
-        id: newNodeId,
-        title: newNodeTitle,
-        contents: newNodeContents,
-        color: newNodeColor != null ? Color(newNodeColor) : null,
-        projectId: projectId,
-        createdAt: newNodeCreatedAt);
+      position: basePosition,
+      velocity: vector_math.Vector2(0, 0),
+      radius: NodeConstants.defaultNodeRadius,
+      parent: parentNode,
+      id: newNodeId,
+      title: newNodeTitle,
+      contents: newNodeContents,
+      color: newNodeColor != null ? Color(newNodeColor) : null,
+      projectId: projectId,
+      createdAt: newNodeCreatedAt,
+    );
 
+    // 親ノードが指定されていれば子ノードとしてリンク
     if (parentNode != null) {
       await linkChildNode(ref, parentNode.id, newNode);
     }
 
-    nodesNotifier.addNode(newNode);
+    // 新規追加または更新の判定
+    if (nodeId != newNodeId) {
+      // 新規ノード追加
+      nodesNotifier.addNode(newNode);
+      Logger.debug('Added node: $newNodeId');
+    } else {
+      // ノードの更新
+      nodesNotifier.updateNode(newNode);
+      Logger.debug('Updated node: $newNodeId');
+    }
 
     return newNode;
   }

@@ -60,18 +60,16 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
         _isApiKeyEmpty = true;
         _isKeyChanged = false;
       });
-      ref
-          .read(apiStatusProvider.notifier)
-          .verifyApiKey(widget.apiType, ''); // 空のキーを検証
+      ref.read(apiStatusProvider.notifier).verifyApiKey(widget.apiType, '');
       return;
     }
 
     setState(() {
       _isVerifying = true;
       _isApiKeyEmpty = false;
-      _isKeyChanged = false; // 保存処理中は変更状態をリセット
+      _isKeyChanged = false;
     });
-    _controller.repeat(); // アニメーション開始
+    _controller.repeat();
 
     // APIの有効性を検証
     await ref
@@ -81,11 +79,11 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
     setState(() {
       _isVerifying = false;
     });
-    _controller.stop(); // アニメーション停止
+    _controller.stop();
 
     // 結果に応じて保存
-    final apiStatus = ref.read(apiStatusProvider)[widget.apiType] ??
-        ApiStatus.none; // nullチェック追加
+    final apiStatus =
+        ref.read(apiStatusProvider)[widget.apiType] ?? ApiStatus.none;
     String status = apiStatus == ApiStatus.valid ? 'valid' : 'invalid';
     await _apiModel.upsertApi(widget.apiType, newApiKey, status: status);
 
@@ -109,13 +107,13 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
       case 'openAi':
         return 'OpenAI';
       default:
-        return widget.apiType; // 他のAPIタイプがあればそのまま返す
+        return widget.apiType;
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    final apiStatus = ref.watch(apiStatusProvider); // APIの有効性状態を監視
+    final apiStatus = ref.watch(apiStatusProvider);
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
@@ -131,9 +129,11 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
             children: [
               Text(
                 '${_getFormattedApiType()} API Key',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
+                  color:
+                      Theme.of(context).colorScheme.secondary.withOpacity(0.8),
                 ),
               ),
               const SizedBox(height: 12),
@@ -146,23 +146,37 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
                   fillColor: Theme.of(context)
                       .colorScheme
                       .surfaceContainerHighest
-                      .withOpacity(0.1),
+                      .withOpacity(0.5),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                     borderSide: BorderSide.none,
                   ),
-                  prefixIcon: const Icon(Icons.key),
+                  prefixIcon: Icon(
+                    Icons.key,
+                    color: Theme.of(context)
+                        .colorScheme
+                        .secondary
+                        .withOpacity(0.5),
+                  ),
                   suffixIcon: IconButton(
                     icon: Icon(
                       _isObscured ? Icons.visibility_off : Icons.visibility,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .secondary
+                          .withOpacity(0.5),
                     ),
                     onPressed: _toggleObscure,
                   ),
                 ),
+                style: TextStyle(
+                  color:
+                      Theme.of(context).colorScheme.secondary.withOpacity(0.8),
+                ),
                 onChanged: (value) {
                   setState(() {
                     _isApiKeyEmpty = value.trim().isEmpty;
-                    _isKeyChanged = true; // 入力がある場合に変更状態とみなす
+                    _isKeyChanged = true;
                   });
                 },
                 onSubmitted: (_) => _saveApiKey(),
@@ -206,6 +220,7 @@ class ApiKeyInputWidgetState extends ConsumerState<ApiKeyInputWidget>
                       ),
                       padding: const EdgeInsets.symmetric(
                           vertical: 12, horizontal: 16),
+                      backgroundColor: Colors.transparent,
                     ),
                     child: const Text('Save'),
                   ),

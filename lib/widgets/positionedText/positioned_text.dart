@@ -14,9 +14,9 @@ class PositionedText extends ConsumerWidget {
 
     // 表示用のテキストを作成
     final String positionText =
-        'X: ${screenState.offset.dx.toStringAsFixed(1)}, '
-        'Y: ${screenState.offset.dy.toStringAsFixed(1)}, '
-        'Scale: ${screenState.scale.toStringAsFixed(2)}, '
+        'X: ${screenState.offset.dx.toStringAsFixed(1)}  '
+        'Y: ${screenState.offset.dy.toStringAsFixed(1)}  '
+        'Scale: ${screenState.scale.toStringAsFixed(2)}  '
         'Mode: ${_getModeText(screenState)}';
 
     return Positioned(
@@ -29,12 +29,11 @@ class PositionedText extends ConsumerWidget {
           children: [
             GestureDetector(
               onTap: () {
-                // 表示・非表示の状態を切り替える
                 ref.read(screenProvider.notifier).togglePositionVisibility();
               },
               child: Icon(
                 isPositionVisible ? Icons.visibility : Icons.visibility_off,
-                color: theme.colorScheme.onSurface,
+                color: theme.colorScheme.secondary.withOpacity(0.3),
               ),
             ),
             const SizedBox(width: 8),
@@ -42,8 +41,7 @@ class PositionedText extends ConsumerWidget {
               Text(
                 positionText,
                 style: TextStyle(
-                  color: theme.colorScheme.onSurface,
-                  fontSize: 16,
+                  color: theme.colorScheme.secondary.withOpacity(0.3),
                 ),
               ),
           ],

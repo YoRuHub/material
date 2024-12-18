@@ -39,9 +39,21 @@ class NodesNotifier extends StateNotifier<List<Node>> {
 
   // Update a specific node
   void updateNode(Node updatedNode) {
-    state = state
-        .map((node) => node.id == updatedNode.id ? updatedNode : node)
-        .toList();
+    // 既存のノードがあれば更新、なければ追加
+    final existingNode =
+        state.firstWhereOrNull((node) => node.id == updatedNode.id);
+
+    if (existingNode != null) {
+      // ノードが存在する場合は更新
+      state = state
+          .map((node) => node.id == updatedNode.id ? updatedNode : node)
+          .toList();
+      Logger.debug('Node updated: $updatedNode');
+    } else {
+      // ノードが存在しない場合は追加
+      addNode(updatedNode);
+      Logger.debug('Node added: $updatedNode');
+    }
   }
 
   // Find a node by ID

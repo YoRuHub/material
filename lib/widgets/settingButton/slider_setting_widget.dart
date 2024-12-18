@@ -43,17 +43,25 @@ class SliderSettingWidget extends ConsumerWidget {
                     onTap: onTap,
                     child: Text(
                       title,
-                      style: const TextStyle(
+                      style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
+                        color: Theme.of(context)
+                            .colorScheme
+                            .secondary
+                            .withOpacity(0.8),
                       ),
                     ),
                   ),
                   Text(
                     value.toStringAsFixed(2),
-                    style: const TextStyle(
+                    style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.w600,
+                      color: Theme.of(context)
+                          .colorScheme
+                          .secondary
+                          .withOpacity(0.5),
                     ),
                   ),
                 ],
