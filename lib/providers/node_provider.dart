@@ -61,6 +61,10 @@ class NodesNotifier extends StateNotifier<List<Node>> {
     return state.firstWhereOrNull((node) => node.id == nodeId);
   }
 
+  List<Node> findNodeByProjectId({required int projectId}) {
+    return state.where((node) => node.projectId == projectId).toList();
+  }
+
   // Add a child to a specific parent node
   Future<void> linkChildNodeToParent(
       int parentNodeId, Node childNode, int projectId) async {

@@ -27,11 +27,32 @@ ThemeData buildThemeData() {
       ),
     ),
     textTheme: const TextTheme(
-      titleMedium: TextStyle(
-        color: Color.fromARGB(255, 200, 200, 200),
-        fontWeight: FontWeight.bold,
-      ),
-    ),
+        titleMedium: TextStyle(
+          color: Color.fromARGB(150, 200, 200, 200),
+          fontWeight: FontWeight.bold,
+        ),
+        titleSmall: TextStyle(
+          color: Color.fromARGB(255, 200, 200, 200),
+        ),
+        headlineSmall: TextStyle(
+          color: Color.fromARGB(255, 200, 200, 200),
+          fontWeight: FontWeight.bold,
+        ),
+        labelSmall: TextStyle(
+          color: Color.fromARGB(255, 200, 200, 200),
+        ),
+        labelMedium: TextStyle(
+          color: Color.fromARGB(150, 200, 200, 200),
+        ),
+        labelLarge: TextStyle(
+          color: Color.fromARGB(150, 200, 200, 200),
+        ),
+        bodyMedium: TextStyle(
+          color: Color.fromARGB(200, 200, 200, 200),
+        ),
+        bodySmall: TextStyle(
+          color: Color.fromARGB(200, 200, 200, 200),
+        )),
     // IconButton
     iconButtonTheme: IconButtonThemeData(
       style: ButtonStyle(

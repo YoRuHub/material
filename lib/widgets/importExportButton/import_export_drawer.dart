@@ -143,15 +143,8 @@ class ImportExportDrawerState extends ConsumerState<ImportExportDrawer>
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Text(
-                    'YAML Import/Export',
-                    style: TextStyle(
-                      color: Theme.of(context)
-                          .colorScheme
-                          .secondary
-                          .withOpacity(0.8),
-                    ),
-                  ),
+                  Text('YAML Import/Export',
+                      style: Theme.of(context).textTheme.labelMedium),
                   InkWell(
                     onTap: _copyCodeToClipboard,
                     borderRadius: BorderRadius.circular(8),
@@ -166,15 +159,8 @@ class ImportExportDrawerState extends ConsumerState<ImportExportDrawer>
                               .withOpacity(0.5),
                         ),
                         const SizedBox(width: 4),
-                        Text(
-                          'Copy',
-                          style: TextStyle(
-                            color: Theme.of(context)
-                                .colorScheme
-                                .secondary
-                                .withOpacity(0.5),
-                          ),
-                        ),
+                        Text('Copy',
+                            style: Theme.of(context).textTheme.labelMedium),
                       ],
                     ),
                   ),

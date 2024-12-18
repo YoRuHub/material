@@ -135,7 +135,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     for (var node in nodesData) {
       if (mounted) {
         await NodeOperations.addNode(
-          context: context,
           ref: ref,
           nodeId: node['id'] as int,
           title: node['title'] as String,
@@ -401,7 +400,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       // アクティブノードのリストをループして処理
       for (final activeNode in activeNodes) {
         await NodeOperations.addNode(
-          context: context,
           ref: ref,
           nodeId: 0,
           title: '',
@@ -412,7 +410,6 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
       }
     } else {
       await NodeOperations.addNode(
-        context: context,
         ref: ref,
         nodeId: 0,
         title: '',

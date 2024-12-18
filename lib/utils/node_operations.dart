@@ -14,10 +14,10 @@ import '../constants/node_constants.dart';
 import 'logger.dart';
 
 class NodeOperations {
+  /// ノードの追加
   static Future<Node> addNode({
-    required BuildContext context,
     required WidgetRef ref,
-    int nodeId = 0, // 既存ノードのID
+    int nodeId = 0,
     String title = '',
     String contents = '',
     Color? color,
@@ -28,9 +28,10 @@ class NodeOperations {
     final NodesNotifier nodesNotifier =
         ref.read<NodesNotifier>(nodesProvider.notifier);
     final NodeModel nodeModel = NodeModel();
-
     // ノードの配置位置を取得
-    vector_math.Vector2 basePosition = _calculateBasePosition(context, ref);
+    vector_math.Vector2 basePosition = _calculateBasePosition(
+      ref,
+    );
 
     // ノードのカラーを取得
     if (color == null) {
@@ -50,33 +51,22 @@ class NodeOperations {
 
     // ノード要素を作成
     final newNode = Node(
-      position: basePosition,
-      velocity: vector_math.Vector2(0, 0),
-      radius: NodeConstants.defaultNodeRadius,
-      parent: parentNode,
-      id: newNodeId,
-      title: newNodeTitle,
-      contents: newNodeContents,
-      color: newNodeColor != null ? Color(newNodeColor) : null,
-      projectId: projectId,
-      createdAt: newNodeCreatedAt,
-    );
+        position: basePosition,
+        velocity: vector_math.Vector2(0, 0),
+        radius: NodeConstants.defaultNodeRadius,
+        parent: parentNode,
+        id: newNodeId,
+        title: newNodeTitle,
+        contents: newNodeContents,
+        color: newNodeColor != null ? Color(newNodeColor) : null,
+        projectId: projectId,
+        createdAt: newNodeCreatedAt);
 
-    // 親ノードが指定されていれば子ノードとしてリンク
     if (parentNode != null) {
       await linkChildNode(ref, parentNode.id, newNode);
     }
 
-    // 新規追加または更新の判定
-    if (nodeId != newNodeId) {
-      // 新規ノード追加
-      nodesNotifier.addNode(newNode);
-      Logger.debug('Added node: $newNodeId');
-    } else {
-      // ノードの更新
-      nodesNotifier.updateNode(newNode);
-      Logger.debug('Updated node: $newNodeId');
-    }
+    nodesNotifier.addNode(newNode);
 
     return newNode;
   }
@@ -99,7 +89,6 @@ class NodeOperations {
       required WidgetRef ref,
       Node? newParent}) async {
     final newNode = await NodeOperations.addNode(
-      context: context,
       ref: ref,
       nodeId: 0,
       title: targetNode.title,
@@ -268,20 +257,15 @@ class NodeOperations {
 
   /// Calculate the base position for the new node
   static vector_math.Vector2 _calculateBasePosition(
-    BuildContext context,
     WidgetRef ref,
   ) {
     vector_math.Vector2 basePosition;
 
-    // 画面サイズとAppBarの高さを考慮して中央を計算
-    final screenCenter = CoordinateUtils.calculateScreenCenter(
-      MediaQuery.of(context).size, // 画面サイズ
-      AppBar().preferredSize.height, // AppBarの高さ（指定がなければ0にしても良い）
-    );
+    final centerPosition = ref.read(screenProvider).centerPosition;
 
     // 中央座標をワールド座標に変換
     basePosition = CoordinateUtils.screenToWorld(
-      screenCenter, // 画面中央
+      centerPosition, // 画面中央
       ref.read(screenProvider).offset,
       ref.read(screenProvider).scale,
     );
@@ -306,11 +290,11 @@ class NodeOperations {
   }
 
   // 新しく作成するリンク処理関数
-  static void linkNode({
+  static Future<void> linkNode({
     required WidgetRef ref,
     required Node activeNode,
     required Node hoveredNode,
-  }) {
+  }) async {
     final NodeLinkMapModel nodeLinkMapModel = NodeLinkMapModel();
     final projectId = ref.read(screenProvider).projectNode?.id ?? 0;
     bool isAlreadyLinked = activeNode.targetNodes.contains(hoveredNode) ||

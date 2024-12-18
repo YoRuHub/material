@@ -81,7 +81,7 @@ class NodeToolPainter extends CustomPainter {
           fontSize: 24.0 * scale,
           fontFamily: icon.fontFamily,
           package: icon.fontPackage,
-          color: Theme.of(context).colorScheme.onSurface,
+          color: Theme.of(context).colorScheme.secondary.withOpacity(0.5),
         ),
       ),
       textDirection: TextDirection.ltr,

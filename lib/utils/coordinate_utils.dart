@@ -14,10 +14,11 @@ class CoordinateUtils {
     Offset offset,
     double scale,
   ) {
-    return vector_math.Vector2(
+    final worldPos = vector_math.Vector2(
       (screenPos.dx - offset.dx) / scale,
       (screenPos.dy - offset.dy) / scale,
     );
+    return worldPos;
   }
 
   /// ワールド座標からスクリーン座標への変換

@@ -295,7 +295,6 @@ class ApiUtils {
 
         // Create a new node
         Node newNode = await NodeOperations.addNode(
-          context: context,
           ref: ref,
           nodeId: 0,
           title: title ?? '',

@@ -94,6 +94,11 @@ class NodeInteractionHandler {
       // 画面のオフセット更新
       final dragDelta = details.localPosition - _dragStart;
       ref.read(screenProvider.notifier).setOffset(_offsetStart + dragDelta);
+      final screenCenter = CoordinateUtils.calculateScreenCenter(
+        MediaQuery.of(ref.context).size,
+        AppBar().preferredSize.height,
+      );
+      ref.read(screenProvider.notifier).setCenterPosition(screenCenter);
     }
   }
 
@@ -332,7 +337,6 @@ class NodeInteractionHandler {
             switch (toolWidget.tool.type) {
               case NodeToolType.add:
                 await NodeOperations.addNode(
-                  context: context,
                   ref: ref,
                   nodeId: 0,
                   parentNode: selectedNode,

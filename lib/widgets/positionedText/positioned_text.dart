@@ -33,17 +33,12 @@ class PositionedText extends ConsumerWidget {
               },
               child: Icon(
                 isPositionVisible ? Icons.visibility : Icons.visibility_off,
-                color: theme.colorScheme.secondary.withOpacity(0.3),
+                color: theme.colorScheme.secondary.withOpacity(0.5),
               ),
             ),
             const SizedBox(width: 8),
             if (isPositionVisible)
-              Text(
-                positionText,
-                style: TextStyle(
-                  color: theme.colorScheme.secondary.withOpacity(0.3),
-                ),
-              ),
+              Text(positionText, style: Theme.of(context).textTheme.labelLarge),
           ],
         ),
       ),

@@ -102,7 +102,7 @@ class NodePainter extends CustomPainter {
         final Paint linePaint = Paint()
           ..color = isActiveLineage
               ? Colors.yellow // アクティブ系統の線は黄色
-              : Theme.of(context).colorScheme.onSurface
+              : Theme.of(context).colorScheme.secondary
           ..strokeWidth = scale
           ..style = PaintingStyle.stroke
           ..maskFilter = MaskFilter.blur(BlurStyle.normal, scale);
@@ -238,22 +238,25 @@ class NodePainter extends CustomPainter {
       }
 
       if (isTitleVisible) {
+        // スケールに基づいたフォントサイズを計算
+        final scaledFontSize =
+            Theme.of(context).textTheme.titleMedium?.fontSize ?? 14.0;
+        final textStyle = Theme.of(context).textTheme.titleMedium!.copyWith(
+              fontSize: scaledFontSize * scale, // フォントサイズにスケールを適用
+            );
+
         final TextPainter textPainter = TextPainter(
-          text: TextSpan(
-            text: node.title,
-            style: TextStyle(
-              color: Theme.of(context).colorScheme.onSurface,
-              fontWeight: FontWeight.bold,
-              fontSize: 16 * scale,
-            ),
-          ),
+          text: TextSpan(text: node.title, style: textStyle),
           textDirection: TextDirection.ltr,
         );
         textPainter.layout();
+
+        // タイトルの描画位置はそのまま
         textPainter.paint(
-            canvas,
-            Offset(center.dx - textPainter.width / 2,
-                center.dy + scaledRadius + 5));
+          canvas,
+          Offset(
+              center.dx - textPainter.width / 2, center.dy + scaledRadius + 5),
+        );
       }
 
       // アクティブノードがリストに含まれている場合に強調表示 Todo:Settingsで管理
