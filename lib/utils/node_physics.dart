@@ -1,6 +1,7 @@
 import 'dart:math';
 
 import 'package:flutter_app/providers/settings_provider.dart';
+import 'package:highlight/languages/d.dart';
 import 'package:vector_math/vector_math.dart' as vector_math;
 import '../models/node.dart';
 import '../constants/node_constants.dart';
@@ -29,7 +30,7 @@ class NodePhysics {
     for (var node in nodes) {
       if (node == draggedNode) continue;
 
-      _applyRepulsionForces(node, nodes, ref); // 反発力の適用
+      _applyRepulsionForces(node, nodes, ref, draggedNode); // 反発力の適用
       _applyParentChildForces(node, ref); // 親子の距離調整
       _applyLinkForces(node, ref); // リンク引力の適用
       _updateNodePosition(node); // ノード位置の更新
@@ -44,24 +45,27 @@ class NodePhysics {
 
   /// 反発力の適用
   static void _applyRepulsionForces(
-      Node node, List<Node> nodes, WidgetRef ref) {
+      Node node, List<Node> nodes, WidgetRef ref, Node? draggedNode) {
     vector_math.Vector2 totalForce = vector_math.Vector2.zero();
-    final settings = ref.read(settingsNotifierProvider);
 
     for (var otherNode in nodes) {
-      if (node == otherNode) continue;
-
-      // ドラッグ中のノードでスナップ可能な場合は反発しない
-      if (_isSnapEligible(node, otherNode)) continue;
-
+      // 同じノードや親子関係のノードは除外
+      if (node == otherNode || _isParentOrChild(node, otherNode)) continue;
+      // ドラッグ中のノードは除外
+      if (_isDraggedSnapEligible(node, otherNode, draggedNode)) continue;
       vector_math.Vector2 direction = node.position - otherNode.position;
       double distance = direction.length;
 
-      // 反発力の適用
-      if (distance < settings.parentChildDistance) {
+      // 異なるグループ間の最小距離を設定
+      double minGroupDistance = NodeConstants.minGroupDistance;
+
+      if (distance < minGroupDistance) {
         direction.normalize();
-        double repulsionStrength = (settings.parentChildDistance - distance) *
-            NodeConstants.repulsionCoefficient;
+
+        // グループ間距離が近すぎる場合の反発力を計算
+        double repulsionStrength =
+            (minGroupDistance - distance) * NodeConstants.repulsionCoefficient;
+
         totalForce += direction * repulsionStrength;
       }
     }
@@ -179,12 +183,11 @@ class NodePhysics {
   }
 
   /// スナップ可能なノードかを判定
-  static bool _isSnapEligible(Node nodeA, Node nodeB) {
-    // 親や子ノードならスナップ不可 → false
-    if (_isParentOrChild(nodeA, nodeB)) {
-      return false;
-    }
-    return true; // それ以外のノードはスナップ可能
+  static bool _isDraggedSnapEligible(
+      Node nodeA, Node nodeB, Node? draggedNode) {
+    //どちらかがドラック中のノードかをチェック
+    if (nodeA == draggedNode || nodeB == draggedNode) return true;
+    return false;
   }
 
   /// 親または子の関係かを判定
@@ -237,7 +240,7 @@ class NodePhysics {
     const double dampingFactor = 0.8; // 減衰を少し強める
 
     // 速度が十分に小さい場合、動きを停止
-    if (node.velocity.length < 0.1) {
+    if (node.velocity.length < 0.01) {
       node.velocity = vector_math.Vector2.zero();
     } else {
       node.velocity *= dampingFactor; // 減衰効果を適用

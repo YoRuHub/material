@@ -1,5 +1,8 @@
 class NodeConstants {
   // --- 距離関連定数 ---
+  /// グループ別ノード間の理想的な距離
+  static const double minGroupDistance = 150.0;
+
   /// ノード間の理想的な距離（引力と反発力が均衡する距離）
   static const double parentChildDistance = 150.0;
 
@@ -11,7 +14,7 @@ class NodeConstants {
 
   // --- 力・物理演算関連定数 ---
   /// ノード同士の反発力を決定する係数（小さいほど反発力が弱い）
-  static const double repulsionCoefficient = 0.0001;
+  static const double repulsionCoefficient = 0.05;
 
   /// 速度の減衰率（フレームごとに速度が減少する割合）
   static const double velocityDampingFactor = 0.1;

@@ -220,7 +220,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
     final nodes = ref.watch(nodesProvider);
     final nodeState = ref.watch(nodeStateProvider);
     final screenState = ref.watch(screenProvider);
-
+    final draggedNode = nodeState.draggedNode;
     return Scaffold(
       key: _scaffoldKey,
       appBar: AppBar(
@@ -323,7 +323,7 @@ class MindMapScreenState extends ConsumerState<MindMapScreen>
                           builder: (context, child) {
                             NodePhysics.updatePhysics(
                                 nodes: nodes,
-                                draggedNode: nodeState.draggedNode,
+                                draggedNode: draggedNode,
                                 ref: ref);
                             return CustomPaint(
                               size: Size(
