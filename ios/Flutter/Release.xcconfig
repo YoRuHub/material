@@ -1,1 +1,6 @@
+#include? "Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "Generated.xcconfig"
+# CocoaPodsの設定を追加
+# これにより、CocoaPodsの設定が統合されます。
+# Replace with the correct path to the .xcconfig file
+$(SRCROOT)/Target\ Support\ Files/Pods-Runner/Pods-Runner.profile.xcconfig

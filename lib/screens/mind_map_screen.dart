@@ -1,374 +1,429 @@
-import 'dart:math';
+import 'dart:async';
+
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
-import 'package:vector_math/vector_math_64.dart' show Vector3;
+import 'package:flutter_app/constants/node_constants.dart';
+import 'package:flutter_app/database/models/node_link_map_model.dart';
+import 'package:flutter_app/database/models/node_map_model.dart';
+import 'package:flutter_app/database/models/node_model.dart';
+import 'package:flutter_app/models/node.dart';
+import 'package:flutter_app/painters/node_painter.dart';
+import 'package:flutter_app/painters/screen_painter.dart';
+import 'package:flutter_app/providers/node_provider.dart';
+import 'package:flutter_app/providers/node_state_provider.dart';
+import 'package:flutter_app/providers/screen_provider.dart';
+import 'package:flutter_app/utils/coordinate_utils.dart';
+import 'package:flutter_app/utils/logger.dart';
+import 'package:flutter_app/utils/node_color_utils.dart';
+import 'package:flutter_app/utils/node_interaction_handler.dart';
+import 'package:flutter_app/utils/node_operations.dart';
+import 'package:flutter_app/utils/node_physics.dart';
+import 'package:flutter_app/widgets/addNodeButton/add_node_button.dart';
+import 'package:flutter_app/widgets/aiSupportButton/ai_support_button.dart';
+import 'package:flutter_app/widgets/nodeContentsModal/node_contents_modal.dart';
+import 'package:flutter_app/widgets/positionedText/positioned_text.dart';
+import 'package:flutter_app/widgets/settingButton/setting_button.dart';
+import 'package:flutter_app/widgets/settingButton/setting_drawer_widget.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../widgets/aiSupportButton/ai_support_drawer_widget.dart';
+import '../widgets/importExportButton/import_export_button.dart';
+import '../widgets/importExportButton/import_export_drawer.dart';
+import '../widgets/toolbar/tool_bar.dart';
 
-class MindMapScreen extends StatefulWidget {
-  const MindMapScreen({super.key});
+class MindMapScreen extends ConsumerStatefulWidget {
+  final Node? projectNode;
+
+  const MindMapScreen({
+    super.key,
+    required this.projectNode,
+  });
 
   @override
-  State<MindMapScreen> createState() => _MindMapScreenState();
+  MindMapScreenState createState() => MindMapScreenState();
 }
 
-class _MindMapScreenState extends State<MindMapScreen>
+class MindMapScreenState extends ConsumerState<MindMapScreen>
     with SingleTickerProviderStateMixin {
-  Vector3 _cameraPosition = Vector3(0, 0, -500); // 初期カメラ位置を調整
-  Vector3 _cameraRotation = Vector3(0, 0, 0);
-  double _zoomLevel = 1.0;
-  Offset _lastPosition = Offset.zero;
-  bool _isDragging = false;
+  // animation
+  late AnimationController _controller;
+  late Animation<double> _signalAnimation;
+  // database
+  late NodeModel _nodeModel;
+  late NodeMapModel _nodeMapModel;
+  late NodeLinkMapModel _nodeLinkMapModel;
+  // provider
+  late ScreenNotifier _screenNotifier;
+  late NodeStateNotifier _nodeStateNotifier;
+  late NodesNotifier _nodesNotifirer;
+  // node
+  late List<Node> nodes;
 
-  // アニメーション用のコントローラー
-  late AnimationController _animationController;
-  Vector3 _velocityVector = Vector3(0, 0, 0);
+  Widget? currentDrawer;
+  late NodeInteractionHandler _nodeInteractionHandler;
+
+  late Timer _inactiveTimer; // タイマーを追加
+  final Duration _inactiveDuration = const Duration(
+      seconds: NodeConstants.inactiveDurationTime); // 操作がない時間（5秒）
 
   @override
   void initState() {
     super.initState();
-    _animationController = AnimationController(
+    nodes = [];
+    _controller = AnimationController(
       vsync: this,
-      duration: const Duration(seconds: 1),
-    )..addListener(_updatePosition);
+      duration: const Duration(seconds: 3),
+    )..repeat();
+
+    _signalAnimation = Tween<double>(begin: 0, end: 1).animate(_controller);
+    // databaseの初期化などはそのまま
+    _nodeModel = NodeModel();
+    _nodeMapModel = NodeMapModel();
+    _nodeLinkMapModel = NodeLinkMapModel();
+
+    // 必須の_nodeInteractionHandlerを初期化
+    _nodeInteractionHandler = NodeInteractionHandler(
+        ref: ref, projectId: widget.projectNode?.id ?? 0);
+
+    // 操作がない場合にアニメーションを停止するためのタイマー
+    _startInactivityAnimationStopTimer();
+
+    // 初期化処理をpost-frameで呼び出す
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await _prepareInitialization();
+    });
+  }
+
+  // 操作がない場合にアニメーションを停止する
+  void _startInactivityAnimationStopTimer() {
+    _inactiveTimer = Timer.periodic(_inactiveDuration, (timer) {
+      if (_controller.isAnimating) {
+        _controller.stop();
+        Logger.debug('アニメーションが停止しました');
+      }
+    });
+  }
+
+  // アニメーションを再開する
+  void _startAnimationTimer() {
+    _inactiveTimer.cancel();
+    _controller.repeat();
+    _startInactivityAnimationStopTimer();
+  }
+
+  Future<void> _prepareInitialization() async {
+    try {
+      // ポストフレームコールバックを使用して初期化を確実に実行
+      WidgetsBinding.instance.addPostFrameCallback((_) async {
+        final projectId = widget.projectNode?.id ?? 0;
+        _nodeStateNotifier.resetState();
+        _nodesNotifirer.clearNodes();
+        _screenNotifier.resetScreen();
+        // 画面中央を設定
+        final screenCenter = CoordinateUtils.calculateScreenCenter(
+          MediaQuery.of(ref.context).size,
+          AppBar().preferredSize.height,
+        );
+        ref.read(screenProvider.notifier).setCenterPosition(screenCenter);
+
+        if (widget.projectNode != null) {
+          _screenNotifier.setProjectNode(widget.projectNode as Node);
+        }
+
+        // ノードの初期化
+        await _initializeNodes(projectId);
+      });
+    } catch (e) {
+      Logger.error('スクリーンの初期化中にエラーが発生しました: $e');
+    }
+  }
+
+  Future<void> _initializeNodes(int projectId) async {
+    final nodesData = await _nodeModel.fetchProjectNodes(projectId);
+    for (var node in nodesData) {
+      if (mounted) {
+        await NodeOperations.addNode(
+          ref: ref,
+          nodeId: node['id'] as int,
+          title: node['title'] as String,
+          contents: node['contents'] as String,
+          color: node['color'] != null ? Color(node['color']) : null,
+          createdAt: node['created_at'] as String,
+        );
+      }
+    }
+
+    final nodeMap = await _nodeMapModel.fetchAllNodeMap(projectId);
+    for (var entry in nodeMap) {
+      int parentId = entry.parentId;
+      int childId = entry.childId;
+      Node? parentNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == parentId,
+            orElse: () => null,
+          );
+
+      Node? childNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == childId,
+            orElse: () => null,
+          );
+
+      if (parentNode != null && childNode != null) {
+        NodeOperations.linkChildNode(ref, parentNode.id, childNode);
+        NodeColorUtils.updateNodeColor(childNode, projectId);
+      }
+    }
+
+    // ターゲットリンクを設定
+    final nodeLinkMap = await _nodeLinkMapModel.fetchAllNodeMap(projectId);
+
+    for (var entry in nodeLinkMap) {
+      int sourceId = entry.sourceId;
+      int targetId = entry.targetId;
+
+      // ノード検索
+      Node? sourceNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == sourceId,
+            orElse: () => null,
+          );
+
+      Node? targetNode = ref.watch(nodesProvider).cast<Node?>().firstWhere(
+            (node) => node?.id == targetId,
+            orElse: () => null,
+          );
+
+      // リンクの設定
+      if (sourceNode != null && targetNode != null) {
+        await _nodesNotifirer.linkTargetNodeToSource(sourceId, targetNode);
+        Logger.debug('Linking source node $sourceId to target node $targetId');
+      }
+    }
   }
 
   @override
   void dispose() {
-    _animationController.dispose();
+    _controller.dispose();
+    _inactiveTimer.cancel(); // タイマーを停止
     super.dispose();
   }
 
-  void _updatePosition() {
-    if (!_isDragging && _velocityVector.length > 0.1) {
-      setState(() {
-        _cameraPosition += _velocityVector;
-        _velocityVector *= 0.95; // 減衰
-      });
-    }
-  }
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  void _handleMouseDown(PointerDownEvent event) {
-    _isDragging = true;
-    _lastPosition = event.position;
-    _animationController.stop();
-  }
-
-  void _handleMouseMove(PointerMoveEvent event) {
-    if (!_isDragging) return;
-
-    final delta = event.position - _lastPosition;
-    // マウスの移動量に基づいて移動速度を調整
-    final moveSpeed = 0.5 * _zoomLevel;
-
-    setState(() {
-      _cameraPosition += Vector3(
-        -delta.dx * moveSpeed,
-        -delta.dy * moveSpeed,
-        0,
-      );
-
-      // 回転も追加（オプション）
-      _cameraRotation += Vector3(
-        -delta.dy * 0.001,
-        -delta.dx * 0.001,
-        0,
-      );
-
-      // 速度ベクトルを更新
-      _velocityVector = Vector3(
-        -delta.dx * moveSpeed * 0.1,
-        -delta.dy * moveSpeed * 0.1,
-        0,
-      );
-    });
-
-    _lastPosition = event.position;
-  }
-
-  void _handleMouseUp(PointerUpEvent event) {
-    _isDragging = false;
-    _animationController.reset();
-    _animationController.forward();
-  }
-
-  void _handleMouseWheel(PointerScrollEvent event) {
-    final zoomDelta = event.scrollDelta.dy * 0.001;
-    setState(() {
-      _zoomLevel = (_zoomLevel * (1 - zoomDelta)).clamp(0.1, 5.0);
-      _cameraPosition += Vector3(0, 0, event.scrollDelta.dy);
-    });
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    _screenNotifier = ref.read(screenProvider.notifier);
+    _nodeStateNotifier = ref.read(nodeStateProvider.notifier);
+    _nodesNotifirer = ref.read(nodesProvider.notifier);
   }
 
   @override
   Widget build(BuildContext context) {
+    final nodes = ref.watch(nodesProvider);
+    final nodeState = ref.watch(nodeStateProvider);
+    final screenState = ref.watch(screenProvider);
+    final draggedNode = nodeState.draggedNode;
     return Scaffold(
+      key: _scaffoldKey,
       appBar: AppBar(
-        title: const Text('Interactive 3D Space'),
-      ),
-      body: Stack(
-        children: [
-          Listener(
-            onPointerDown: _handleMouseDown,
-            onPointerMove: _handleMouseMove,
-            onPointerUp: _handleMouseUp,
-            onPointerSignal: (event) {
-              if (event is PointerScrollEvent) {
-                _handleMouseWheel(event);
-              }
+        title: Text(widget.projectNode?.title ?? ''),
+        backgroundColor: Theme.of(context).colorScheme.onSurface,
+        leading: screenState.nodeStack.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back),
+                onPressed: () {
+                  _screenNotifier.popNodeFromStack();
+                  Node? previousNode;
+                  if (screenState.nodeStack.length > 1) {
+                    previousNode =
+                        screenState.nodeStack[screenState.nodeStack.length - 2];
+                  }
+                  Navigator.pushReplacement(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          MindMapScreen(projectNode: previousNode),
+                    ),
+                  );
+                })
+            : null,
+        actions: [
+          AiSupportButton(onPressed: () {
+            _openAiSupportDrawer();
+            _scaffoldKey.currentState?.openEndDrawer();
+          }),
+          ImportExportButton(onPressed: () {
+            _openInportExportDrawer();
+            _scaffoldKey.currentState?.openEndDrawer();
+          }),
+          SettingButton(
+            onPressed: () {
+              _openSettingDrawer();
+              _scaffoldKey.currentState?.openEndDrawer();
             },
-            child: CustomPaint(
-              painter: EnhancedStarFieldPainter(
-                cameraPosition: _cameraPosition,
-                cameraRotation: _cameraRotation,
-                zoomLevel: _zoomLevel,
-              ),
-              size: Size.infinite,
-            ),
-          ),
-          // HUD表示
-          Positioned(
-            top: 16,
-            left: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  const Text(
-                    '航行データ',
-                    style: TextStyle(
-                      color: Colors.cyan,
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    '位置:\n'
-                    'X: ${_cameraPosition.x.toStringAsFixed(1)}\n'
-                    'Y: ${_cameraPosition.y.toStringAsFixed(1)}\n'
-                    'Z: ${_cameraPosition.z.toStringAsFixed(1)}\n'
-                    '回転: ${(_cameraRotation.y * 180 / pi).toStringAsFixed(1)}°\n'
-                    'ズーム: ${_zoomLevel.toStringAsFixed(2)}x',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 16,
-                      fontFamily: 'monospace',
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-          // 操作ガイド
-          Positioned(
-            bottom: 16,
-            right: 16,
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.blue.withOpacity(0.3)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.end,
-                children: [
-                  Text(
-                    '操作方法',
-                    style: TextStyle(
-                      color: Colors.cyan,
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  SizedBox(height: 8),
-                  Text(
-                    'ドラッグ: 空間移動\n'
-                    'マウスホイール: ズーム\n'
-                    'ドラッグ解放: 慣性移動',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontSize: 14,
-                    ),
-                  ),
-                ],
-              ),
-            ),
           ),
         ],
       ),
+      endDrawer: Builder(
+        builder: (context) {
+          return ConstrainedBox(
+            constraints: const BoxConstraints(
+              minWidth: 320,
+            ),
+            child: SizedBox(
+              width: MediaQuery.of(context).size.width * 0.3,
+              child: currentDrawer,
+            ),
+          );
+        },
+      ),
+      body: Builder(
+        builder: (context) {
+          return Stack(
+            children: [
+              Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Expanded(
+                    child: Listener(
+                      onPointerSignal: (pointerSignal) {
+                        if (pointerSignal is PointerScrollEvent) {
+                          setState(() {
+                            final screenCenter =
+                                CoordinateUtils.calculateScreenCenter(
+                              MediaQuery.of(context).size,
+                              AppBar().preferredSize.height,
+                            );
+
+                            final (newScale, newOffset) =
+                                CoordinateUtils.calculateZoom(
+                              currentScale: screenState.scale,
+                              scrollDelta: pointerSignal.scrollDelta.dy,
+                              screenCenter: screenCenter,
+                              currentOffset: screenState.offset,
+                            );
+
+                            _screenNotifier.setScale(newScale);
+                            _screenNotifier.setOffset(newOffset);
+                          });
+                        }
+                      },
+                      child: GestureDetector(
+                        onPanStart: _nodeInteractionHandler.onPanStart,
+                        onPanUpdate: _nodeInteractionHandler.onPanUpdate,
+                        onPanEnd: _nodeInteractionHandler.onPanEnd,
+                        onTapUp: (details) {
+                          _nodeInteractionHandler.onTapUp(
+                              details, context); // contextを渡す
+                        },
+                        onTapDown: (details) {
+                          // アニメーションを再開
+                          _startAnimationTimer();
+                        },
+                        child: AnimatedBuilder(
+                          animation: _controller,
+                          builder: (context, child) {
+                            NodePhysics.updatePhysics(
+                                nodes: nodes,
+                                draggedNode: draggedNode,
+                                ref: ref);
+                            return CustomPaint(
+                              size: Size(
+                                MediaQuery.of(context).size.width,
+                                MediaQuery.of(context).size.height -
+                                    AppBar().preferredSize.height,
+                              ),
+                              painter: ScreenPainter(ref), // 背景ペインターを追加
+                              foregroundPainter: NodePainter(
+                                  // ノード描画を前景に
+                                  _signalAnimation.value,
+                                  context,
+                                  ref),
+                            );
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              Stack(
+                children: [
+                  const PositionedText(),
+                  const ToolBarWidget(),
+                  AddNodeButton(onPressed: _addNode),
+                ],
+              ),
+              if (nodeState.selectedNode != null)
+                Builder(
+                  key: ValueKey(nodeState.selectedNode!.id),
+                  builder: (context) {
+                    return NodeContentsPanel(
+                      node: nodeState.selectedNode!,
+                      nodeModel: _nodeModel,
+                      onNodeUpdated: (updatedNode) {
+                        _nodeStateNotifier.setSelectedNode(updatedNode);
+                      },
+                    );
+                  },
+                ),
+            ],
+          );
+        },
+      ),
     );
   }
-}
 
-class EnhancedStarFieldPainter extends CustomPainter {
-  final Vector3 cameraPosition;
-  final Vector3 cameraRotation;
-  final double zoomLevel;
-  final List<Star> stars;
-  final List<Star> nebulas;
-  static const int starCount = 1000;
-  static const int nebulaCount = 5;
-
-  EnhancedStarFieldPainter({
-    required this.cameraPosition,
-    required this.cameraRotation,
-    required this.zoomLevel,
-  })  : stars = [],
-        nebulas = [] {
-    final random = Random();
-
-    // 星雲の生成
-    for (int i = 0; i < nebulaCount; i++) {
-      nebulas.add(Star(
-        position: Vector3(
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 2000,
-        ),
-        brightness: random.nextDouble() * 0.5 + 0.5,
-        color: HSLColor.fromAHSL(
-          1.0,
-          random.nextDouble() * 360,
-          0.8,
-          0.6,
-        ).toColor(),
-        size: random.nextDouble() * 300 + 200,
-      ));
-    }
-
-    // 恒星の生成
-    for (int i = 0; i < starCount; i++) {
-      final temp = random.nextDouble();
-      final color = _getStarColor(temp);
-      stars.add(Star(
-        position: Vector3(
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 4000,
-          (random.nextDouble() - 0.5) * 2000,
-        ),
-        brightness: random.nextDouble() * 0.5 + 0.5,
-        color: color,
-        size: random.nextDouble() * 3 + 1,
-      ));
-    }
+  Future<void> _openSettingDrawer() async {
+    setState(() {
+      currentDrawer = const SettingDrawerWidget();
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _scaffoldKey.currentState?.openEndDrawer();
+    });
   }
 
-  Color _getStarColor(double temperature) {
-    if (temperature < 0.2) return Colors.red[300]!;
-    if (temperature < 0.4) return Colors.orange[300]!;
-    if (temperature < 0.6) return Colors.white;
-    if (temperature < 0.8) return Colors.blue[200]!;
-    return Colors.blue[100]!;
+  Future<void> _openAiSupportDrawer() async {
+    setState(() {
+      currentDrawer = const AiSupportDrawerWidget();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scaffoldKey.currentState?.openEndDrawer();
+      });
+    });
   }
 
-  Vector3 _rotatePoint(Vector3 point) {
-    final dx = point.x;
-    final dy = point.y;
-    final dz = point.z;
-
-    // Y軸回転
-    final rotY = cameraRotation.y;
-    final cosY = cos(rotY);
-    final sinY = sin(rotY);
-
-    final x = dx * cosY - dz * sinY;
-    final z = dx * sinY + dz * cosY;
-
-    return Vector3(x, dy, z);
+  Future<void> _openInportExportDrawer() async {
+    setState(() {
+      currentDrawer = const ImportExportDrawer();
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _scaffoldKey.currentState?.openEndDrawer();
+      });
+    });
   }
 
-  @override
-  void paint(Canvas canvas, Size size) {
-    final centerX = size.width / 2;
-    final centerY = size.height / 2;
+  /// 新しいノードを追加
+  Future<void> _addNode() async {
+    final activeNodes = ref.watch(nodeStateProvider).activeNodes;
 
-    // 星雲の描画
-    for (final nebula in nebulas) {
-      final relativePos = nebula.position - cameraPosition;
-      final rotatedPos = _rotatePoint(relativePos);
-      final scale = 2000 / (2000 + rotatedPos.z.abs());
-
-      final screenX = centerX + rotatedPos.x * scale * zoomLevel;
-      final screenY = centerY + rotatedPos.y * scale * zoomLevel;
-
-      if (_isInScreen(screenX, screenY, size)) {
-        final paint = Paint()
-          ..color = nebula.color.withOpacity(0.1 * scale)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 50);
-
-        canvas.drawCircle(
-          Offset(screenX, screenY),
-          nebula.size * scale * zoomLevel,
-          paint,
+    if (activeNodes.isNotEmpty) {
+      // アクティブノードのリストをループして処理
+      for (final activeNode in activeNodes) {
+        await NodeOperations.addNode(
+          ref: ref,
+          nodeId: 0,
+          title: '',
+          contents: '',
+          color: null,
+          parentNode: activeNode,
         );
       }
-    }
-
-    // 恒星の描画
-    for (final star in stars) {
-      final relativePos = star.position - cameraPosition;
-      final rotatedPos = _rotatePoint(relativePos);
-      final scale = 2000 / (2000 + rotatedPos.z.abs());
-
-      final screenX = centerX + rotatedPos.x * scale * zoomLevel;
-      final screenY = centerY + rotatedPos.y * scale * zoomLevel;
-
-      if (_isInScreen(screenX, screenY, size)) {
-        final paint = Paint()
-          ..color = star.color.withOpacity(scale)
-          ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 1);
-
-        // 星本体の描画
-        canvas.drawCircle(
-          Offset(screenX, screenY),
-          star.size * scale * zoomLevel,
-          paint,
-        );
-
-        // 光芒効果
-        if (star.brightness > 0.8) {
-          paint.color = star.color.withOpacity(0.3 * scale);
-          canvas.drawCircle(
-            Offset(screenX, screenY),
-            star.size * 2 * scale * zoomLevel,
-            paint,
-          );
-        }
-      }
+    } else {
+      await NodeOperations.addNode(
+        ref: ref,
+        nodeId: 0,
+        title: '',
+        contents: '',
+        color: null,
+        parentNode: null,
+      );
     }
   }
-
-  bool _isInScreen(double x, double y, Size size) {
-    return x >= -100 &&
-        x <= size.width + 100 &&
-        y >= -100 &&
-        y <= size.height + 100;
-  }
-
-  @override
-  bool shouldRepaint(covariant EnhancedStarFieldPainter oldDelegate) {
-    return oldDelegate.cameraPosition != cameraPosition ||
-        oldDelegate.cameraRotation != cameraRotation ||
-        oldDelegate.zoomLevel != zoomLevel;
-  }
-}
-
-class Star {
-  final Vector3 position;
-  final double brightness;
-  final Color color;
-  final double size;
-
-  Star({
-    required this.position,
-    required this.brightness,
-    this.color = Colors.white,
-    this.size = 1.0,
-  });
 }
